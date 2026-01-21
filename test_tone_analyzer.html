@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tone Analyzer Test</title>
+    <link rel="stylesheet" href="./src/styles/style.css">
+    <style>
+        body { padding: 50px; }
+        #test-container { margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <h1>Tone Analyzer Test</h1>
+    <div id="test-container"></div>
+
+    <script type="module">
+        import { renderToneAnalyser } from './src/views/components/ToneAnalyser.js';
+        
+        console.log("Initializing Tone Analyser...");
+        renderToneAnalyser('test-container');
+    </script>
+</body>
+</html>
