@@ -18,6 +18,7 @@ export function renderDojoChat(containerId, config = {}) {
         role: rawRole,
         objective: config.objective || "Handle the inquiry professionally and suggest a site survey",
         intro: config.intro || "I've been looking at your Mitsubishi Electric range, but I'm worried about the lead times.",
+        initialText: config.initialText || null,
         scenarioId: config.scenarioId || 'generic-fsw',
         skills: config.skills || ["Customer Service", "Product Knowledge", "Negotiation"]
     };
@@ -109,12 +110,12 @@ export function renderDojoChat(containerId, config = {}) {
         if (stored) {
             chatHistory = JSON.parse(stored);
         } else {
-            // Start with a realistic greeting instead of the scenario context
-            // If the role is generic, use a generic greeting.
-            chatHistory = [{ role: 'ai', content: "Hello? Is this FSW?" }];
+            // Start with a specific greeting if provided, otherwise generic
+            const greeting = scenario.initialText || "Hello?";
+            chatHistory = [{ role: 'ai', content: greeting }];
         }
     } catch (e) {
-        chatHistory = [{ role: 'ai', content: "Hello? Is this FSW?" }];
+        chatHistory = [{ role: 'ai', content: "Hello?" }];
     }
 
     const saveChat = () => {
@@ -142,7 +143,8 @@ export function renderDojoChat(containerId, config = {}) {
     const resetSimulation = () => {
         stopRingtone();
         clearInterval(callTimerInterval);
-        chatHistory = [{ role: 'ai', content: "Hello? Is this FSW?" }];
+        const greeting = scenario.initialText || "Hello?";
+        chatHistory = [{ role: 'ai', content: greeting }];
         localStorage.removeItem(`dojo-chat-${scenario.scenarioId}`);
         renderIncomingCall();
     }

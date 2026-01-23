@@ -33,7 +33,7 @@ export const createPresentation = async (topic, detailed_input) => {
             textOptions: {
                 tone: "Professional",
                 amount: "medium",
-                audience: "Soccer Executives",
+                audience: "FSW Staff",
                 language: "en"
             },
             imageOptions: {

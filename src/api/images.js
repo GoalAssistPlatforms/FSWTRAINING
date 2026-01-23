@@ -16,11 +16,18 @@ async function uploadToCloudinary(imageUrl, topic) {
     const cloudName = (import.meta.env && import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) || (typeof process !== 'undefined' && process.env.VITE_CLOUDINARY_CLOUD_NAME);
     const uploadPreset = (import.meta.env && import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) || (typeof process !== 'undefined' && process.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
+    console.log('[Images.js] ENV DEBUG:', {
+        cloudName: cloudName,
+        uploadPreset: uploadPreset,
+        envVite: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+    });
+
     if (!cloudName || !uploadPreset) {
+        console.error('Missing Cloudinary credentials in .env');
         throw new Error('Missing Cloudinary credentials in .env');
     }
 
-    console.log('Starting Cloudinary upload...');
+    console.log(`Starting Cloudinary upload with preset: "${uploadPreset}"`);
 
     // 1. Fetch the image
     const response = await fetch(imageUrl);
@@ -122,17 +129,21 @@ export const generateThumbnail = async (topic) => {
 
             // 2. Generate Image via DALL-E 3
             // Note: DALL-E generation itself is usually stable, but if it fails we catch it in the outer block.
+            // Use 'b64_json' to avoid CORS issues when fetching the image on the client side.
             const response = await openai.images.generate({
                 model: "dall-e-3",
                 prompt: fullPrompt,
                 n: 1,
                 size: "1024x1024",
                 quality: "hd",
-                style: "vivid"
+                style: "vivid",
+                response_format: "b64_json"
             });
 
-            const tempImageUrl = response.data[0].url;
-            console.log('[Thumbnail] Image generated (temp):', tempImageUrl);
+            // Handle Base64 Data URI
+            const b64Json = response.data[0].b64_json;
+            const tempImageUrl = `data:image/png;base64,${b64Json}`;
+            console.log('[Thumbnail] Image generated (Base64 Bypassing CORS)');
 
             // 3. Retry Loop for Uploading THIS specific image
             for (let uploadAttempt = 1; uploadAttempt <= MAX_UPLOAD_ATTEMPTS; uploadAttempt++) {

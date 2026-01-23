@@ -41,10 +41,10 @@ To understand why we get hurt, we must understand the spine. The spine is an eng
 The **Intervertebral Discs** act as shock absorbers. When you bend your back to lift, you compress the front of these discs, pushing the fluid nucleus backward—potentially onto a nerve root. This is the classic "slipped disc" mechanism.
 
 > [!IMPORTANT]
-> The further away the load is from your body, the greater the lever effect on your lower back. A 10kg box held at arm's length can exert 100kg of pressure on your L5/S1 vertebrae.
+> The further away the load is from your body, the greater the lever effect on your lower back. A 10kg compressor held at arm's length can exert 100kg of pressure on your L5/S1 vertebrae.
 
 \`\`\`ai-tone
-Please analyse this email draft to my supervisor regarding a back pain incident I witnessed: hey boss, saw dave hurt his back moving the big box. maybe we should get a trolley?
+Please analyse this email draft to my supervisor regarding a back pain incident I witnessed: hey boss, saw dave from the trade counter hurt his back moving that big compressor. maybe we should get a trolley?
 \`\`\`
 `,
                     quiz: [
@@ -101,7 +101,7 @@ You have a duty too. You must:
   "text": "I noticed the 'heavy' warning labels were missing from the new shipment boxes. I decided to lift them anyway because the job needed to get done quickly. I didn't check the weight but assumed I could handle it. After lifting the third box, I felt a twinge but ignored it and finished the shift.",
   "mistakes": [
     { "start": 98, "end": 126, "feedback": "Never prioritize speed over safety. If labels are missing, assessing the load is critical." },
-    { "start": 145, "end": 172, "feedback": "Never assume. Check the weight by rocking the load first." },
+    { "start": 145, "end": 172, "feedback": "Never assume. Check the weight by rocking the unit first." },
     { "start": 236, "end": 269, "feedback": "Ignoring an injury can lead to long-term damage. Report immediately and stop the activity." }
   ]
 }
@@ -203,11 +203,11 @@ The goal is to use the powerful leg muscles (quadriceps/glutes) rather than the 
 {
   "title": "Safe vs Unsafe Practices",
   "cards": [
-    { "text": "Twisting at the waist to place a box on a shelf.", "isCorrect": false },
+    { "text": "Twisting at the waist to place a unit on the racking.", "isCorrect": false },
     { "text": "Keeping the load close to the waist.", "isCorrect": true },
     { "text": "Lifting a 40kg bag alone without asking for help.", "isCorrect": false },
     { "text": "Checking the path for trip hazards before lifting.", "isCorrect": true },
-    { "text": "Bending your back to pick up a pen.", "isCorrect": false }
+    { "text": "Bending your back to pick up a screwdriver.", "isCorrect": false }
   ],
   "labels": { "left": "Unsafe", "right": "Safe" }
 }

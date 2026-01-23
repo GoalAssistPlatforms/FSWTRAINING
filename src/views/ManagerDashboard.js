@@ -3,6 +3,10 @@ import { createCourse, getCourses, deleteCourse } from '../api/courses'
 import { renderCourseEditor } from './CourseEditor'
 import { renderCoursePlayer } from './CoursePlayer'
 import { getCurrentUser } from '../api/auth'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// Set worker source for pdf.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export const renderManagerDashboard = (user) => {
   return `
@@ -20,6 +24,23 @@ export const renderManagerDashboard = (user) => {
       
       <textarea id="course-prompt" rows="4" placeholder="e.g. Health and Safety in the Warehouse..." 
         style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;"></textarea>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Supporting Documents (PDF, TXT)</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="file" id="course-files" multiple accept=".pdf,.txt,.md" style="display: none;" />
+          <button id="upload-btn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.5rem 1rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Attach Files
+          </button>
+          <span id="file-count" style="font-size: 0.8rem; color: var(--text-muted);">No files selected</span>
+        </div>
+        <div id="file-list" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted); max-height: 100px; overflow-y: auto;"></div>
+      </div>
       
       <div id="generation-log" style="display: none; height: 150px; overflow-y: auto; background: rgba(0,0,0,0.5); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; font-family: monospace; font-size: 0.8rem; color: #10b981; border: 1px solid var(--glass-border); white-space: pre-wrap;"></div>
       
@@ -38,6 +59,10 @@ export const initManagerEvents = async () => {
   const cancelBtn = document.getElementById('cancel-create')
   const confirmBtn = document.getElementById('confirm-create')
   const promptInput = document.getElementById('course-prompt')
+  const fileInput = document.getElementById('course-files')
+  const uploadBtn = document.getElementById('upload-btn')
+  const fileCount = document.getElementById('file-count')
+  const fileList = document.getElementById('file-list')
   const courseList = document.getElementById('course-list')
 
   const user = await getCurrentUser()
@@ -142,6 +167,56 @@ export const initManagerEvents = async () => {
     })
   }
 
+  // File Upload Handlers
+  uploadBtn?.addEventListener('click', () => fileInput.click())
+
+  fileInput?.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files)
+    if (files.length === 0) {
+      fileCount.innerText = 'No files selected'
+      fileList.innerHTML = ''
+      return
+    }
+
+    fileCount.innerText = `${files.length} file${files.length === 1 ? '' : 's'} selected`
+    fileList.innerHTML = files.map(f => `<div>• ${f.name}</div>`).join('')
+  })
+
+  // Helper to extract text from files
+  async function extractTextFromFiles(files) {
+    let combinedText = ""
+
+    for (const file of files) {
+      combinedText += `\n\n--- Start of Document: ${file.name} ---\n`
+
+      try {
+        if (file.type === 'application/pdf') {
+          const arrayBuffer = await file.arrayBuffer()
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+          let pdfText = ""
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i)
+            const textContent = await page.getTextContent()
+            const pageText = textContent.items.map(item => item.str).join(' ')
+            pdfText += `\n[Page ${i}]\n${pageText}`
+          }
+          combinedText += pdfText
+        } else {
+          // Plain text / markdown
+          const text = await file.text()
+          combinedText += text
+        }
+      } catch (err) {
+        console.error(`Failed to read file ${file.name}:`, err)
+        combinedText += `\n[ERROR READING FILE]\n`
+      }
+
+      combinedText += `\n--- End of Document: ${file.name} ---\n`
+    }
+    return combinedText
+  }
+
   function toggleModal(show) {
     modal.style.display = show ? 'block' : 'none'
     overlay.style.display = show ? 'block' : 'none'
@@ -153,7 +228,23 @@ export const initManagerEvents = async () => {
 
   confirmBtn?.addEventListener('click', async () => {
     const description = promptInput.value
-    if (!description) return
+    if (!description && fileInput.files.length === 0) return
+
+    // Extract file content
+    const files = Array.from(fileInput.files)
+    let supportingDocs = ""
+
+    if (files.length > 0) {
+      // Show feedback while reading
+      const originalBtnText = confirmBtn.innerText
+      confirmBtn.innerText = 'Reading files...'
+      confirmBtn.disabled = true
+
+      supportingDocs = await extractTextFromFiles(files)
+
+      confirmBtn.innerText = originalBtnText
+      confirmBtn.disabled = false
+    }
 
     const logContainer = document.getElementById('generation-log')
 
@@ -184,7 +275,7 @@ export const initManagerEvents = async () => {
       console.log('Starting course generation for:', description)
 
       // 1. Generate Content with Progress Callback
-      const aiData = await generateCourseContent(description, onProgress)
+      const aiData = await generateCourseContent(description, supportingDocs, onProgress)
 
       console.log('AI Content Generated:', aiData)
       onProgress('Saving course to database...')
@@ -219,6 +310,10 @@ export const initManagerEvents = async () => {
     } finally {
       confirmBtn.innerText = 'Generate Course'
       confirmBtn.disabled = false
+      // Clear files
+      fileInput.value = ''
+      fileCount.innerText = 'No files selected'
+      fileList.innerHTML = ''
     }
   })
 }

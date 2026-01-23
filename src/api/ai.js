@@ -19,9 +19,18 @@ FSW Brand Voice and Context:
 FSW is the UK's leading distributor of air conditioning and refrigeration products.
 - Tone: Professional, authoritative, efficient, and safety-conscious.
 - Core Business: Wholesale distribution of compressors, refrigerants, tools, and systems (split systems, VRF, etc.).
-- Target Audience: HVAC engineers, contractors, and business managers.
-- Persona for AI: "FSW Learning Assistant" - helpful, technical but accessible, and deeply knowledgeable about the RAC (Refrigeration and Air Conditioning) trade.
+- Target Audience: FSW Staff (Internal Training).
+- Persona for AI: "The FSW Training Team" - we are internal colleagues, not external consultants. 
 
+CRITICAL BRANDING INSTRUCTIONS:
+1. ALWAYS use "We", "Our", and "Us" when referring to FSW. 
+   - BAD: "FSW offers..." or "The company provides..."
+   - GOOD: "We offer..." or "Our branches stock..."
+2. ALWAYS link learning back to FSW operations.
+   - Example: "When you're at the trade counter..."
+   - Example: "Our customers rely on us to know this..."
+   - Example: "This is a common issue returned to our warranty department..."
+3. Make it feel INTERNAL. Use phrases like "Here at FSW", "In our branches", "As part of the FSW team".
 
 Content Guidelines:
 - LANGUAGE: Use UK English spelling ONLY (e.g., "analyse", "colour", "centre", "programme", "organisation").
@@ -33,7 +42,7 @@ FORMATTING & CONTEXT (CRITICAL):
 - This is an ONLINE, SELF-PACED course, NOT a live presentation.
 - Do NOT use phrases like "Presented by", "Welcome to my presentation", "Any questions?", "Thank you for listening", or "We are now open for questions".
 - Do NOT include a Q&A section at the end.
-- The content should be direct and informational, suitable for reading or listening without a live presenter.
+- The content should be direct and informational, suitable for reading or listening without a live presenter, but written as if 'WE' (FSW) are teaching 'YOU' (the employee).
 `;
 
 /**
@@ -43,43 +52,51 @@ FORMATTING & CONTEXT (CRITICAL):
 /**
  * Generates a full course structure and content.
  * @param {string} topic
+ * @param {string} supportingDocs - Optional text content from uploaded files
  * @param {function} onProgress - Callback for real-time progress updates
  */
-export const generateCourseContent = async (topic, onProgress = () => { }) => {
+export const generateCourseContent = async (topic, supportingDocs = "", onProgress = () => { }) => {
     console.log(`Starting AI generation for: ${topic}`);
     onProgress(`Analyzing topic: "${topic}"...`);
 
     // 1. Generate Course Outline (Modules & Lessons)
     onProgress("Drafting course outline...");
+
+    let systemPrompt = `${FSW_INTERNAL_CONTEXT}
+                
+    You are an expert instructional designer. Create a comprehensive course outline for the topic provided. 
+    Return ONLY a JSON object with this structure:
+    {
+        "title": "Course Title (Max 50 Characters)",
+        "description": "Short description (100-140 Characters)",
+        "thumbnail_query": "A precise visual description of a single physical object that metaphorically represents this topic (e.g. 'a brass compass' for direction, 'a steel padlock' for security). Do NOT use people or abstract concepts.",
+        "modules": [
+            {
+                "title": "Module Title",
+                "lessons": [
+                    { "title": "Lesson Title", "concept": "Key concept to teach" }
+                ]
+            }
+        ]
+    }
+    
+    CRITICAL CONSTRAINTS:
+    1. Use UK English spelling.
+    2. The "title" MUST be 50 characters or fewer for UI consistency.
+    3. The "description" MUST be between 100 and 140 characters.
+    4. Create a comprehensive structure, typically 3-4 modules with 2-3 lessons each.
+    `;
+
+    if (supportingDocs) {
+        systemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nUse the information above to ensure the course outline is tailored to the specific policies, procedures, or content provided in the documents.`;
+    }
+
     const outlineCompletion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
             {
                 role: "system",
-                content: `${FSW_INTERNAL_CONTEXT}
-                
-                You are an expert instructional designer. Create a comprehensive course outline for the topic provided. 
-                Return ONLY a JSON object with this structure:
-                {
-                    "title": "Course Title (Max 50 Characters)",
-                    "description": "Short description (100-140 Characters)",
-                    "thumbnail_query": "A precise visual description of a single physical object that metaphorically represents this topic (e.g. 'a brass compass' for direction, 'a steel padlock' for security). Do NOT use people or abstract concepts.",
-                    "modules": [
-                        {
-                            "title": "Module Title",
-                            "lessons": [
-                                { "title": "Lesson Title", "concept": "Key concept to teach" }
-                            ]
-                        }
-                    ]
-                }
-                
-                CRITICAL CONSTRAINTS:
-                1. Use UK English spelling.
-                2. The "title" MUST be 50 characters or fewer for UI consistency.
-                3. The "description" MUST be between 100 and 140 characters.
-                4. Create a comprehensive structure, typically 3-4 modules with 2-3 lessons each.
-                `
+                content: systemPrompt
             },
             { role: "user", content: `Topic: ${topic}` }
         ],
@@ -173,12 +190,7 @@ export const generateCourseContent = async (topic, onProgress = () => { }) => {
             while (!success && attempts < 2) {
                 attempts++;
                 try {
-                    const contentCompletion = await openai.chat.completions.create({
-                        model: "gpt-4o",
-                        messages: [
-                            {
-                                role: "system",
-                                content: `${FSW_INTERNAL_CONTEXT}
+                    let lessonSystemPrompt = `${FSW_INTERNAL_CONTEXT}
                                 
                                 You are an expert audio-visual course creator.
                                 
@@ -214,11 +226,22 @@ export const generateCourseContent = async (topic, onProgress = () => { }) => {
                                 
                                 AI Component Configs:
                                 - ai-tone: { "context": "Brief context...", "incoming_email": "The full text of the email the user must reply to. Make it realistic and relevant to the lesson.", "initialText": "" }
-                                - ai-dojo: { "scenarioId": "generated_id", "intro": "Scenario intro...", "role": "Role for AI to play", "objective": "Goal for user", "skills": ["Skill 1", "Skill 2"] }
+                                - ai-dojo: { "scenarioId": "generated_id", "intro": "Scenario intro regarding the PLAYER'S situation...", "role": "Role for AI to play", "objective": "Goal for user", "skills": ["Skill 1", "Skill 2"], "initialText": "A realistic opening line for the AI character to start the call." }
                                 - ai-redline: { "title": "Audit Document Name", "items": [{ "content": "Full sentence describing a policy or statement found in the document...", "isRisk": true, "feedback": "Explanation of why this is a mistake." }, { "content": "Another statement that is compliant...", "isRisk": false }] } (CRITICAL: "items" array is REQUIRED. Generate 5-7 items total. Approx 2/3 should be RISKS ('isRisk': true) and 1/3 should be safe.)
                                 - ai-debate: { "topic": "Debate topic...", "aiSide": "pro/con/devil_advocate", "stances": ["Option A", "Option B"] } (CRITICAL: Provide "stances" if the topic isn't a simple Agree/Disagree, e.g. ["Prioritise Relationships", "Prioritise Speed"])
                                 - ai-swipe: { "title": "Decision Scenario", "cards": [{ "text": "Option...", "isCorrect": true, "feedback": "Why..." }], "labels": { "left": "Reject", "right": "Accept" } } (CRITICAL: Generate a MINIMUM of 5 cards)
-                                `
+                                `;
+
+                    if (supportingDocs) {
+                        lessonSystemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nUse this information extensively to ensure the lesson content is factually accurate and aligned with the provided documents.`;
+                    }
+
+                    const contentCompletion = await openai.chat.completions.create({
+                        model: "gpt-4o",
+                        messages: [
+                            {
+                                role: "system",
+                                content: lessonSystemPrompt
                             },
                             { role: "user", content: `Concept to teach: ${lesson.concept}` }
                         ],
@@ -333,6 +356,15 @@ export const chatWithDojo = async (messages, scenario) => {
                 ROLE: ${scenario.role}
                 OBJECTIVE FOR USER: ${scenario.objective}
                 SCENARIO INTRO: ${scenario.intro}
+                USER CONTEXT (The Player): ${scenario.intro}
+                CRITICAL RULES:
+                1. The USER CONTEXT describes the human player's role. Do NOT assume this is your role. You are strictly the character defined in ROLE.
+                2. STICK TO YOUR SIDE OF THE CONVERSATION. You are strictly the character defined in ROLE.
+                3. You are NOT an AI assistant, mentor, or helpful guide.
+                4. NEVER do the user's work for them. If the objective is for the USER to build, create, plan, or list something, you must wait for them to do it.
+                5. If the user asks you to provide a framework, list, or answer, REFUSE IN CHARACTER (e.g., "I'm waiting for your proposal," or "That's what I hired you for").
+                6. Ask probing questions to guide them if they are stuck, but NEVER provide the solution yourself.
+
                 Stay in character. If the user achieves the objective, add [SUCCESS] at the end.
                 `
                     },
