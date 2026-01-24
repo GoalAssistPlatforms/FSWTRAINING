@@ -56,7 +56,7 @@ export function renderRedline(containerId, config) {
             
             <div class="redline-header">
                 <div class="redline-title-group">
-                    <div class="redline-label">Compliance Audit</div>
+                    <div class="redline-label">Risk & Compliance Audit</div>
                     <div class="redline-doc-title">📄 ${title || 'Internal Policy Document'}</div>
                 </div>
                 <div class="redline-counter" id="counter-${containerId}">
@@ -126,7 +126,17 @@ export function renderRedline(containerId, config) {
 
                 } else {
                     el.classList.add('checked-safe');
-                    // Play small success animation/sound?
+
+                    const feedback = el.dataset.feedback;
+                    if (feedback) {
+                        const toast = document.createElement('div');
+                        toast.className = 'swipe-feedback-toast success';
+                        toast.innerText = `✅ ${feedback}`;
+                        toast.style.backgroundColor = '#10b981'; // Force green for success
+                        toast.style.color = 'white';
+                        container.appendChild(toast);
+                        setTimeout(() => toast.remove(), 3000);
+                    }
                 }
             });
         });

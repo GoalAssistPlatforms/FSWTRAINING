@@ -180,6 +180,35 @@ export const renderCoursePlayer = (course, user) => {
                 <div class="cp-text-panel" id="text-panel">
                      <div class="lesson-content typography fade-in">
                         ${htmlContent}
+                        
+                        ${(currentLesson.resources && currentLesson.resources.length > 0) ? `
+                            <div class="resources-section" style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1.5rem; font-weight: 700;">Lesson Resources & Attachments</h3>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                                    ${currentLesson.resources.map(res => `
+                                        <a href="${res.url}" target="_blank" rel="noopener noreferrer" class="resource-card glass" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; text-decoration: none; color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; transition: transform 0.2s, background 0.2s, border-color 0.2s; background: rgba(255,255,255,0.03);">
+                                            <div style="background: rgba(255,255,255,0.1); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                                ${res.url.endsWith('.pdf') ? '📄' : '🔗'}
+                                            </div>
+                                            <div style="flex: 1; overflow: hidden;">
+                                                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.title}</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem;">
+                                                    <span>Open Resource</span>
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    `).join('')}
+                                </div>
+                                <style>
+                                    .resource-card:hover {
+                                        transform: translateY(-2px);
+                                        background: rgba(255,255,255,0.08) !important;
+                                        border-color: rgba(255,255,255,0.2) !important;
+                                    }
+                                </style>
+                            </div>
+                        ` : ''}
                      </div>
                 </div>
 

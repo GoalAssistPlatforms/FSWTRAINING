@@ -24,8 +24,8 @@ FSW is the UK's leading distributor of air conditioning and refrigeration produc
 
 CRITICAL BRANDING INSTRUCTIONS:
 1. ALWAYS use "We", "Our", and "Us" when referring to FSW. 
-   - BAD: "FSW offers..." or "The company provides..."
-   - GOOD: "We offer..." or "Our branches stock..."
+   - BAD: "FSW offers...", "The company provides...", "our HVAC company"
+   - GOOD: "We offer...", "Our branches stock...", "at FSW"
 2. ALWAYS link learning back to FSW operations.
    - Example: "When you're at the trade counter..."
    - Example: "Our customers rely on us to know this..."
@@ -220,16 +220,25 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 CRITICAL CONSTRAINTS:
                                 1. **presentation_input**: Needs to be structured for a slide deck.
                                 2. **audio_summary**: This is crucial. It must be LONG and comprehensive.
-                                3. **markdown_content**: Must be UK English. Include '### Interactive Activity' header if component is used.
+                                3. **markdown_content**: Must be UK English. If a component is used, place the '### Interactive Activity' section AT THE VERY END, after the Conclusion.
                                 4. **quiz**: Must contain exactly 3 questions.
                                 5. **ai_component**: YOU MUST GENERATE A COMPONENT OF TYPE "${lesson.targetActivity}". CREATE A SENSIBLE ACTIVITY OF THIS TYPE THAT RELATES TO THE LESSON CONTENT.
+
+                                **TERMINOLOGY RULES (CRITICAL):**
+                                - NEVER use terms like "AI", "AI tool", "chatbot", "swipe tool", "automated system", or "robot".
+                                - NEVER say "Interact with the AI below".
+                                - INSTREAD USE: "Interactive Simulation", "Scenario", "Module", "Digital Customer", "Virtual Colleague", or the specific premium activity name.
+                                - Make the experience feel like high-end professional training software.
                                 
-                                AI Component Configs:
-                                - ai-tone: { "context": "Brief context...", "incoming_email": "The full text of the email the user must reply to. Make it realistic and relevant to the lesson.", "initialText": "" }
-                                - ai-dojo: { "scenarioId": "generated_id", "intro": "Scenario intro regarding the PLAYER'S situation...", "role": "Role for AI to play", "objective": "Goal for user", "skills": ["Skill 1", "Skill 2"], "initialText": "A realistic opening line for the AI character to start the call." }
-                                - ai-redline: { "title": "Audit Document Name", "items": [{ "content": "Full sentence describing a policy or statement found in the document...", "isRisk": true, "feedback": "Explanation of why this is a mistake." }, { "content": "Another statement that is compliant...", "isRisk": false }] } (CRITICAL: "items" array is REQUIRED. Generate 5-7 items total. Approx 2/3 should be RISKS ('isRisk': true) and 1/3 should be safe.)
-                                - ai-debate: { "topic": "Debate topic...", "aiSide": "pro/con/devil_advocate", "stances": ["Option A", "Option B"] } (CRITICAL: Provide "stances" if the topic isn't a simple Agree/Disagree, e.g. ["Prioritise Relationships", "Prioritise Speed"])
-                                - ai-swipe: { "title": "Decision Scenario", "cards": [{ "text": "Option...", "isCorrect": true, "feedback": "Why..." }], "labels": { "left": "Reject", "right": "Accept" } } (CRITICAL: Generate a MINIMUM of 5 cards)
+                                AI Component Configs (Use these PRECISE TITLES):
+                                - ai-tone: { "context": "Brief context...", "incoming_email": "...", "initialText": "" } (Title: "Communication Lab")
+                                - ai-dojo: { "scenarioId": "generated_id", "intro": "...", "role": "...", "objective": "...", "skills": ["..."], "initialText": "..." } (Title: "Live Scenario Simulation")
+                                - ai-redline: { "title": "Name of Policy/Document (e.g. Fire Safety V2)", "items": [{ "content": "...", "isRisk": true, "feedback": "..." }] } (Title: "Risk & Compliance Audit")
+                                - ai-debate: { "topic": "Debate topic...", "aiSide": "pro/con/devil_advocate", "stances": ["Option A", "Option B"] } (Title: "Strategic Analysis")
+                                - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "Statement...", "isCorrect": true, "feedback": "Why..." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
+                                  * IMPORTANT for ai-swipe: 
+                                  * "isCorrect": true  -> User should ACCEPT (Swipe Right). The statement is clear/good/safe.
+                                  * "isCorrect": false -> User should REJECT (Swipe Left). The statement is risky/incorrect/bad.
                                 `;
 
                     if (supportingDocs) {
@@ -346,6 +355,26 @@ export const chatWithDojo = async (messages, scenario) => {
                 content: m.content
             }));
 
+            // Count user turns to determine "fatigue" state
+            const userTurns = messages.filter(m => m.role === 'user').length;
+            let fatigueInstructions = "";
+
+            if (userTurns >= 5) {
+                fatigueInstructions = `
+                URGENT: The conversation is dragging on (Turn ${userTurns}).
+                - STOP asking probing questions.
+                - If the user has made ANY reasonable attempt or if they try to sign off, ACCEPT it immediately.
+                - Wrap up the call politely and append [SUCCESS].
+                `;
+            } else if (userTurns >= 3) {
+                fatigueInstructions = `
+                NOTE: The conversation is progressing (Turn ${userTurns}).
+                - Be constructive but efficient.
+                - Don't nitpick minor details.
+                - If the user's answer is "good enough", accept it and append [SUCCESS].
+                `;
+            }
+
             const completion = await openai.chat.completions.create({
                 model: "gpt-4o-mini",
                 messages: [
@@ -357,6 +386,7 @@ export const chatWithDojo = async (messages, scenario) => {
                 OBJECTIVE FOR USER: ${scenario.objective}
                 SCENARIO INTRO: ${scenario.intro}
                 USER CONTEXT (The Player): ${scenario.intro}
+                
                 CRITICAL RULES:
                 1. The USER CONTEXT describes the human player's role. Do NOT assume this is your role. You are strictly the character defined in ROLE.
                 2. STICK TO YOUR SIDE OF THE CONVERSATION. You are strictly the character defined in ROLE.
@@ -365,7 +395,12 @@ export const chatWithDojo = async (messages, scenario) => {
                 5. If the user asks you to provide a framework, list, or answer, REFUSE IN CHARACTER (e.g., "I'm waiting for your proposal," or "That's what I hired you for").
                 6. Ask probing questions to guide them if they are stuck, but NEVER provide the solution yourself.
 
-                Stay in character. If the user achieves the objective, add [SUCCESS] at the end.
+                COMPLETION LOGIC:
+                - Stay in character. 
+                - If the user achieves the objective, add [SUCCESS] at the end.
+                - If the user explicitly asks to end the call, and they have done a decent job, add [SUCCESS].
+
+                ${fatigueInstructions}
                 `
                     },
                     ...apiMessages

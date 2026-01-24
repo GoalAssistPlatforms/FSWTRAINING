@@ -27,41 +27,11 @@ export function renderToneAnalyser(containerId, config = {}) {
     container.innerHTML = `
         <div class="tone-analyser-ui fade-in">
             
-            <!-- Left Panel: Context & Input -->
-            <div class="tone-left-panel">
+            <!-- Header Row: Title & Score -->
+            <div class="tone-header-row">
+                <h3 style="margin: 0; color: var(--primary); font-size: 1.4rem;">Communication Lab</h3>
                 
-                <div>
-                    <h3 style="margin: 0 0 1rem 0; color: var(--primary); font-size: 1.2rem;">Professional Tone Coach</h3>
-                    
-                    <!-- Incoming Email Context -->
-                    <label class="tone-editor-label">Context: Incoming Email</label>
-                    <div class="email-context-card">
-                        <div class="email-meta">
-                            <span>From: <strong>Stakeholder</strong></span>
-                            <span>To: <strong>You</strong></span>
-                        </div>
-                        <div class="email-body">${escapeHtml(incomingEmail)}</div>
-                    </div>
-                </div>
-
-                <!-- Editor -->
-                <div>
-                     <label class="tone-editor-label">Your Draft Response</label>
-                     <textarea id="tone-input-area" placeholder="Draft your professional reply here..." class="tone-input">${initialText}</textarea>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div id="word-count" style="color: var(--text-muted); font-size: 0.8rem;">0 words</div>
-                    <button id="analyze-btn" class="btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span>✨ Analyze Tone</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Right Panel: Feedback & Score -->
-            <div class="tone-right-panel">
-                
-                <!-- Score Ring -->
+                <!-- Score Ring (Top Right) -->
                 <div class="tone-score-ring">
                     <svg viewBox="0 0 100 100">
                         <circle class="ring-bg" cx="50" cy="50" r="45"></circle>
@@ -72,7 +42,37 @@ export function renderToneAnalyser(containerId, config = {}) {
                         <span class="tone-score-label">Score</span>
                     </div>
                 </div>
+            </div>
 
+            <!-- Context Section -->
+            <div class="tone-section">
+                <label class="tone-editor-label">Context: Incoming Email</label>
+                <div class="email-context-card">
+                    <div class="email-meta">
+                        <span>From: <strong>Stakeholder</strong></span>
+                        <span>To: <strong>You</strong></span>
+                    </div>
+                    <div class="email-body">${escapeHtml(incomingEmail)}</div>
+                </div>
+            </div>
+
+            <!-- Editor Section -->
+            <div class="tone-section">
+                 <label class="tone-editor-label">Your Draft Response</label>
+                 <textarea id="tone-input-area" placeholder="Draft your professional reply here..." class="tone-input">${initialText}</textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="tone-actions-row">
+                <div id="word-count" style="color: var(--text-muted); font-size: 0.8rem;">0 words</div>
+                <button id="analyze-btn" class="btn-primary" style="display: flex; align-items: center; gap: 0.5rem; padding-left: 2rem; padding-right: 2rem;">
+                    <span>✨ Analyze Tone</span>
+                </button>
+            </div>
+
+            <!-- Results Section (Feedback Only) -->
+            <div class="tone-results-area" style="justify-content: center;">
+                
                 <!-- Feedback Box -->
                 <div class="ai-feedback-box" id="feedback-box">
                     <div class="feedback-status" id="feedback-title">Ready to Coach</div>

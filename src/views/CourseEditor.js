@@ -105,12 +105,38 @@ export const renderCourseEditor = (course, user) => {
       </div>
 
        <!-- Content Editor Modal -->
-       <div id="editor-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 800px; height: 80vh; display: flex; flex-direction: column; box-shadow: 0 50px 100px rgba(0,0,0,0.7);">
-            <h3 style="margin-top: 0;">Edit Lesson Content</h3>
-            <textarea id="lesson-content-area" style="flex: 1; width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-family: monospace; resize: none; margin-bottom: 1rem; box-sizing: border-box;"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                <button id="cancel-edit-content" class="btn-ghost">Cancel</button>
-                <button id="save-content-btn" class="btn-primary">Done</button>
+       <div id="editor-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 90vw; max-width: 1200px; height: 85vh; display: flex; flex-direction: column; box-shadow: 0 50px 100px rgba(0,0,0,0.7);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">Edit Lesson Details</h3>
+                <div style="display: flex; gap: 1rem;">
+                    <button id="cancel-edit-content" class="btn-ghost">Cancel</button>
+                    <button id="save-content-btn" class="btn-primary">Done</button>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; flex: 1; overflow: hidden;">
+                <!-- Content Area -->
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <label style="color: var(--text-muted); margin-bottom: 0.5rem;">Markdown Content</label>
+                    <textarea id="lesson-content-area" style="flex: 1; width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-family: monospace; resize: none; box-sizing: border-box;"></textarea>
+                </div>
+
+                <!-- Resources Area -->
+                <div style="display: flex; flex-direction: column; border-left: 1px solid var(--glass-border); padding-left: 2rem; overflow: hidden;">
+                    <label style="color: var(--text-muted); margin-bottom: 0.5rem;">Lesson Resources</label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0; margin-bottom: 1rem;">Add links to documents, external sites, or reference materials.</p>
+                    
+                    <div id="resources-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                        <!-- Resources rendered here -->
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: var(--radius-md);">
+                        <label style="font-size: 0.8rem; color: var(--text-muted);">Add New Resource</label>
+                        <input type="text" id="res-title" placeholder="Title (e.g. Employee Handbook)" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; border-radius: 4px;">
+                        <input type="text" id="res-url" placeholder="URL (https://...)" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; border-radius: 4px;">
+                        <button id="add-resource-btn" class="btn-secondary" style="width: 100%; font-size: 0.8rem;">+ Add Resource</button>
+                    </div>
+                </div>
             </div>
        </div>
        <div id="editor-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; backdrop-filter: blur(5px);"></div>
@@ -242,7 +268,48 @@ export const renderCourseEditor = (course, user) => {
         const modal = document.getElementById('editor-modal')
         const overlay = document.getElementById('editor-overlay')
         const textArea = document.getElementById('lesson-content-area')
+        const resourcesList = document.getElementById('resources-list')
+        const resTitleInput = document.getElementById('res-title')
+        const resUrlInput = document.getElementById('res-url')
+
         let editingLesson = null
+        let currentResources = []
+
+        const renderResources = () => {
+            resourcesList.innerHTML = currentResources.map((res, i) => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 4px;">
+                    <div style="overflow: hidden; text-overflow: ellipsis;">
+                        <div style="font-weight: bold; font-size: 0.9rem;">${res.title}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">${res.url}</div>
+                    </div>
+                    <button class="btn-danger remove-res" data-idx="${i}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">×</button>
+                </div>
+            `).join('') || '<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No resources added yet.</div>'
+
+            // Re-attach delete listeners
+            document.querySelectorAll('.remove-res').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx)
+                    currentResources.splice(idx, 1)
+                    renderResources()
+                })
+            })
+        }
+
+        document.getElementById('add-resource-btn').addEventListener('click', () => {
+            const title = resTitleInput.value.trim()
+            const url = resUrlInput.value.trim()
+
+            if (!title || !url) {
+                alert('Please enter both a title and a URL')
+                return
+            }
+
+            currentResources.push({ title, url })
+            resTitleInput.value = ''
+            resUrlInput.value = ''
+            renderResources()
+        })
 
         document.querySelectorAll('.edit-content-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -251,6 +318,9 @@ export const renderCourseEditor = (course, user) => {
                 editingLesson = modules[mIdx].lessons[lIdx]
 
                 textArea.value = (editingLesson.content || '').replace(/\\n/g, '\n')
+                currentResources = [...(editingLesson.resources || [])]
+
+                renderResources()
                 modal.style.display = 'flex'
                 overlay.style.display = 'block'
             })
@@ -264,6 +334,7 @@ export const renderCourseEditor = (course, user) => {
         document.getElementById('save-content-btn').addEventListener('click', () => {
             if (editingLesson) {
                 editingLesson.content = textArea.value
+                editingLesson.resources = currentResources
             }
             modal.style.display = 'none'
             overlay.style.display = 'none'
