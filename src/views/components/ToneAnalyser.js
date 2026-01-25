@@ -16,7 +16,15 @@ export function renderToneAnalyser(containerId, config = {}) {
 
     // Config defaults
     const context = config.context || "Draft a professional response.";
-    const incomingEmail = config.incoming_email || "Subject: Urgent Update Required\n\nHi,\n\nI haven't heard back about the project status yet. We are getting worried. What is going on?\n\n- Dave";
+
+    // Use realistic default if none provided, or override if it matches the generic prompt
+    let incomingEmail = config.incoming_email || "";
+
+    // Hard override for the specific scenario mentioned by user if it matches the generic text
+    if (!incomingEmail || incomingEmail.includes("You receive an email from a team member")) {
+        incomingEmail = "Subject: Absence today\n\nHi,\n\nI'm writing to let you know I won't be able to make it in today. I woke up feeling pretty unwell and don't think I'm up to coming in. I'll check emails if urgent.\n\nThanks,\nDave";
+    }
+
     const initialText = "";
 
     // Internal State
@@ -25,64 +33,71 @@ export function renderToneAnalyser(containerId, config = {}) {
 
     // Inject HTML Structure
     container.innerHTML = `
-        <div class="tone-analyser-ui fade-in">
-            
-            <!-- Header Row: Title & Score -->
-            <div class="tone-header-row">
-                <h3 style="margin: 0; color: var(--primary); font-size: 1.4rem;">Communication Lab</h3>
-                
-                <!-- Score Ring (Top Right) -->
-                <div class="tone-score-ring">
+        <div class="email-client-container fade-in">
+        <!-- Header Bar -->
+        <div class="email-header-bar">
+            <div class="email-subject">Subject: Absence today</div>
+
+            <!-- Coach Widget (Top Right) -->
+            <div class="email-coach-widget" id="feedback-box">
+                <div class="tone-score-ring" style="width: 24px; height: 24px; margin-right: 0.5rem;">
                     <svg viewBox="0 0 100 100">
                         <circle class="ring-bg" cx="50" cy="50" r="45"></circle>
                         <circle class="ring-progress" id="score-circle" cx="50" cy="50" r="45" stroke-dasharray="0 283"></circle>
                     </svg>
-                    <div class="tone-score-value">
-                        <span class="tone-score-number" id="score-display">--</span>
-                        <span class="tone-score-label">Score</span>
-                    </div>
                 </div>
-            </div>
-
-            <!-- Context Section -->
-            <div class="tone-section">
-                <label class="tone-editor-label">Context: Incoming Email</label>
-                <div class="email-context-card">
-                    <div class="email-meta">
-                        <span>From: <strong>Stakeholder</strong></span>
-                        <span>To: <strong>You</strong></span>
-                    </div>
-                    <div class="email-body">${escapeHtml(incomingEmail)}</div>
-                </div>
-            </div>
-
-            <!-- Editor Section -->
-            <div class="tone-section">
-                 <label class="tone-editor-label">Your Draft Response</label>
-                 <textarea id="tone-input-area" placeholder="Draft your professional reply here..." class="tone-input">${initialText}</textarea>
-            </div>
-
-            <!-- Actions -->
-            <div class="tone-actions-row">
-                <div id="word-count" style="color: var(--text-muted); font-size: 0.8rem;">0 words</div>
-                <button id="analyze-btn" class="btn-primary" style="display: flex; align-items: center; gap: 0.5rem; padding-left: 2rem; padding-right: 2rem;">
-                    <span>✨ Analyze Tone</span>
-                </button>
-            </div>
-
-            <!-- Results Section (Feedback Only) -->
-            <div class="tone-results-area" style="justify-content: center;">
-                
-                <!-- Feedback Box -->
-                <div class="ai-feedback-box" id="feedback-box">
-                    <div class="feedback-status" id="feedback-title">Ready to Coach</div>
-                    <div class="feedback-text" id="feedback-content">
-                        Start typing your email draft. When you're ready, click <strong>Analyze Tone</strong> for detailed AI feedback.
-                    </div>
-                </div>
-
+                <div class="coach-status-text" id="feedback-title">Ready to Coach</div>
+                <span id="score-display" style="display:none">0</span>
             </div>
         </div>
+
+        <!-- Message Pane (Incoming) -->
+        <div class="email-message-pane">
+            <div class="email-meta-row">
+                <div class="avatar-circle">D</div>
+                <div class="sender-info">
+                    <span class="sender-name">Dave (Stakeholder)</span>
+                    <span class="sender-details">To: You &bull; Today, 10:23 AM</span>
+                </div>
+            </div>
+            <div class="email-body-content">${escapeHtml(incomingEmail).replace(/\n/g, '<br>')}</div>
+        </div>
+
+        <!-- Coach Feedback Banner (Dynamic) -->
+        <div id="feedback-content" style="padding: 0.75rem 2rem; background: #27272a; color: #a1a1aa; font-size: 0.9rem; border-top: 1px solid #3f3f46; border-bottom: 1px solid #3f3f46; min-height: 20px;">
+            
+        </div>
+
+        <!-- Reply Area -->
+        <div class="email-reply-area">
+            <div class="reply-container">
+                <div class="reply-header">
+                    <span>Replying to: <strong>Dave</strong></span>
+                </div>
+                <!-- Fake Toolbar -->
+                <div class="fake-toolbar">
+                    <div class="toolbar-btn" style="font-weight: bold;">B</div>
+                    <div class="toolbar-btn" style="font-style: italic;">I</div>
+                    <div class="toolbar-btn" style="text-decoration: underline;">U</div>
+                    <div class="toolbar-btn">🔗</div>
+                </div>
+
+                <textarea id="tone-input-area" class="reply-textarea" placeholder="Write your reply...">${initialText}</textarea>
+
+                <div class="reply-actions" style="padding: 1rem; border-top: 1px solid #27272a; background: #18181b; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <button id="analyze-btn" class="btn-send-email">
+                            <span>Send</span>
+                        </button>
+                        <button class="btn-discard">
+                            <span style="font-size: 1.1rem; opacity: 0.6;">🗑️</span>
+                        </button>
+                    </div>
+                    <div id="word-count" style="color: var(--text-muted); font-size: 0.8rem;">0 words</div>
+                </div>
+            </div>
+        </div>
+    </div>
     `;
 
     // Elements
@@ -97,7 +112,7 @@ export function renderToneAnalyser(containerId, config = {}) {
 
     // Ring Calculations (r=45 -> circumference ~283)
     const CIRCUMFERENCE = 2 * Math.PI * 45;
-    scoreCircle.style.strokeDasharray = `${CIRCUMFERENCE} ${CIRCUMFERENCE}`;
+    scoreCircle.style.strokeDasharray = `${CIRCUMFERENCE} ${CIRCUMFERENCE} `;
     scoreCircle.style.strokeDashoffset = CIRCUMFERENCE;
 
     const updateScoreRing = (score) => {
@@ -118,7 +133,7 @@ export function renderToneAnalyser(containerId, config = {}) {
     // Heuristics (Real-time)
     const runHeuristics = (text) => {
         const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-        wordCount.textContent = `${words} word${words !== 1 ? 's' : ''}`;
+        wordCount.textContent = `${words} word${words !== 1 ? 's' : ''} `;
 
         // Basic "typing" feedback if analysis hasn't happened yet
         if (currentScore === 0 && !isAnalyzing) {
@@ -186,8 +201,9 @@ export function renderToneAnalyser(containerId, config = {}) {
                             <div style="color: #10b981; font-weight: bold; display: flex; align-items: center; gap: 0.5rem;">
                                 <span>✓</span> Activity Complete
                             </div>
+                            </div>
                         </div>
-                    `;
+        `;
                 }, 1500); // Small delay to let them see the ring update first
             }
 

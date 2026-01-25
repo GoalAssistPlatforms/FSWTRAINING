@@ -706,6 +706,15 @@ button {
   /* Separate slightly */
 }
 
+.swipe-game-container {
+  height: 400px;
+}
+
+.swipe-labels {
+  margin-top: 3.5rem;
+  margin-bottom: 0.5rem;
+}
+
 /* Header Row */
 .tone-header-row {
   display: flex;
@@ -1287,13 +1296,14 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 550px;
+  height: 650px;
   background: radial-gradient(circle at center, #1f2937 0%, #000 100%);
   border-radius: var(--radius-lg);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--glass-border);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding-bottom: 2rem;
 }
 
 .card-stack {
@@ -1536,25 +1546,27 @@ button {
 }
 
 .btn-agree {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: rgba(16, 185, 129, 0.5);
-  color: #10b981;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
 }
 
 .btn-agree:hover {
-  background: rgba(16, 185, 129, 0.3);
-  border-color: #10b981;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary);
+  color: white;
 }
 
 .btn-disagree {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #ef4444;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
 }
 
 .btn-disagree:hover {
-  background: rgba(239, 68, 68, 0.3);
-  border-color: #ef4444;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary);
+  color: white;
 }
 
 .debate-chat-area {
@@ -1636,4 +1648,224 @@ button {
 .debate-send:hover {
   transform: scale(1.05);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Email Client Redesign */
+.email-client-container {
+  background: #18181b;
+  /* Zinc 900 */
+  border: 1px solid #27272a;
+  /* Zinc 800 */
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  max-width: 900px;
+  margin: 0 auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #e4e4e7;
+  /* Zinc 200 */
+}
+
+/* Header Bar (Subject) */
+.email-header-bar {
+  background: #27272a;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #3f3f46;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.email-subject {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+}
+
+.email-coach-widget {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #18181b;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid #3f3f46;
+  font-size: 0.85rem;
+}
+
+/* Message Pane (Incoming) */
+.email-message-pane {
+  padding: 2rem;
+  background: #18181b;
+}
+
+.email-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--aurora-1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 1rem;
+}
+
+.sender-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.sender-name {
+  font-weight: 600;
+  color: white;
+}
+
+.sender-details {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.email-body-content {
+  line-height: 1.7;
+  color: #d4d4d8;
+  /* Zinc 300 */
+  font-size: 1rem;
+  white-space: pre-wrap;
+  padding-left: 3.5rem;
+  /* Align with text start of sender */
+  border-left: 2px solid #27272a;
+  margin-left: 1.25rem;
+  /* Center of avatar */
+  padding-bottom: 2rem;
+}
+
+/* Reply Area */
+.email-reply-area {
+  background: #09090b;
+  /* Zinc 950 */
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #3f3f46;
+}
+
+.reply-container {
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.reply-container:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(18, 142, 205, 0.2);
+}
+
+.reply-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #27272a;
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.fake-toolbar {
+  padding: 0.5rem 0.5rem;
+  background: #27272a;
+  border-bottom: 1px solid #3f3f46;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toolbar-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: default;
+  /* Visual only */
+}
+
+.toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.reply-textarea {
+  width: 100%;
+  padding: 1rem;
+  background: #18181b;
+  border: none;
+  color: white;
+  min-height: 200px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  resize: vertical;
+  outline: none;
+}
+
+.reply-actions {
+  padding: 1rem 0 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-send-email {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 9999px;
+  /* Pill shape */
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-send-email:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-discard {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.btn-discard:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ef4444;
+}
+
+/* Feedback Overlay/Integration */
+.coach-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.coach-status-text {
+  font-weight: 500;
+  color: var(--text-muted);
 }

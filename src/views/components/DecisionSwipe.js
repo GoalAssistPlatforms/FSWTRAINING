@@ -38,8 +38,8 @@ export function renderDecisionSwipe(containerId, config) {
     const renderCards = () => {
         stackEl.innerHTML = '';
 
-        // Only render current and next 2 for performance (limit visual stack to 3)
-        const queue = cards.slice(currentIndex, currentIndex + 3).reverse();
+        // Only render current and next 4 for performance (limit visual stack to 5)
+        const queue = cards.slice(currentIndex, currentIndex + 5).reverse();
 
         if (queue.length === 0) {
             controlsEl.style.display = 'none';

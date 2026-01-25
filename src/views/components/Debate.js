@@ -25,14 +25,14 @@ export function renderDebate(containerId, config) {
 
             <!-- Phase 1: Stance -->
             <div class="debate-stance-selector" id="stance-phase-${containerId}" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; gap: 1.5rem;">
-                <p style="color: rgba(255, 255, 255, 0.7); margin: 0; font-size: 1.1rem;">Where do you stand on this?</p>
+                <p style="color: rgba(255, 255, 255, 0.7); margin: 0; font-size: 1.1rem;">Select a perspective to debate. You will defend this position.</p>
                 <div style="display: flex; gap: 1rem; width: 100%; max-width: 400px;">
                     <button class="stance-btn btn-agree" id="agree-${containerId}" style="flex: 1; padding: 1.5rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.2s;">
-                        <span style="font-size: 1.5rem;">👍</span>
+                        <!-- Id: 30 Icon removed for neutrality -->
                         ${stanceA}
                     </button>
                     <button class="stance-btn btn-disagree" id="disagree-${containerId}" style="flex: 1; padding: 1.5rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.2s;">
-                        <span style="font-size: 1.5rem;">👎</span>
+                        <!-- Id: 34 Icon removed for neutrality -->
                         ${stanceB}
                     </button>
                 </div>

@@ -233,7 +233,13 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 AI Component Configs (Use these PRECISE TITLES):
                                 - ai-tone: { "context": "Brief context...", "incoming_email": "...", "initialText": "" } (Title: "Communication Lab")
                                 - ai-dojo: { "scenarioId": "generated_id", "intro": "...", "role": "...", "objective": "...", "skills": ["..."], "initialText": "..." } (Title: "Live Scenario Simulation")
-                                - ai-redline: { "title": "Name of Policy/Document (e.g. Fire Safety V2)", "items": [{ "content": "...", "isRisk": true, "feedback": "..." }] } (Title: "Risk & Compliance Audit")
+                                - ai-redline: { "title": "Name of Policy/Document", "intro": "Start of document context...", "outro": "End of document context...", "items": [{ "content": "...", "isRisk": true, "feedback": "Explanation..." }] } (Title: "Risk & Compliance Audit")
+                                  * CRITICAL for ai-redline:
+                                  * Generate 5-7 items total. 
+                                  * 2-3 items MUST be risks (isRisk: true).
+                                  * 3-4 items MUST be safe (isRisk: false).
+                                  * ALWAYS provide 'feedback' for SAFE items too (e.g., "Correct. This is standard procedure.").
+                                  * Include 'intro' and 'outro' text to make it look like a real document excerpt (e.g. "1. Purpose...", "Signed by...").
                                 - ai-debate: { "topic": "Debate topic...", "aiSide": "pro/con/devil_advocate", "stances": ["Option A", "Option B"] } (Title: "Strategic Analysis")
                                 - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "Statement...", "isCorrect": true, "feedback": "Why..." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
                                   * IMPORTANT for ai-swipe: 
@@ -259,12 +265,11 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
 
                     const contentData = JSON.parse(contentCompletion.choices[0].message.content);
 
-                    // VALIDATION
                     if (contentData.ai_component) {
                         const { type, config } = contentData.ai_component;
                         if (type === 'ai-redline') {
-                            if (!config || (!config.items && !config.mistakes)) {
-                                throw new Error("AI-Redline component generated without 'items' or 'mistakes'. Retrying...");
+                            if (!config || !config.items || config.items.length < 5) {
+                                throw new Error("AI-Redline component generated fewer than 5 items. Retrying for better depth...");
                             }
                         }
                     }
