@@ -21,8 +21,16 @@ marked.use({
             const renderWrapper = (type, content) => {
                 const id = type + '-' + Math.random().toString(36).substr(2, 9)
                 return `
-                    <div id="${id}" class="ai-component-container" data-type="${type}" style="margin: 3rem 0;"></div>
-                    <script type="application/json" id="config-${id}">${content}</script>
+                    <div class="activity-wrapper" id="wrapper-${id}">
+                        <div class="activity-header">
+                             <button class="activity-expand-btn" data-target="wrapper-${id}" title="Enter Fullscreen">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                <span>Expand Activity</span>
+                            </button>
+                        </div>
+                        <div id="${id}" class="ai-component-container" data-type="${type}" style="margin: 0;"></div>
+                        <script type="application/json" id="config-${id}">${content}</script>
+                    </div>
                 `
             }
 
@@ -48,6 +56,76 @@ marked.use({
     }
 })
 
+// Global Delegation for Activity Fullscreen Toggle (Document Level for Reparenting)
+// Defined once at module level to avoid duplicate listeners on re-renders
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.activity-expand-btn');
+    if (!btn) return;
+
+    const wrapperId = btn.dataset.target;
+    const wrapper = document.getElementById(wrapperId);
+
+    if (wrapper) {
+        const isFullscreen = wrapper.classList.contains('fullscreen');
+
+        // Toggle State
+        if (!isFullscreen) {
+            // ENTER FULLSCREEN (Reparent to Body)
+
+            // 1. Create Placeholder to hold spot
+            const placeholder = document.createElement('div');
+            placeholder.id = `placeholder-${wrapperId}`;
+            placeholder.style.height = wrapper.offsetHeight + 'px';
+            placeholder.style.width = '100%';
+            // insert placeholder before wrapper
+            wrapper.parentNode.insertBefore(placeholder, wrapper);
+
+            // 2. Move wrapper to body
+            document.body.appendChild(wrapper);
+
+            // 3. Add Classes
+            wrapper.classList.add('fullscreen');
+            document.body.classList.add('activity-fullscreen-active');
+            document.body.style.overflow = 'hidden';
+
+            // Update UI
+            btn.classList.add('active');
+            btn.querySelector('span').innerText = "Exit Fullscreen";
+            btn.querySelector('svg').innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>';
+
+        } else {
+            // EXIT FULLSCREEN (Restore to Original Spot)
+
+            const placeholder = document.getElementById(`placeholder-${wrapperId}`);
+            if (placeholder) {
+                // 1. Move wrapper back
+                placeholder.parentNode.insertBefore(wrapper, placeholder);
+                // 2. Remove placeholder
+                placeholder.remove();
+            } else {
+                // Fallback if placeholder lost (shouldn't happen in single session if unmounted)
+                // If it is unmounted, we should probably destroy it.
+                console.warn("Placeholder lost", wrapperId);
+                wrapper.remove(); // Safety remove
+                document.body.classList.remove('activity-fullscreen-active');
+            }
+
+            // 3. Remove Classes
+            wrapper.classList.remove('fullscreen');
+            document.body.classList.remove('activity-fullscreen-active');
+            document.body.style.overflow = '';
+            // Restore cinema mode overflow if needed
+            document.body.style.overflow = 'hidden';
+
+
+            // Update UI
+            btn.classList.remove('active');
+            btn.querySelector('span').innerText = "Expand Activity";
+            btn.querySelector('svg').innerHTML = '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>';
+        }
+    }
+});
+
 export const renderCoursePlayer = (course, user) => {
     let currentModuleIndex = 0
     let currentLessonIndex = 0
@@ -56,6 +134,17 @@ export const renderCoursePlayer = (course, user) => {
     // Completion State
     let isQuizComplete = false
     let isActivityComplete = false
+
+
+
+    // CLEANUP: Check for and remove any orphaned fullscreen activities from Body (from previous sessions)
+    document.querySelectorAll('body > .activity-wrapper.fullscreen').forEach(el => {
+        el.remove();
+    });
+    document.body.classList.remove('activity-fullscreen-active');
+
+
+    // Parse content if string
 
 
 
@@ -677,6 +766,12 @@ export const renderCoursePlayer = (course, user) => {
                     }
                 })
             }
+
+
+
+            // Handle Activity Fullscreen Toggle - MOVED TO DELEGATION
+
+
 
             const returnBtn = document.getElementById('back-home-cert')
             if (returnBtn) {

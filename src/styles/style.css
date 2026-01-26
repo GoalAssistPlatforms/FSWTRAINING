@@ -1869,3 +1869,126 @@ button {
   font-weight: 500;
   color: var(--text-muted);
 }
+
+/* Interactive Activity Wrapper & Fullscreen Mode */
+.activity-wrapper {
+  position: relative;
+  margin: 3rem 0;
+  transition: all 0.3s ease;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.activity-expand-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.activity-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  transform: translateY(-2px);
+}
+
+.activity-expand-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Fullscreen Active State */
+.activity-wrapper.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 10, 12, 0.98);
+  backdrop-filter: blur(20px);
+  margin: 0;
+  padding: 2rem;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-wrapper.fullscreen .activity-header {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 10000;
+}
+
+.activity-wrapper.fullscreen .ai-component-container {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto !important;
+  /* Override inline margin */
+  padding-top: 2rem;
+}
+
+/* Adjust inner components for fullscreen if needed */
+/* Adjust inner components for fullscreen if needed */
+.activity-wrapper.fullscreen .tone-analyser-ui,
+.activity-wrapper.fullscreen .glass,
+.activity-wrapper.fullscreen .email-client-container,
+.activity-wrapper.fullscreen .debate-container {
+  max-width: 1400px;
+  /* Wider for desktop fullscreen */
+  width: 100%;
+  margin: 0 auto;
+  max-height: 95vh;
+  height: auto;
+}
+
+/* Specific component overrides for fullscreen */
+
+/* Email Client */
+.activity-wrapper.fullscreen .email-client-container {
+  height: 90vh !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-wrapper.fullscreen .email-client-container .email-message-pane,
+.activity-wrapper.fullscreen .email-client-container .email-reply-area {
+  flex: 1;
+  /* Distribute space or adjust as needed */
+}
+
+.activity-wrapper.fullscreen .email-client-container .reply-textarea {
+  min-height: 300px;
+}
+
+
+/* Dojo/Chat & Debate - Ensure they fill height */
+.activity-wrapper.fullscreen .ai-component-container .glass,
+.activity-wrapper.fullscreen .debate-container {
+  height: 90vh !important;
+  /* Force tall height */
+}
+
+/* Ensure the wrapper is truly on top of everything */
+.activity-wrapper.fullscreen {
+  z-index: 2147483647 !important;
+  /* Max Int */
+}
