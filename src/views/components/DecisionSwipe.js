@@ -136,7 +136,10 @@ export function renderDecisionSwipe(containerId, config) {
         if (currentCard.feedback) {
             const feedbackMsg = document.createElement('div');
             feedbackMsg.className = `swipe-feedback-toast ${isCorrect ? 'success' : 'error'}`;
-            feedbackMsg.textContent = currentCard.feedback;
+            // STRIP "Correct"/"Incorrect" prefixes to avoid confusion on the "Success" screen
+            // e.g. "Incorrect. This is dangerous." -> "This is dangerous."
+            const cleanFeedback = currentCard.feedback.replace(/^(correct|incorrect|right|wrong|true|false)[\s.:-]*/i, '');
+            feedbackMsg.textContent = cleanFeedback.charAt(0).toUpperCase() + cleanFeedback.slice(1);
             container.appendChild(feedbackMsg);
             setTimeout(() => feedbackMsg.remove(), 2000);
         }

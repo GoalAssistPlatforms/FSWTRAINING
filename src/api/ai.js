@@ -248,6 +248,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                   * IMPORTANT for ai-swipe: 
                                   * "isCorrect": true  -> User should ACCEPT (Swipe Right). The statement is clear/good/safe.
                                   * "isCorrect": false -> User should REJECT (Swipe Left). The statement is risky/incorrect/bad.
+                                  * FEEDBACK: Do NOT start with "Correct" or "Incorrect". Just explain the reasoning directly (e.g. "This creates a safety hazard because...").
                                 `;
 
                     if (supportingDocs) {
