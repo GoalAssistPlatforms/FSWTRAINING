@@ -14,6 +14,8 @@ mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
 // Configure marked to handle mermaid and chart code blocks
 marked.use({
+    gfm: true,
+    breaks: true,
     renderer: {
         code({ text, lang }) {
             const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')

@@ -1,4 +1,6 @@
 import { updateCourse } from '../api/courses'
+import EasyMDE from 'easymde'
+import 'easymde/dist/easymde.min.css'
 
 export const renderCourseEditor = (course, user) => {
     let modules = typeof course.content_json === 'string'
@@ -118,7 +120,7 @@ export const renderCourseEditor = (course, user) => {
                 <!-- Content Area -->
                 <div style="display: flex; flex-direction: column; overflow: hidden;">
                     <label style="color: var(--text-muted); margin-bottom: 0.5rem;">Markdown Content</label>
-                    <textarea id="lesson-content-area" style="flex: 1; width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-family: monospace; resize: none; box-sizing: border-box;"></textarea>
+                    <textarea id="lesson-content-area"></textarea>
                 </div>
 
                 <!-- Resources Area -->
@@ -274,6 +276,7 @@ export const renderCourseEditor = (course, user) => {
 
         let editingLesson = null
         let currentResources = []
+        let easyMDE = null;
 
         const renderResources = () => {
             resourcesList.innerHTML = currentResources.map((res, i) => `
@@ -317,12 +320,29 @@ export const renderCourseEditor = (course, user) => {
                 const lIdx = e.target.dataset.lidx
                 editingLesson = modules[mIdx].lessons[lIdx]
 
-                textArea.value = (editingLesson.content || '').replace(/\\n/g, '\n')
-                currentResources = [...(editingLesson.resources || [])]
+                // Initialize EasyMDE if not already done, or set value
+                if (!easyMDE) {
+                    easyMDE = new EasyMDE({
+                        element: textArea,
+                        spellChecker: false,
+                        autosave: { enabled: false },
+                        toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen'],
+                        status: false,
+                        maxHeight: "500px" // Reasonable height constraint
+                    });
+                }
 
-                renderResources()
-                modal.style.display = 'flex'
-                overlay.style.display = 'block'
+                easyMDE.value((editingLesson.content || '').replace(/\\n/g, '\n'));
+                currentResources = [...(editingLesson.resources || [])];
+
+                renderResources();
+                modal.style.display = 'flex';
+                overlay.style.display = 'block';
+
+                // Refresh EasyMDE to ensure it renders correctly after modal display
+                setTimeout(() => {
+                    easyMDE.codemirror.refresh();
+                }, 100);
             })
         })
 
@@ -333,7 +353,11 @@ export const renderCourseEditor = (course, user) => {
 
         document.getElementById('save-content-btn').addEventListener('click', () => {
             if (editingLesson) {
-                editingLesson.content = textArea.value
+                if (easyMDE) {
+                    editingLesson.content = easyMDE.value();
+                } else {
+                    editingLesson.content = textArea.value;
+                }
                 editingLesson.resources = currentResources
             }
             modal.style.display = 'none'
@@ -343,3 +367,4 @@ export const renderCourseEditor = (course, user) => {
 
     render()
 }
+

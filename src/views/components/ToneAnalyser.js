@@ -17,14 +17,51 @@ export function renderToneAnalyser(containerId, config = {}) {
     // Config defaults
     const context = config.context || "Draft a professional response.";
 
-    // Use realistic default if none provided, or override if it matches the generic prompt
-    let incomingEmail = config.incoming_email || "";
+    // --- Scenario Definitions ---
+    const SCENARIOS = {
+        legislative: {
+            subject: "Legislative Changes & Absence Protocols",
+            body: "Dear Team,\n\nAs you may be aware, significant legislative changes are coming into effect that will impact our statutory sick pay and absence protocols.\n\nThese changes are designed to ensure compliance with the new regulations and to better support our workforce. It is crucial that everyone is familiar with these updates to avoid any potential compliance issues.\n\nI would appreciate it if you could review the attached documentation summarizing the key changes and provide your thoughts or confirmation that you have understood the new requirements by the end of the week.\n\nBest regards,\nDave"
+        },
+        simple_absence: {
+            subject: "Absence today",
+            body: "Hi,\n\nI'm writing to let you know I won't be able to make it in today. I woke up feeling pretty unwell and don't think I'm up to coming in. I'll check emails if urgent.\n\nThanks,\nDave"
+        }
+    };
 
-    // Hard override for the specific scenario mentioned by user if it matches the generic text
-    let instruction = "";
-    if (!incomingEmail || incomingEmail.includes("notification about a team member's absence") || incomingEmail.includes("You receive an email from a team member")) {
-        instruction = "You receive a notification about a team member's absence. Draft an appropriate response.";
-        incomingEmail = "Hi,\n\nI'm writing to let you know I won't be able to make it in today. I woke up feeling pretty unwell and don't think I'm up to coming in. I'll check emails if urgent.\n\nThanks,\nDave";
+    // --- content Heuristics ---
+    let incomingEmail = config.incoming_email || "";
+    let subject = config.subject || "New Message"; // Default subject
+    let instruction = ""; // Default empty
+
+    // 1. Analyze Context & Content to detect Intent
+    const fullContext = (context + " " + incomingEmail).toLowerCase();
+
+    const isLegislative = fullContext.includes('legislative') || fullContext.includes('statutory') || fullContext.includes('regulation') || fullContext.includes('compliance');
+    const isAbsence = fullContext.includes('absence') || fullContext.includes('sick') || fullContext.includes('unwell');
+
+    // 2. Determine Content Source
+    // Priority A: Config has a "Rich" email (longer than 50 chars, likely user-defined full text)
+    if (incomingEmail.length > 50) {
+        // Use config as is.
+        if (!config.subject && isLegislative) subject = SCENARIOS.legislative.subject; // Auto-guess subject if missing
+        else if (!config.subject && isAbsence) subject = SCENARIOS.simple_absence.subject;
+    }
+    // Priority B: Legislative Keyword Trigger (Overrides generic absence)
+    else if (isLegislative) {
+        incomingEmail = SCENARIOS.legislative.body;
+        subject = config.subject || SCENARIOS.legislative.subject;
+    }
+    // Priority C: Generic Absence Trigger (Fallback for "You receive an email about absence")
+    else if (isAbsence || incomingEmail.includes("notification about a team member's absence")) {
+        incomingEmail = SCENARIOS.simple_absence.body;
+        subject = config.subject || SCENARIOS.simple_absence.subject;
+    }
+    // Priority D: Default/Fallback
+    else if (!incomingEmail) {
+        // If completely empty, maybe default to something safe or keep empty?
+        // Let's keep it empty or generic placeholder if needed, but for now empty is fine.
+        subject = "New Message";
     }
 
     const initialText = "";
@@ -39,7 +76,7 @@ export function renderToneAnalyser(containerId, config = {}) {
         <div class="email-client-container fade-in">
         <!-- Header Bar -->
         <div class="email-header-bar">
-            <div class="email-subject">Subject: Absence today</div>
+            <div class="email-subject">Subject: ${subject}</div>
 
             <!-- Coach Widget (Top Right) -->
             <div class="email-coach-widget" id="feedback-box">
