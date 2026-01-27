@@ -20,8 +20,10 @@ export const createPresentation = async (topic, detailed_input) => {
     try {
         console.log("Generating Gamma presentation for:", topic);
 
+        console.log(`DEBUG: Input text length: ${detailed_input.length}`);
+
         const requestBody = {
-            inputText: detailed_input.substring(0, 5000), // Truncate further to 5000 to be safe
+            inputText: detailed_input.substring(0, 15000), // Increased limit to allow for more context
             format: "presentation",
             themeId: GAMMA_THEME_ID,
             numCards: 10,

@@ -1919,7 +1919,7 @@ button {
   background: rgba(10, 10, 12, 0.98);
   backdrop-filter: blur(20px);
   margin: 0;
-  padding: 2rem;
+  padding: 1rem;
   border-radius: 0;
   display: flex;
   flex-direction: column;
@@ -1964,19 +1964,27 @@ button {
 
 /* Email Client */
 .activity-wrapper.fullscreen .email-client-container {
-  height: 90vh !important;
+  height: calc(100vh - 2rem) !important;
+  max-height: none;
   display: flex;
   flex-direction: column;
 }
 
-.activity-wrapper.fullscreen .email-client-container .email-message-pane,
-.activity-wrapper.fullscreen .email-client-container .email-reply-area {
+.activity-wrapper.fullscreen .email-client-container .email-message-pane {
   flex: 1;
-  /* Distribute space or adjust as needed */
+  overflow-y: auto;
+  min-height: 0;
+  padding: 1.5rem;
+}
+
+.activity-wrapper.fullscreen .email-client-container .email-reply-area {
+  flex: 0 0 auto;
+  padding: 1rem 1.5rem;
 }
 
 .activity-wrapper.fullscreen .email-client-container .reply-textarea {
-  min-height: 300px;
+  min-height: 150px;
+  height: auto;
 }
 
 

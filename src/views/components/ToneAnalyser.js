@@ -21,8 +21,10 @@ export function renderToneAnalyser(containerId, config = {}) {
     let incomingEmail = config.incoming_email || "";
 
     // Hard override for the specific scenario mentioned by user if it matches the generic text
-    if (!incomingEmail || incomingEmail.includes("You receive an email from a team member")) {
-        incomingEmail = "Subject: Absence today\n\nHi,\n\nI'm writing to let you know I won't be able to make it in today. I woke up feeling pretty unwell and don't think I'm up to coming in. I'll check emails if urgent.\n\nThanks,\nDave";
+    let instruction = "";
+    if (!incomingEmail || incomingEmail.includes("notification about a team member's absence") || incomingEmail.includes("You receive an email from a team member")) {
+        instruction = "You receive a notification about a team member's absence. Draft an appropriate response.";
+        incomingEmail = "Hi,\n\nI'm writing to let you know I won't be able to make it in today. I woke up feeling pretty unwell and don't think I'm up to coming in. I'll check emails if urgent.\n\nThanks,\nDave";
     }
 
     const initialText = "";
@@ -33,6 +35,7 @@ export function renderToneAnalyser(containerId, config = {}) {
 
     // Inject HTML Structure
     container.innerHTML = `
+        ${instruction ? `<div class="instruction-banner" style="margin-bottom: 1rem; color: #e4e4e7; font-size: 0.95rem; background: #27272a; padding: 1rem; border-radius: 8px; border: 1px solid #3f3f46;">${instruction}</div>` : ''}
         <div class="email-client-container fade-in">
         <!-- Header Bar -->
         <div class="email-header-bar">

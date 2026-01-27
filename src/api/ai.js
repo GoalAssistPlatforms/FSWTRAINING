@@ -57,6 +57,9 @@ FORMATTING & CONTEXT (CRITICAL):
  */
 export const generateCourseContent = async (topic, supportingDocs = "", onProgress = () => { }) => {
     console.log(`Starting AI generation for: ${topic}`);
+    if (supportingDocs) {
+        console.log(`[AI] Using supporting documents: ${supportingDocs.length} chars`);
+    }
     onProgress(`Analyzing topic: "${topic}"...`);
 
     // 1. Generate Course Outline (Modules & Lessons)
@@ -88,7 +91,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
     `;
 
     if (supportingDocs) {
-        systemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nUse the information above to ensure the course outline is tailored to the specific policies, procedures, or content provided in the documents.`;
+        systemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nCRITICAL INSTRUCTION: You MUST use the information provided in the documents above. The course outline MUST be directly based on these documents. Prioritize this content over general knowledge.`;
     }
 
     const outlineCompletion = await openai.chat.completions.create({
@@ -248,7 +251,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 `;
 
                     if (supportingDocs) {
-                        lessonSystemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nUse this information extensively to ensure the lesson content is factually accurate and aligned with the provided documents.`;
+                        lessonSystemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nCRITICAL INSTRUCTION: You MUST use the information provided in the documents above to write the lesson content, audio script, and presentation input. The content MUST be factually aligned with these documents. Do not hallucinate or contradict the provided text.`;
                     }
 
                     const contentCompletion = await openai.chat.completions.create({
