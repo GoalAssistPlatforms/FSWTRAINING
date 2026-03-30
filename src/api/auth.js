@@ -74,3 +74,4 @@ export const getCurrentUser = async () => {
 
     return { ...user, role: profile.role }
 }
+

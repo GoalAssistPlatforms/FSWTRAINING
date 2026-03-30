@@ -249,16 +249,38 @@ export const renderCoursePlayer = (course, user) => {
                     <span style="font-size: 1.2rem;">📖</span>
                 </button>
 
+                <!-- Edit in Gamma Button (Managers Only) -->
+                ${(user.role === 'manager' && currentLesson.gamma_url) ? `
+                <button id="edit-gamma-btn" onclick="window.open('${currentLesson.gamma_url}', '_blank')" class="hover-glow" style="position: absolute; top: 2rem; right: 5rem; z-index: 50; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Edit Presentation">
+                    <span>✏️ Edit Slides</span>
+                </button>
+                ` : ''}
                 
                 <!-- Audio Player (Repositioned to bottom right) -->
                 ${currentLesson.audio_url ? `
                     <div class="audio-player-wrapper fade-in" style="position: absolute; bottom: 2rem; right: 2rem; z-index: 60;">
                         <div class="glass" style="padding: 0.75rem 1.25rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.6);">
                             <div style="display: flex; flex-direction: column;">
-                                <span style="font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: var(--primary);">Audio Briefing</span>
-                                <audio id="lesson-audio" controls src="${currentLesson.audio_url}" style="height: 30px; margin-top: 4px; outline: none; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.8;"></audio>
+                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                                    <span style="font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: var(--primary);">Audio Briefing</span>
+                                    ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" style="background:none; border:none; color: var(--primary); font-size: 0.65rem; cursor: pointer; padding: 0; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">✏️ Edit Audio</button>` : ''}
+                                </div>
+                                <audio id="lesson-audio" controls src="${currentLesson.audio_url}" style="height: 30px; outline: none; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.8;"></audio>
                             </div>
                         </div>
+                        
+                        <!-- Hidden Audio Editor -->
+                        ${user.role === 'manager' ? `
+                        <div id="audio-edit-mode" style="display: none; position: absolute; bottom: 110%; right: 0; width: 400px; max-width: 90vw; background: rgba(10, 10, 10, 0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-lg); padding: 1.5rem; backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+                            <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: white;">Edit Audio Script</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Changes made here will be re-synthesized into a new voiceover track.</p>
+                            <textarea id="edit-audio-script" style="width: 100%; height: 200px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 0.75rem; font-family: inherit; font-size: 0.85rem; outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5;"></textarea>
+                            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
+                                <button id="cancel-audio-edit" class="btn-ghost" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Cancel</button>
+                                <button id="save-audio-edit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">🎙️ Regenerate</button>
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
                 ` : ''}
 
@@ -268,8 +290,14 @@ export const renderCoursePlayer = (course, user) => {
             <div class="cp-content-area">
                 
                 <!-- Markdown Content -->
-                <div class="cp-text-panel" id="text-panel">
-                     <div class="lesson-content typography fade-in">
+                <div class="cp-text-panel" id="text-panel" style="position: relative;">
+                    ${user.role === 'manager' ? `
+                    <button id="inline-edit-btn" class="hover-glow" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; font-size: 0.8rem; border-radius: 4px; padding: 0.4rem 0.8rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.2s;">
+                        <span>✏️ Edit Content</span>
+                    </button>
+                    ` : ''}
+
+                    <div id="content-view-mode" class="lesson-content typography fade-in">
                         ${htmlContent}
                         
                         ${(currentLesson.resources && currentLesson.resources.length > 0) ? `
@@ -300,7 +328,15 @@ export const renderCoursePlayer = (course, user) => {
                                 </style>
                             </div>
                         ` : ''}
-                     </div>
+                    </div>
+
+                    <div id="content-edit-mode" style="display: none; padding-top: 3.5rem; width: 100%;" class="fade-in">
+                        <textarea id="inline-editor-textarea"></textarea>
+                        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                            <button id="inline-edit-cancel" class="btn-ghost">Cancel</button>
+                            <button id="inline-edit-save" class="btn-primary">Save Changes</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Interactive Quiz / Actions -->
@@ -345,23 +381,61 @@ export const renderCoursePlayer = (course, user) => {
 
     const renderQuiz = (quiz) => {
         return `
-        <div class="quiz-container fade-in">
-            <h3 style="color: white; margin-bottom: 1.5rem; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; color: var(--primary);">Knowledge Check</h3>
-            ${quiz.map((q, i) => `
-                <div style="margin-bottom: 2.5rem;">
-                    <p style="font-weight: 500; margin-bottom: 1rem; font-size: 1.1rem; color: #fff; line-height: 1.5;">${i + 1}. ${q.question}</p>
-                    <div class="quiz-options-group" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        ${q.options.map((opt, oIdx) => `
-                            <label class="quiz-option">
-                                <input type="radio" name="q${i}" value="${oIdx}" data-correct="${q.correct_index}" data-explanation="${q.explanation || ''}">
-                                <span style="font-size: 0.95rem; color: #d1d5db;">${opt}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                    <div class="feedback" id="feedback-q${i}" style="margin-top: 1rem; font-size: 0.9rem; min-height: 1.5rem; font-weight: 500;"></div>
-                </div>
-            `).join('')}
+        <div class="quiz-container fade-in" style="position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                <h3 style="color: white; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: var(--primary);">Knowledge Check</h3>
+                ${user.role === 'manager' ? `
+                <button id="inline-edit-quiz-btn" class="hover-glow" style="font-size: 0.8rem; border-radius: 4px; padding: 0.3rem 0.6rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.2s;">
+                    <span>✏️ Edit Quiz</span>
+                </button>
+                ` : ''}
+            </div>
 
+            <div id="quiz-view-mode">
+                ${quiz.map((q, i) => `
+                    <div style="margin-bottom: 2.5rem;">
+                        <p style="font-weight: 500; margin-bottom: 1rem; font-size: 1.1rem; color: #fff; line-height: 1.5;">${i + 1}. ${q.question}</p>
+                        <div class="quiz-options-group" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            ${q.options.map((opt, oIdx) => `
+                                <label class="quiz-option">
+                                    <input type="radio" name="q${i}" value="${oIdx}" data-correct="${q.correct_index}" data-explanation="${q.explanation || ''}">
+                                    <span style="font-size: 0.95rem; color: #d1d5db;">${opt}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                        <div class="feedback" id="feedback-q${i}" style="margin-top: 1rem; font-size: 0.9rem; min-height: 1.5rem; font-weight: 500;"></div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div id="quiz-edit-mode" style="display: none;">
+                ${quiz.map((q, i) => `
+                    <div class="quiz-edit-item" data-idx="${i}" style="margin-bottom: 2.5rem; padding: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Question ${i + 1}</label>
+                            <input type="text" class="edit-q-text" value="${q.question.replace(/"/g, '&quot;')}" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none;">
+                        </div>
+                        <div style="margin-bottom: 1rem; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1);">
+                            <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Answers</label>
+                            ${q.options.map((opt, oIdx) => `
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.8rem; color: ${q.correct_index === oIdx ? '#10b981' : 'var(--text-muted)'}; font-weight: bold; width: 20px;">${String.fromCharCode(65 + oIdx)}.</span>
+                                    <input type="text" class="edit-opt-text" data-qidx="${i}" data-oidx="${oIdx}" value="${opt.replace(/"/g, '&quot;')}" style="flex: 1; box-sizing: border-box; padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none; border-left-color: ${q.correct_index === oIdx ? '#10b981' : 'rgba(255,255,255,0.2)'}; border-left-width: ${q.correct_index === oIdx ? '4px' : '1px'};">
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div>
+                             <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Explanation (Feedback)</label>
+                             <textarea class="edit-q-exp" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none; min-height: 60px; font-family: inherit;">${(q.explanation || '').replace(/"/g, '&quot;')}</textarea>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                    <button id="inline-edit-quiz-cancel" class="btn-ghost" style="padding: 0.5rem 1rem;">Cancel</button>
+                    <button id="inline-edit-quiz-save" class="btn-primary" style="padding: 0.5rem 1rem;">Save Quiz</button>
+                </div>
+            </div>
         </div>
       `
     }
@@ -567,6 +641,219 @@ export const renderCoursePlayer = (course, user) => {
     }
 
     const attachEvents = () => {
+        // Inline Editor Logic
+        const inlineEditBtn = document.getElementById('inline-edit-btn');
+        if (inlineEditBtn) {
+            const viewMode = document.getElementById('content-view-mode');
+            const editMode = document.getElementById('content-edit-mode');
+            const cancelBtn = document.getElementById('inline-edit-cancel');
+            const saveBtn = document.getElementById('inline-edit-save');
+            const textarea = document.getElementById('inline-editor-textarea');
+            let easyMDEInstance = null;
+
+            inlineEditBtn.addEventListener('click', async () => {
+                viewMode.style.display = 'none';
+                inlineEditBtn.style.display = 'none';
+                editMode.style.display = 'block';
+
+                if (!easyMDEInstance) {
+                    const EasyMDE = (await import('easymde')).default;
+                    await import('easymde/dist/easymde.min.css');
+                    
+                    // Inject dark mode fix for the toolbar
+                    if (!document.getElementById('easymde-dark-fix')) {
+                        const style = document.createElement('style');
+                        style.id = 'easymde-dark-fix';
+                        style.innerHTML = `
+                            .editor-toolbar { background: rgba(255,255,255,0.1) !important; border: 1px solid rgba(255,255,255,0.2) !important; border-top-left-radius: 8px !important; border-top-right-radius: 8px !important; }
+                            .editor-toolbar button { color: white !important; }
+                            .editor-toolbar button:hover { background: rgba(255,255,255,0.2) !important; border-color: transparent !important; }
+                            .editor-toolbar i.separator { border-left: 1px solid rgba(255,255,255,0.2) !important; border-right: none !important; }
+                            .CodeMirror { border: 1px solid rgba(255,255,255,0.2) !important; border-bottom-left-radius: 8px !important; border-bottom-right-radius: 8px !important; background: rgba(0,0,0,0.5) !important; color: white !important; }
+                            .editor-preview, .editor-preview-side { background: #111 !important; color: white !important; padding: 2rem !important; }
+                            .editor-preview h2, .editor-preview-side h2 { color: white !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+                            .editor-preview h3, .editor-preview-side h3 { color: white !important; }
+                        `;
+                        document.head.appendChild(style);
+                    }
+
+                    easyMDEInstance = new EasyMDE({
+                        element: textarea,
+                        spellChecker: false,
+                        autosave: { enabled: false },
+                        toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen'],
+                        status: false,
+                        maxHeight: "500px"
+                    });
+                }
+                const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
+                easyMDEInstance.value((currentLesson.content || '').replace(/\\n/g, '\n'));
+                setTimeout(() => easyMDEInstance.codemirror.refresh(), 100);
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                editMode.style.display = 'none';
+                viewMode.style.display = 'block';
+                inlineEditBtn.style.display = 'flex';
+            });
+
+            saveBtn.addEventListener('click', async () => {
+                const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
+                currentLesson.content = easyMDEInstance.value();
+                
+                const originalText = saveBtn.innerText;
+                saveBtn.innerText = 'Saving...';
+                saveBtn.disabled = true;
+
+                try {
+                    const { updateCourse } = await import('../api/courses');
+                    await updateCourse(course.id, {
+                        content_json: modules,
+                        updated_at: new Date()
+                    });
+                    
+                    // Re-render the UI correctly to show updated HTML
+                    mount(); 
+                } catch(e) {
+                    console.error('Failed to save inline edit:', e);
+                    alert("Failed to save changes.");
+                    saveBtn.innerText = originalText;
+                    saveBtn.disabled = false;
+                }
+            });
+        }
+
+        // Inline Edit Quiz Logic
+        const editQuizBtn = document.getElementById('inline-edit-quiz-btn');
+        if (editQuizBtn) {
+            const quizViewMode = document.getElementById('quiz-view-mode');
+            const quizEditMode = document.getElementById('quiz-edit-mode');
+            const saveQuizBtn = document.getElementById('inline-edit-quiz-save');
+            const cancelQuizBtn = document.getElementById('inline-edit-quiz-cancel');
+
+            editQuizBtn.addEventListener('click', () => {
+                quizViewMode.style.display = 'none';
+                editQuizBtn.style.display = 'none';
+                quizEditMode.style.display = 'block';
+            });
+
+            cancelQuizBtn.addEventListener('click', () => {
+                quizEditMode.style.display = 'none';
+                quizViewMode.style.display = 'block';
+                editQuizBtn.style.display = 'flex';
+            });
+
+            saveQuizBtn.addEventListener('click', async () => {
+                const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
+                if (!currentLesson.quiz) return;
+
+                // Sync UI form back to JSON
+                const quizItems = document.querySelectorAll('.quiz-edit-item');
+                quizItems.forEach(item => {
+                    const idx = parseInt(item.dataset.idx);
+                    const qObj = currentLesson.quiz[idx];
+                    
+                    const qInput = item.querySelector('.edit-q-text');
+                    if (qInput) qObj.question = qInput.value;
+
+                    const expInput = item.querySelector('.edit-q-exp');
+                    if (expInput) qObj.explanation = expInput.value;
+
+                    const optInputs = item.querySelectorAll('.edit-opt-text');
+                    optInputs.forEach(optInput => {
+                        const oIdx = parseInt(optInput.dataset.oidx);
+                        qObj.options[oIdx] = optInput.value;
+                    });
+                });
+
+                const originalText = saveQuizBtn.innerText;
+                saveQuizBtn.innerText = 'Saving...';
+                saveQuizBtn.disabled = true;
+
+                try {
+                    const { updateCourse } = await import('../api/courses');
+                    await updateCourse(course.id, {
+                        content_json: modules,
+                        updated_at: new Date()
+                    });
+                    
+                    mount(); // Re-render
+                } catch(e) {
+                    console.error('Failed to save quiz edit:', e);
+                    alert("Failed to save changes.");
+                    saveQuizBtn.innerText = originalText;
+                    saveQuizBtn.disabled = false;
+                }
+            });
+        }
+
+        // Inline Edit Audio Logic
+        const editAudioBtn = document.getElementById('inline-edit-audio-btn');
+        if (editAudioBtn) {
+            const audioEditMode = document.getElementById('audio-edit-mode');
+            const cancelAudioBtn = document.getElementById('cancel-audio-edit');
+            const saveAudioBtn = document.getElementById('save-audio-edit');
+            const audioScriptArea = document.getElementById('edit-audio-script');
+            const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
+
+            editAudioBtn.addEventListener('click', () => {
+                // Pre-fill script
+                if (currentLesson.audio_script) {
+                    audioScriptArea.value = currentLesson.audio_script;
+                } else {
+                    // Fallback for legacy courses: parse from markdown content
+                    const rawContent = currentLesson.content || '';
+                    // Strip basic markdown (headers, bold, italics) for text-to-speech readability
+                    let stripped = rawContent
+                        .replace(/[#*`_]+/g, '')
+                        .replace(/\\n/g, '\n')
+                        .split('### Interactive Activity')[0] // remove interactives
+                        .trim();
+                    audioScriptArea.value = "Welcome to the lesson. " + stripped; 
+                }
+                audioEditMode.style.display = 'block';
+            });
+
+            cancelAudioBtn.addEventListener('click', () => {
+                audioEditMode.style.display = 'none';
+            });
+
+            saveAudioBtn.addEventListener('click', async () => {
+                if (!audioScriptArea.value.trim()) return;
+                
+                const originalText = saveAudioBtn.innerHTML;
+                saveAudioBtn.innerHTML = '🎙️ Regenerating...';
+                saveAudioBtn.disabled = true;
+
+                try {
+                    const newScript = audioScriptArea.value.trim();
+                    const { createAudio } = await import('../api/elevenlabs');
+                    
+                    // Generate new audio
+                    const newAudioUrl = await createAudio(newScript);
+                    if (!newAudioUrl) throw new Error("Audio generation failed");
+
+                    // Save to lesson
+                    currentLesson.audio_url = newAudioUrl;
+                    currentLesson.audio_script = newScript;
+
+                    // Update DB
+                    const { updateCourse } = await import('../api/courses');
+                    await updateCourse(course.id, {
+                        content_json: modules,
+                        updated_at: new Date()
+                    });
+                    
+                    mount(); // Re-render to load new audio
+                } catch(e) {
+                    console.error('Failed to regenerate audio:', e);
+                    alert("Failed to regenerate audio. Check your connections or credits.");
+                    saveAudioBtn.innerHTML = originalText;
+                    saveAudioBtn.disabled = false;
+                }
+            });
+        }
+
         document.getElementById('exit-course').addEventListener('click', () => {
             document.body.style.overflow = ''
             window.location.reload()
@@ -784,12 +1071,38 @@ export const renderCoursePlayer = (course, user) => {
         }, 100)
 
         try {
-            await supabase.from('user_progress').insert({
-                user_id: user.id,
-                course_id: course.id,
-                status: 'completed',
-                completed_at: new Date()
-            })
+            const certId = crypto.randomUUID();
+            let expiresAt = null;
+            if (course.expiry_months && course.expiry_months > 0) {
+                const d = new Date();
+                d.setMonth(d.getMonth() + parseInt(course.expiry_months));
+                expiresAt = d.toISOString();
+            }
+
+            const { data: existing } = await supabase
+                .from('user_progress')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('course_id', course.id)
+                .maybeSingle();
+
+            if (existing) {
+                await supabase.from('user_progress').update({
+                    status: 'completed',
+                    completed_at: new Date().toISOString(),
+                    certificate_id: certId,
+                    expires_at: expiresAt
+                }).eq('id', existing.id);
+            } else {
+                await supabase.from('user_progress').insert({
+                    user_id: user.id,
+                    course_id: course.id,
+                    status: 'completed',
+                    completed_at: new Date().toISOString(),
+                    certificate_id: certId,
+                    expires_at: expiresAt
+                });
+            }
         } catch (e) { console.error('Error saving progress:', e) }
     }
 

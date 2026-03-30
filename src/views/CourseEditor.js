@@ -43,6 +43,18 @@ export const renderCourseEditor = (course, user) => {
                     </div>
                     <textarea id="edit-desc" rows="3" maxlength="200" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; box-sizing: border-box;">${course.description || ''}</textarea>
                 </div>
+                
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+                        <label style="color: var(--text-muted);">Certificate Validity</label>
+                    </div>
+                    <select id="edit-expiry" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; box-sizing: border-box;">
+                        <option value="" ${course.expiry_months ? '' : 'selected'}>Never Expires</option>
+                        <option value="6" ${course.expiry_months === 6 ? 'selected' : ''}>6 Months</option>
+                        <option value="12" ${course.expiry_months === 12 ? 'selected' : ''}>1 Year</option>
+                        <option value="24" ${course.expiry_months === 24 ? 'selected' : ''}>2 Years</option>
+                    </select>
+                </div>
 
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -225,6 +237,8 @@ export const renderCourseEditor = (course, user) => {
             const title = titleInput.value
             const desc = descInput.value
             const thumb = document.getElementById('edit-thumb').value
+            const expiryRaw = document.getElementById('edit-expiry').value
+            const expiry = expiryRaw ? parseInt(expiryRaw) : null
 
             if (title.length > 50) {
                 alert('Course Title must be 50 characters or fewer for a consistent look.');
@@ -242,6 +256,7 @@ export const renderCourseEditor = (course, user) => {
                     description: desc,
                     thumbnail_url: thumb,
                     content_json: modules,
+                    expiry_months: expiry,
                     updated_at: new Date()
                 })
                 alert('Changes saved successfully!')

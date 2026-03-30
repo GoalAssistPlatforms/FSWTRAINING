@@ -42,7 +42,7 @@ export const createPresentation = async (topic, detailed_input) => {
                 source: "aiGenerated"
             },
             sharingOptions: {
-                externalAccess: "view",
+                externalAccess: "edit",
                 enableSearchEngineIndexing: false
             }
         };

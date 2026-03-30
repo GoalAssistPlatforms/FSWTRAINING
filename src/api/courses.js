@@ -18,6 +18,16 @@ export const getCourses = async (role) => {
     return data
 }
 
+export const getUserProgress = async (userId) => {
+    const { data, error } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', userId)
+
+    if (error) throw error
+    return data
+}
+
 export const createCourse = async (courseData) => {
     const { data, error } = await supabase
         .from('courses')
