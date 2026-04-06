@@ -6,9 +6,18 @@ import { downloadCertificate } from '../utils/certificateGenerator'
 export const renderUserDashboard = (user) => {
     return `
     <div style="min-height: 80vh;">
-        <div id="user-course-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-          <div style="text-align: center; color: var(--text-muted); grid-column: 1/-1;">Loading available courses...</div>
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+            <button id="tab-user-courses" class="btn-primary">My Courses</button>
+            <button id="tab-user-guides" class="btn-ghost" style="border: 1px solid var(--glass-border);">Guides & Policies</button>
         </div>
+
+        <div id="view-user-courses">
+            <div id="user-course-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+              <div style="text-align: center; color: var(--text-muted); grid-column: 1/-1;">Loading available courses...</div>
+            </div>
+        </div>
+
+        <div id="view-user-guides" style="display: none;"></div>
     </div>
   `
 }
@@ -16,8 +25,39 @@ export const renderUserDashboard = (user) => {
 export const initUserEvents = async () => {
     const courseList = document.getElementById('user-course-list')
 
+    const tabUserCourses = document.getElementById('tab-user-courses')
+    const tabUserGuides = document.getElementById('tab-user-guides')
+    const viewUserCourses = document.getElementById('view-user-courses')
+    const viewUserGuides = document.getElementById('view-user-guides')
+
     try {
         const user = await getCurrentUser()
+
+        tabUserCourses?.addEventListener('click', () => {
+            tabUserCourses.className = 'btn-primary'
+            tabUserCourses.style.border = 'none'
+            tabUserGuides.className = 'btn-ghost'
+            tabUserGuides.style.border = '1px solid var(--glass-border)'
+            viewUserCourses.style.display = 'block'
+            viewUserGuides.style.display = 'none'
+        })
+
+        tabUserGuides?.addEventListener('click', async () => {
+            tabUserGuides.className = 'btn-primary'
+            tabUserGuides.style.border = 'none'
+            tabUserCourses.className = 'btn-ghost'
+            tabUserCourses.style.border = '1px solid var(--glass-border)'
+            viewUserGuides.style.display = 'block'
+            viewUserCourses.style.display = 'none'
+
+            if (!viewUserGuides.dataset.loaded) {
+                const { renderGuides, initGuidesEvents } = await import('./Guides.js')
+                viewUserGuides.innerHTML = renderGuides(user)
+                await initGuidesEvents(user)
+                viewUserGuides.dataset.loaded = 'true'
+            }
+        })
+
         const [courses, userProgress] = await Promise.all([
             getCourses('user'),
             getUserProgress(user.id)

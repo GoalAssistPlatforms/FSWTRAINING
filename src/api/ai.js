@@ -3,6 +3,7 @@ import { createPresentation } from './gamma.js';
 import { supabase } from './supabase.js';
 import { generateThumbnail } from './images.js';
 import { createAudio } from './elevenlabs.js';
+import { searchCompanyContext } from './guides.js';
 
 const openai = new OpenAI({
     apiKey: (import.meta.env && import.meta.env.VITE_OPENAI_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENAI_API_KEY),
@@ -57,9 +58,24 @@ FORMATTING & CONTEXT (CRITICAL):
  */
 export const generateCourseContent = async (topic, supportingDocs = "", onProgress = () => { }) => {
     console.log(`Starting AI generation for: ${topic}`);
+
+    onProgress(`Searching company knowledge base for "${topic}"...`);
+    const companyContext = await searchCompanyContext(topic, 8).catch(e => {
+        console.warn("RAG Context fetch failed:", e);
+        return "";
+    });
+
+    if (companyContext) {
+        onProgress(`Found relevant company policies. Synthesizing context...`);
+        supportingDocs = supportingDocs 
+            ? `${supportingDocs}\n\n--- INTERNAL COMPANY POLICIES ---\n${companyContext}`
+            : `--- INTERNAL COMPANY POLICIES ---\n${companyContext}`;
+    }
+
     if (supportingDocs) {
         console.log(`[AI] Using supporting documents: ${supportingDocs.length} chars`);
     }
+    
     onProgress(`Analyzing topic: "${topic}"...`);
 
     // 1. Generate Course Outline (Modules & Lessons)
@@ -243,7 +259,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                   * 3-4 items MUST be safe (isRisk: false).
                                   * ALWAYS provide 'feedback' for SAFE items too (e.g., "Correct. This is standard procedure.").
                                   * Include 'intro' and 'outro' text to make it look like a real document excerpt (e.g. "1. Purpose...", "Signed by...").
-                                - ai-debate: { "topic": "Debate topic...", "aiSide": "pro/con/devil_advocate", "stances": ["Option A", "Option B"] } (Title: "Strategic Analysis")
+                                - ai-debate: { "topic": "Debate topic...", "persona": "Role for the AI to play (e.g. Stubborn Manager)...", "stances": ["Option A", "Option B"] } (Title: "Strategic Analysis")
                                 - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "Statement...", "isCorrect": true, "feedback": "Why..." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
                                   * IMPORTANT for ai-swipe: 
                                   * "isCorrect": true  -> User should ACCEPT (Swipe Right). The statement is clear/good/safe.
@@ -451,38 +467,54 @@ const getFallbackResponse = (messages, scenario) => {
 /**
  * Handles Socratic Debate logic
  */
-export const chatWithDebater = async (messages, topic, aiSide, pointNumber = 1) => {
+export const chatWithDebater = async (messages, topic, persona, pointNumber = 1, failedAttempts = 0) => {
+    let instructions = `
+        You are a skilled Socratic Debater, Critical Thinker, and Evaluator.
+        
+        TOPIC: ${topic}
+        YOUR PERSONA/STANCE: ${persona || "A neutral but discerning Critical Evaluator."}
+        CURRENT PROGRESS: Point ${pointNumber} of 5.
+        FAILED ATTEMPTS ON EXPECTED POINT: ${failedAttempts}
+
+        OBJECTIVE: 
+        1. Evaluate the user's latest message (if any). Is it a coherent, thoughtful response, or is it weak/irrelevant? (If this is the start of the debate, assume it's true).
+        2. If the user's response is weak/lazy (e.g. "I don't know", "Yes"), set "advance_progress" to false. Push back gently in your reply.
+        3. If the user makes a genuine attempt, OR if FAILED ATTEMPTS >= 2 (meaning they are really stuck), set "advance_progress" to true, and move the discussion forward.
+        4. Provide an optional "hint" to help them out if advance_progress is false.
+        5. If CURRENT PROGRESS is 5 AND you set advance_progress to true, you MUST populate "final_feedback".
+                
+        RULES:
+        1. KEEP IT CONCISE. Your "reply" string must be under 50 words.
+        2. Stay in character based on YOUR PERSONA. Don't be too generic.
+        
+        OUTPUT FORMAT (Return STRICT JSON):
+        {
+          "reply": "Your next socratic question or response to their point...",
+          "advance_progress": true, // false if they gave a poor answer and you need them to elaborate
+          "hint": "Optional nudge if advance_progress is false. (string or null)",
+          "final_feedback": null
+        }
+        
+        ONLY if CURRENT PROGRESS is 5 and advance_progress is true, "final_feedback" MUST be:
+        {
+          "score": 85, // out of 100
+          "strongest_argument": "Summary of their best point",
+          "weakness": "Their logical blindspot or area for improvement"
+        }
+    `;
+
     const completion = await openai.chat.completions.create({
         model: "gpt-4o",
+        response_format: { type: "json_object" },
         messages: [
             {
                 role: "system",
-                content: `${FSW_INTERNAL_CONTEXT}
-                You are a skilled Socratic Debater and Critical Thinker.
-                
-                TOPIC: ${topic}
-                YOUR STANCE: ${aiSide === 'pro' ? 'Favoring' : 'Opposing'} the topic.
-                CURRENT POINT: ${pointNumber} of 5.
-
-                OBJECTIVE: 
-                Conduct a Socratic Seminar by discussing exactly 5 distinct, sequential points or questions that challenge the user's view.
-                
-                RULES:
-                1. Discuss ONE point at a time.
-                2. Do not pile on multiple questions. Focus on one specific aspect of the topic.
-                3. Wait for the user's response before moving to the next point.
-                4. KEEP IT CONCISE. Your response should be under 50 words.
-                5. If this is Point 1, briefly acknowledge their stance and dive into the first question.
-                6. If this is Point 5, this is your final inquiry.
-                7. Maintain a professional, curious, and challenging tone (Socratic Method).
-                
-                CONTEXT: The user has already stated their stance. You are now exploring the depths of that stance.
-                `
+                content: `${FSW_INTERNAL_CONTEXT}\n${instructions}`
             },
             ...messages
         ]
     });
-    return completion.choices[0].message.content;
+    return JSON.parse(completion.choices[0].message.content);
 };
 
 /**

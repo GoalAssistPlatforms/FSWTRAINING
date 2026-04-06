@@ -23,12 +23,12 @@ export const downloadCertificate = async (userName, courseName, issueDate, expir
     const formattedIssueDate = new Date(issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     const formattedExpiryDate = expiryDate ? new Date(expiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Never Expires'
 
-    // HTML Template matching FSW dark/neon
+    // HTML Template updated for perfect html2canvas compatibility
     container.innerHTML = `
         <div id="certificate-canvas" style="
             width: ${width}px; 
             height: ${height}px; 
-            background: #0f172a; 
+            background-color: #0f172a;
             position: relative; 
             font-family: 'Inter', sans-serif;
             color: #ffffff;
@@ -36,16 +36,15 @@ export const downloadCertificate = async (userName, courseName, issueDate, expir
             padding: 40px;
             overflow: hidden;
             display: flex;
+            align-items: center;
+            justify-content: center;
         ">
-            <!-- Background glow effects -->
-            <div style="position: absolute; top: -200px; left: -200px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(14,165,233,0.15) 0%, transparent 70%); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -300px; right: -200px; width: 800px; height: 800px; background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%); border-radius: 50%;"></div>
-            
-            <!-- Neon Border Wrapper -->
+            <!-- Background Orbs -->
+            <div style="position: absolute; top: -150px; right: -150px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(14,165,233,0.3) 0%, transparent 70%); border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -150px; left: -150px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%); border-radius: 50%;"></div>
+
+            <!-- Main Content Container (Safe for html2canvas) -->
             <div style="
-                border: 2px solid rgba(14,165,233,0.4); 
-                box-shadow: 0 0 20px rgba(14,165,233,0.2), inset 0 0 20px rgba(139,92,246,0.2);
-                border-radius: 20px;
                 width: 100%;
                 height: 100%;
                 position: relative;
@@ -54,68 +53,74 @@ export const downloadCertificate = async (userName, courseName, issueDate, expir
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                padding: 40px;
+                padding: 50px;
                 text-align: center;
-                background: rgba(15,23,42,0.6);
-                backdrop-filter: blur(10px);
+                background-color: #1e293b; /* Solid dark fallback */
+                border: 2px solid rgba(14, 165, 233, 0.5);
+                border-radius: 20px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.5);
             ">
                 
-                <!-- Logo -->
-                <div style="margin-bottom: 30px;">
+                <!-- FSW Official Badge -->
+                <div style="margin-bottom: 25px; display: flex; justify-content: center;">
                     <div style="
-                        display: inline-flex;
+                        background: #ffffff;
+                        padding: 12px 24px;
+                        border-radius: 20px;
+                        display: flex;
                         align-items: center;
                         justify-content: center;
-                        width: 80px;
-                        height: 80px;
-                        border-radius: 16px;
-                        background: linear-gradient(135deg, #0ea5e9, #8b5cf6);
-                        color: white;
-                        font-weight: 800;
-                        font-size: 32px;
-                        letter-spacing: 2px;
-                        box-shadow: 0 10px 25px rgba(14,165,233,0.5);
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
                     ">
-                        FSW
+                        <img src="/fsw_logo_brand.png" style="height: 64px; width: auto; object-fit: contain;" crossorigin="anonymous" />
                     </div>
                 </div>
 
-                <h1 style="font-size: 56px; font-weight: 800; margin: 0; background: linear-gradient(to right, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px; text-transform: uppercase;">
-                    Certificate of Completion
+                <!-- Typography Upgrade -->
+                <h1 style="font-size: 16px; color: #38bdf8; font-weight: 700; text-transform: uppercase; letter-spacing: 6px; margin: 0 0 15px 0;">
+                    Official Certification
                 </h1>
                 
-                <p style="font-size: 24px; color: #94a3b8; margin: 30px 0 10px 0; font-weight: 500;">
-                    This acknowledges that
-                </p>
-                
-                <h2 style="font-size: 48px; color: #0ea5e9; margin: 0 0 30px 0; font-weight: 700; border-bottom: 2px solid rgba(14,165,233,0.3); padding-bottom: 10px; display: inline-block; min-width: 400px; text-shadow: 0 0 20px rgba(14,165,233,0.3);">
-                    ${userName}
+                <h2 style="font-size: 60px; font-weight: 800; margin: 0 0 40px 0; font-family: 'Times New Roman', Times, serif; font-style: italic; color: #ffffff;">
+                    Certificate of Completion
                 </h2>
                 
-                <p style="font-size: 24px; color: #94a3b8; margin: 0 0 20px 0; font-weight: 500;">
-                    has successfully completed the training course
+                <p style="font-size: 16px; color: #94a3b8; margin: 0 0 10px 0; font-weight: 600; letter-spacing: 2px;">
+                    THIS PROUDLY ACKNOWLEDGES THAT
                 </p>
                 
-                <h3 style="font-size: 36px; color: #ffffff; margin: 0 0 50px 0; font-weight: 600; text-transform: capitalize; max-width: 80%;">
-                    "${courseName}"
-                </h3>
+                <div style="margin: 0 0 30px 0; border-bottom: 2px solid rgba(14, 165, 233, 0.4); padding-bottom: 15px; min-width: 500px; display: inline-block;">
+                    <h3 style="font-size: 48px; color: #ffffff; margin: 0; font-weight: 700; letter-spacing: 1px;">
+                        ${userName}
+                    </h3>
+                </div>
                 
-                <!-- Footer data -->
-                <div style="display: flex; justify-content: space-between; width: 100%; margin-top: auto; padding: 0 40px; align-items: flex-end;">
+                <p style="font-size: 16px; color: #94a3b8; margin: 0 0 20px 0; font-weight: 600; letter-spacing: 2px;">
+                    HAS SUCCESSFULLY COMPLETED THE TRAINING COURSE
+                </p>
+                
+                <h4 style="font-size: 36px; color: #38bdf8; margin: 0 0 40px 0; font-weight: 600; max-width: 80%; line-height: 1.3;">
+                    "${courseName}"
+                </h4>
+                
+                <!-- Footer Info Block -->
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-top: auto; padding: 20px 30px 0; align-items: flex-end; border-top: 1px solid rgba(255,255,255,0.1);">
                     
-                    <div style="text-align: left;">
-                        <div style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Issue Date</div>
-                        <div style="font-size: 20px; font-weight: 600; color: #e2e8f0;">${formattedIssueDate}</div>
+                    <div style="text-align: left; width: 33%;">
+                        <div style="font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Date Issued</div>
+                        <div style="font-size: 20px; font-weight: 600; color: #e2e8f0; font-family: monospace;">${formattedIssueDate}</div>
                     </div>
                     
-                    <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px; width: 250px;">
-                        <div style="font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #94a3b8; margin-bottom: 5px;">ID: ${certificateId.split('-')[0].toUpperCase()}-${certificateId.split('-')[1].toUpperCase()}</div>
-                        <div style="font-size: 12px; color: #64748b;">Official FSW Automated Validation</div>
+                    <div style="text-align: center; width: 34%;">
+                        <div style="font-family: monospace; font-size: 14px; color: #94a3b8; padding: 6px 12px; background: rgba(0,0,0,0.3); border-radius: 6px; margin-bottom: 5px; display: inline-block;">
+                            ID: <span style="color: #ffffff;">${certificateId.split('-')[0].toUpperCase()}-${certificateId.split('-')[1].toUpperCase()}</span>
+                        </div>
+                        <div style="font-size: 10px; color: #64748b; letter-spacing: 1px; text-transform: uppercase;">Verified Credential</div>
                     </div>
 
-                    <div style="text-align: right;">
-                        <div style="font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Valid Until</div>
-                        <div style="font-size: 20px; font-weight: 600; color: ${expiryDate ? '#f43f5e' : '#10b981'};">${formattedExpiryDate}</div>
+                    <div style="text-align: right; width: 33%;">
+                        <div style="font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Valid Until</div>
+                        <div style="font-size: 20px; font-weight: 600; color: ${expiryDate ? '#f43f5e' : '#10b981'}; font-family: monospace;">${formattedExpiryDate}</div>
                     </div>
 
                 </div>

@@ -16,8 +16,8 @@ export const renderManagerDashboard = (user) => {
     <div style="min-height: 80vh;">
       <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
         <button id="tab-courses" class="btn-primary">My Courses</button>
-        <button id="tab-team" class="btn-ghost" style="border: 1px solid var(--glass-border);">Team Progress</button>
-        <button id="tab-analytics" class="btn-ghost" style="border: 1px solid var(--glass-border);">Analytics & Reports</button>
+        <button id="tab-guides" class="btn-ghost" style="border: 1px solid var(--glass-border);">Guides & Policies</button>
+        <button id="tab-team" class="btn-ghost" style="border: 1px solid var(--glass-border);">Team</button>
       </div>
 
       <!-- Courses View -->
@@ -28,65 +28,53 @@ export const renderManagerDashboard = (user) => {
         </div>
       </div>
 
-      <!-- Team View -->
+      <!-- Guides View -->
+      <div id="view-guides" style="display: none;"></div>
+
+      <!-- Team View (Unified Dashboard) -->
       <div id="view-team" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-          <h2 style="margin: 0;">User Management</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h2 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Team Dashboard
+          </h2>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <input type="text" id="user-search" placeholder="Search users by email..." style="width: 300px; padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
-          <button id="bulk-assign-btn" class="btn-primary" style="display: none;">Assign Course to Entire Team</button>
+        <!-- Top Analytics Row -->
+        <div id="loading-team-stats" style="text-align: center; display: none;">Loading team data...</div>
+        <div id="team-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+          <!-- Metrics injected here via JS -->
         </div>
 
-        <div id="loading-team" style="text-align: center; display: none;">Loading team stats...</div>
+        <!-- Unified Control Toolbar -->
+        <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05);">
+          <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 300px;">
+            <div style="position: relative; flex: 1; max-width: 400px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="user-search" placeholder="Search team by email..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; transition: border-color 0.2s;">
+            </div>
+            
+            <select id="user-status-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; cursor: pointer;">
+                <option value="all">All Members</option>
+                <option value="overdue">Has Overdue Courses</option>
+                <option value="in-progress">In Progress</option>
+            </select>
+          </div>
+          
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <button id="export-csv-btn" class="btn-ghost" style="border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export CSV
+            </button>
+            <button id="bulk-assign-btn" class="btn-primary" style="display: none; display: flex; align-items: center; gap: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+              Bulk Assign
+            </button>
+          </div>
+        </div>
+
         <div id="team-list" style="display: grid; gap: 1rem;">
           <!-- Team Member Stats -->
-        </div>
-      </div>
-
-      <!-- Analytics View -->
-      <div id="view-analytics" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-          <h2 style="margin: 0;">Team Analytics</h2>
-          <button id="export-csv-btn" class="btn-secondary">Export to CSV</button>
-        </div>
-
-        <div id="loading-analytics" style="text-align: center; display: none;">Loading metrics...</div>
-        
-        <!-- Key Metrics Cards -->
-        <div id="analytics-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-            <!-- Rendered via JS -->
-        </div>
-
-        <!-- Detailed Table -->
-        <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 style="margin: 0;">Member Overview</h3>
-            <div style="display: flex; gap: 1rem;">
-                <input type="text" id="analytics-search" placeholder="Search by email..." style="padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white;">
-                <select id="analytics-filter" style="padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white;">
-                    <option value="all">All Status</option>
-                    <option value="overdue">Has Overdue</option>
-                </select>
-            </div>
-          </div>
-          <div style="overflow-x: auto;">
-             <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                <thead>
-                   <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-muted);">
-                      <th style="padding: 1rem 0;">Email</th>
-                      <th style="padding: 1rem 0;">Assigned</th>
-                      <th style="padding: 1rem 0;">Completed</th>
-                      <th style="padding: 1rem 0;">In Progress</th>
-                      <th style="padding: 1rem 0;">Overdue</th>
-                   </tr>
-                </thead>
-                <tbody id="analytics-table-body">
-                   <!-- Rows go here -->
-                </tbody>
-             </table>
-          </div>
         </div>
       </div>
     </div>
@@ -168,24 +156,21 @@ export const initManagerEvents = async () => {
   const courseList = document.getElementById('course-list')
 
   const tabCourses = document.getElementById('tab-courses')
+  const tabGuides = document.getElementById('tab-guides')
   const tabTeam = document.getElementById('tab-team')
-  const tabAnalytics = document.getElementById('tab-analytics')
   const viewCourses = document.getElementById('view-courses')
+  const viewGuides = document.getElementById('view-guides')
   const viewTeam = document.getElementById('view-team')
-  const viewAnalytics = document.getElementById('view-analytics')
   const teamList = document.getElementById('team-list')
-  const loadingTeam = document.getElementById('loading-team')
-
-  const loadingAnalytics = document.getElementById('loading-analytics')
-  const analyticsMetrics = document.getElementById('analytics-metrics')
-  const analyticsTableBody = document.getElementById('analytics-table-body')
-  const analyticsSearch = document.getElementById('analytics-search')
-  const analyticsFilter = document.getElementById('analytics-filter')
+  const loadingTeam = document.getElementById('loading-team-stats')
+  const teamMetrics = document.getElementById('team-metrics')
+  const userSearch = document.getElementById('user-search')
+  const userStatusFilter = document.getElementById('user-status-filter')
   const exportCsvBtn = document.getElementById('export-csv-btn')
 
   const user = await getCurrentUser()
 
-  let currentAnalyticsStats = [] // Store for filtering
+  let currentTeamStats = [] // Store for filtering
 
   // Event Delegation for dynamically rendered team list buttons
   teamList?.addEventListener('click', async (e) => {
@@ -202,7 +187,6 @@ export const initManagerEvents = async () => {
       const courseId = revokeBtn.dataset.courseid
       if (confirm('Are you sure you want to revoke this course assignment?')) {
         try {
-          const originalText = revokeBtn.innerText
           revokeBtn.innerText = 'Revoking...'
           revokeBtn.disabled = true
           await revokeAssignment(userId, courseId)
@@ -251,16 +235,47 @@ export const initManagerEvents = async () => {
     }
   })
 
-  document.getElementById('user-search')?.addEventListener('input', () => {
-    loadTeamStats()
+  const applyTeamFilters = () => {
+    const query = userSearch ? userSearch.value.toLowerCase() : ''
+    const statusVal = userStatusFilter ? userStatusFilter.value : 'all'
+
+    const filteredStats = currentTeamStats.filter(s => {
+      // 1. Text Search
+      if (!s.email.toLowerCase().includes(query)) return false
+
+      // 2. Status Filter
+      if (statusVal === 'overdue') {
+        let hasOverdue = false
+        if (s.progressData) {
+          s.progressData.forEach(p => {
+             if (p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed') hasOverdue = true
+          })
+        }
+        if (!hasOverdue) return false
+      } else if (statusVal === 'in-progress') {
+        if (s.inProgress === 0) return false
+      }
+      return true
+    })
+
+    renderTeamList(filteredStats)
+  }
+
+  userSearch?.addEventListener('input', applyTeamFilters)
+  userStatusFilter?.addEventListener('change', applyTeamFilters)
+  
+  exportCsvBtn?.addEventListener('click', async () => {
+     exportCsvBtn.innerText = 'Exporting...'
+     await exportTeamDataCSV()
+     exportCsvBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Export CSV'
   })
 
   // Tab switching logic
   const resetTabs = () => {
-    [tabCourses, tabTeam, tabAnalytics].forEach(t => {
+    [tabCourses, tabGuides, tabTeam].forEach(t => {
       if(t) { t.className = 'btn-ghost'; t.style.border = '1px solid var(--glass-border)' }
     });
-    [viewCourses, viewTeam, viewAnalytics].forEach(v => {
+    [viewCourses, viewGuides, viewTeam].forEach(v => {
       if(v) v.style.display = 'none'
     });
   }
@@ -272,6 +287,20 @@ export const initManagerEvents = async () => {
     viewCourses.style.display = 'block'
   })
 
+  tabGuides?.addEventListener('click', async () => {
+    resetTabs()
+    tabGuides.className = 'btn-primary'
+    tabGuides.style.border = 'none'
+    viewGuides.style.display = 'block'
+    
+    if (!viewGuides.dataset.loaded) {
+       const { renderGuides, initGuidesEvents } = await import('./Guides.js')
+       viewGuides.innerHTML = renderGuides(user)
+       await initGuidesEvents(user)
+       viewGuides.dataset.loaded = 'true'
+    }
+  })
+
   tabTeam?.addEventListener('click', () => {
     resetTabs()
     tabTeam.className = 'btn-primary'
@@ -280,91 +309,167 @@ export const initManagerEvents = async () => {
     loadTeamStats()
   })
 
-  tabAnalytics?.addEventListener('click', () => {
-    resetTabs()
-    tabAnalytics.className = 'btn-primary'
-    tabAnalytics.style.border = 'none'
-    viewAnalytics.style.display = 'block'
-    loadAnalytics()
-  })
-
   async function loadTeamStats() {
-    if (!loadingTeam || !teamList) return;
+    if (!loadingTeam) return;
     loadingTeam.style.display = 'block'
-    teamList.innerHTML = ''
+    if (teamMetrics) teamMetrics.innerHTML = ''
+    if (teamList) teamList.innerHTML = ''
+
     try {
-      const { team, stats } = await getTeamStats()
+      // Use the analytics API to get the high-level rolled up stats AND the granular ones
+      const rates = await getTeamCompletionRates()
       loadingTeam.style.display = 'none'
 
-      if (!stats || stats.length === 0) {
+      if (!rates || !rates.memberStats || rates.memberStats.length === 0) {
         teamList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No users found in the system.</p>'
         return
       }
 
-      const searchInput = document.getElementById('user-search')
-      const query = searchInput ? searchInput.value.toLowerCase() : ''
-      const filteredStats = stats.filter(s => s.email.toLowerCase().includes(query))
+      currentTeamStats = rates.memberStats
+      
+      const totalMembers = rates.memberStats.length
+
+      // Render Visual Metrics
+      if (teamMetrics) {
+        const radius = 30;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (rates.overallCompletionPercent / 100) * circumference;
+
+        teamMetrics.innerHTML = `
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(16, 185, 129, 0.3); box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);">
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Overall Completion</div>
+              <div style="font-size: 2rem; font-weight: bold; color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);">${rates.overallCompletionPercent}%</div>
+            </div>
+            <div style="position: relative; width: 70px; height: 70px;">
+              <svg width="70" height="70" style="transform: rotate(-90deg);">
+                <circle cx="35" cy="35" r="${radius}" fill="transparent" stroke="rgba(255,255,255,0.1)" stroke-width="6" />
+                <circle cx="35" cy="35" r="${radius}" fill="transparent" stroke="#10b981" stroke-width="6" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transition: stroke-dashoffset 1s ease-out; filter: drop-shadow(0 0 4px rgba(16,185,129,0.8));" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(18, 142, 205, 0.3); box-shadow: inset 0 0 20px rgba(18, 142, 205, 0.05);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(18, 142, 205, 0.1); display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#128ecd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(18,142,205,0.8));"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Members</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${totalMembers}</div>
+            </div>
+          </div>
+          
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(245, 158, 11, 0.3); box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.05);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(245,158,11,0.8));"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Assigned</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${rates.totalAssigned}</div>
+            </div>
+          </div>
+
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(239,68,68,0.8));"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Overdue</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);">${rates.totalOverdue}</div>
+            </div>
+          </div>
+        `
+      }
+
+      // Show bulk assign if members exist
+      const bulkAssignBtn = document.getElementById('bulk-assign-btn')
+      if (bulkAssignBtn) bulkAssignBtn.style.display = totalMembers > 0 ? 'flex' : 'none'
+
+      applyTeamFilters()
+
+    } catch (error) {
+      console.error('Error loading team stats:', error)
+      loadingTeam.style.display = 'none'
+      teamList.innerHTML = `<p style="color: red; text-align: center;">Failed to load team data:<br/><pre style="text-align:left; font-size: 10px; color: pink;">${error.stack || error.message || JSON.stringify(error)}</pre></p>`
+    }
+  }
+
+  function renderTeamList(filteredStats) {
+      if (!teamList) return
 
       if (filteredStats.length === 0) {
-        teamList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No users match your search.</p>'
+        teamList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-lg);">No members match the current filters.</p>'
         return
       }
 
-      // Only show bulk assign if there are members
-      const bulkAssignBtn = document.getElementById('bulk-assign-btn')
-      if (stats && stats.length > 0) {
-        bulkAssignBtn.style.display = 'block'
-      } else {
-        bulkAssignBtn.style.display = 'none'
-      }
-
-      teamList.innerHTML = filteredStats.map((member, idx) => {
+      teamList.innerHTML = filteredStats.map((member) => {
         const completionPct = member.totalAssigned > 0 ? Math.round((member.completed / member.totalAssigned) * 100) : 0;
         
+        let overdueCount = 0;
+        if (member.progressData) {
+            member.progressData.forEach(p => {
+                if (p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed') {
+                    overdueCount++;
+                }
+            })
+        }
+
         return `
-        <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 1rem;">
+        <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 1rem; border-left: 4px solid ${completionPct === 100 ? '#10b981' : (overdueCount > 0 ? '#ef4444' : 'var(--glass-border)')};">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1;">
               <h4 style="margin: 0 0 0.5rem 0;">${member.email}</h4>
-              <span style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px;">Role: ${member.team_role || 'member'}</span>
+              <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${member.team_role || 'member'}</span>
               
               <div style="margin-top: 1.5rem; width: 80%;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                  <span>Overall Completion</span>
-                  <span>${completionPct}%</span>
+                  <span>Individual Completion</span>
+                  <span style="color: ${completionPct === 100 ? '#10b981' : 'inherit'};">${completionPct}%</span>
                 </div>
                 <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-                  <div style="height: 100%; width: ${completionPct}%; background: ${completionPct === 100 ? '#10b981' : 'var(--primary)'}; border-radius: 3px;"></div>
+                  <div style="height: 100%; width: ${completionPct}%; background: ${completionPct === 100 ? '#10b981' : 'var(--primary)'}; border-radius: 3px; transition: width 0.5s ease-out;"></div>
                 </div>
               </div>
             </div>
-            <div style="display: flex; gap: 2rem; text-align: center; margin-right: 2rem;">
+            
+            <div style="display: flex; gap: 2rem; text-align: center; margin-right: 2rem; background: rgba(0,0,0,0.2); padding: 1rem 1.5rem; border-radius: var(--radius-md);">
               <div>
                 <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">${member.totalAssigned}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Assigned</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Assigned</div>
               </div>
               <div>
                 <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">${member.inProgress}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">In Progress</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">In Progress</div>
               </div>
               <div>
                 <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${member.completed}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Completed</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Completed</div>
+              </div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${overdueCount}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Overdue</div>
               </div>
             </div>
+            
             <div>
-               <button class="btn-secondary assign-user-btn" data-userid="${member.id}" data-email="${member.email}">Assign Course</button>
+               <button class="btn-secondary assign-user-btn" data-userid="${member.id}" data-email="${member.email}" style="display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 10px rgba(18,142,205,0.2);">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                 Assign Course
+               </button>
             </div>
           </div>
           
           ${member.progressData && member.progressData.length > 0 ? `
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
               <details>
-                <summary style="font-weight: bold; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; outline: none; user-select: none; cursor: pointer; padding: 0.5rem; border-radius: var(--radius-md); background: rgba(0,0,0,0.1); transition: background 0.2s;">
-                  <span>Assigned Courses (${member.progressData.length})</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                <summary style="font-size: 0.85rem; font-weight: bold; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; outline: none; user-select: none; cursor: pointer; padding: 0.5rem 1rem; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); transition: background 0.2s;">
+                  <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    Course History (${member.progressData.length})
+                  </span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </summary>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; cursor: default;">
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; cursor: default;">
                   ${member.progressData.map(p => {
                     const isExpired = p.expires_at && new Date(p.expires_at) < new Date();
                     const isOverdue = p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed';
@@ -383,21 +488,23 @@ export const initManagerEvents = async () => {
                     }
 
                     return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: var(--radius-md); border-left: 3px solid ${isExpired || isOverdue ? '#ef4444' : 'transparent'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); padding: 0.6rem 1rem; border-radius: var(--radius-md); border-left: 3px solid ${isExpired || isOverdue ? '#ef4444' : (p.status === 'completed' ? '#10b981' : 'transparent')};">
                       <div style="display: flex; align-items: center; gap: 1rem;">
                         <span style="font-size: 0.9rem; font-weight: ${isExpired || isOverdue ? 'bold' : 'normal'}; color: ${isExpired || isOverdue ? '#ef4444' : 'white'};">${p.courses?.title || 'Unknown Course'}</span>
-                        <span style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: ${statusColor}; color: ${badgeColor}; font-weight: bold;">${statusTxt}</span>
-                        ${p.due_date && !isExpired && p.status !== 'completed' ? `<span style="font-size: 0.8rem; color: ${isOverdue ? '#ef4444' : 'var(--text-muted)'};">Due: ${new Date(p.due_date).toLocaleDateString()}</span>` : ''}
+                        <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: ${statusColor}; color: ${badgeColor}; font-weight: bold; letter-spacing: 0.5px;">${statusTxt}</span>
+                        ${p.due_date && !isExpired && p.status !== 'completed' ? `<span style="font-size: 0.8rem; color: ${isOverdue ? '#ef4444' : 'var(--text-muted)'}; display: flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Due: ${new Date(p.due_date).toLocaleDateString()}</span>` : ''}
                         ${p.expires_at && p.status === 'completed' && !isExpired ? `<span style="font-size: 0.8rem; color: var(--text-muted);">Valid til: ${new Date(p.expires_at).toLocaleDateString()}</span>` : ''}
                       </div>
                       <div style="display: flex; gap: 0.5rem; align-items: center;">
                         ${p.status === 'completed' && !isExpired && p.certificate_id ? `
-                          <button class="btn-ghost download-cert-btn" data-useremail="${member.email}" data-coursetitle="${p.courses?.title}" data-issuedate="${p.completed_at}" data-expirydate="${p.expires_at || 'null'}" data-certid="${p.certificate_id}" style="color: #0ea5e9; font-size: 0.8rem; padding: 0.2rem 0.5rem;">Download Cert</button>
+                          <button class="btn-ghost download-cert-btn" data-useremail="${member.email}" data-coursetitle="${p.courses?.title}" data-issuedate="${p.completed_at}" data-expirydate="${p.expires_at || 'null'}" data-certid="${p.certificate_id}" style="color: #0ea5e9; font-size: 0.75rem; padding: 0.2rem 0.5rem; border: 1px solid rgba(14,165,233,0.3);">
+                            Download Cert
+                          </button>
                         ` : ''}
                         ${isExpired ? `
-                          <button class="btn-secondary resit-user-btn" data-userid="${member.id}" data-courseid="${p.course_id}" style="font-size: 0.8rem; padding: 0.2rem 0.5rem;">Force Resit</button>
+                          <button class="btn-secondary resit-user-btn" data-userid="${member.id}" data-courseid="${p.course_id}" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-color: #ef4444; color: #ef4444;">Force Resit</button>
                         ` : `
-                          <button class="btn-ghost revoke-user-btn" data-userid="${member.id}" data-courseid="${p.course_id}" style="color: #ef4444; font-size: 0.8rem; padding: 0.2rem 0.5rem;">Revoke</button>
+                          <button class="btn-ghost revoke-user-btn" data-userid="${member.id}" data-courseid="${p.course_id}" style="color: var(--text-muted); font-size: 0.75rem; padding: 0.2rem 0.5rem;">Revoke</button>
                         `}
                       </div>
                     </div>
@@ -408,12 +515,6 @@ export const initManagerEvents = async () => {
           ` : ''}
         </div>
       `}).join('')
-
-    } catch (error) {
-      console.error('Error loading team stats:', error)
-      loadingTeam.style.display = 'none'
-      teamList.innerHTML = `<p style="color: red; text-align: center;">Failed to load team data:<br/><pre style="text-align:left; font-size: 10px; color: pink;">${error.stack || error.message || JSON.stringify(error)}</pre></p>`
-    }
   }
 
   // ==== ASSIGN MODAL & REGEN LOGIC ====
@@ -529,6 +630,18 @@ export const initManagerEvents = async () => {
         <h3 style="margin: 0; color: white;">Create Course</h3>
         <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">AI Powered</p>
       </div>
+
+      <div id="create-simulator-card" class="glass card-hover" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; cursor: pointer; border: 2px dashed #f59e0b; background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-lg);">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: #f59e0b; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <h3 style="margin: 0; color: white;">Build Simulator</h3>
+        <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Click-through Systems Menu</p>
+      </div>
     `
 
     const courseCardsHTML = courses.map((course, index) => `
@@ -541,13 +654,18 @@ export const initManagerEvents = async () => {
           <div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: ${course.status === 'live' ? '#10b981' : '#f59e0b'}; color: black;">
             ${course.status.toUpperCase()}
           </div>
+          ${course.content_json?.is_system_simulation ? `
+            <div style="position: absolute; top: 10px; left: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: rgba(0,0,0,0.8); color: white; border: 1px solid #f59e0b;">
+              SIMULATOR
+            </div>
+          ` : ''}
         </div>
         <div style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
           <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem;">${course.title}</h4>
           <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--text-muted); flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${course.description || 'No description'}</p>
           <div style="display: flex; gap: 0.5rem;">
             <button id="view-btn-${index}" class="btn-secondary" style="flex: 1;">View</button>
-            <button id="edit-btn-${index}" class="btn-secondary" style="flex: 1;">Edit</button>
+            <button id="edit-btn-${index}" class="btn-secondary" style="flex: 1;" ${course.content_json?.is_system_simulation ? 'disabled title="Simulators cannot be edited yet"' : ''}>Edit</button>
             <button id="delete-btn-${index}" class="btn-danger">Delete</button>
           </div>
         </div>
@@ -558,6 +676,26 @@ export const initManagerEvents = async () => {
 
     // Bind Create Card Event
     document.getElementById('create-course-card').addEventListener('click', () => toggleModal(true))
+
+    document.getElementById('create-simulator-card').addEventListener('click', async () => {
+        const { renderSystemBuilder, initSystemBuilder } = await import('./SystemBuilder.js');
+        const viewCourses = document.getElementById('view-courses');
+        
+        // Hide list, show builder inline
+        courseList.style.display = 'none';
+        
+        const builderDiv = document.createElement('div');
+        builderDiv.id = 'sys-builder-container';
+        builderDiv.innerHTML = renderSystemBuilder();
+        viewCourses.appendChild(builderDiv);
+        
+        initSystemBuilder(() => {
+            // onClose callback
+            builderDiv.remove();
+            courseList.style.display = 'grid'; // restore
+            loadCourses(); // reload to show new course
+        });
+    });
 
     // Bind View and Edit Buttons
     courses.forEach((course, index) => {

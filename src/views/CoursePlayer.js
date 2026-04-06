@@ -8,6 +8,7 @@ import { renderRedline } from './components/Redline.js'
 import { renderDebate } from './components/Debate.js'
 import { renderDecisionSwipe } from './components/DecisionSwipe.js'
 import { renderCertificate, downloadCertificate } from './components/Certificate.js'
+import { renderSimulationPlayer } from './components/SimulationPlayer.js'
 
 // Initialize Mermaid
 mermaid.initialize({ startOnLoad: false, theme: 'dark' })
@@ -154,6 +155,10 @@ export const renderCoursePlayer = (course, user) => {
     let modules = typeof course.content_json === 'string'
         ? JSON.parse(course.content_json)
         : course.content_json
+
+    if (modules && modules.is_system_simulation) {
+        return renderSimulationPlayer(course, user);
+    }
 
     // Inject dummy data for verification if it's the specific test case
     // For now, we'll append a test lesson to the first module if it exists
@@ -913,20 +918,26 @@ export const renderCoursePlayer = (course, user) => {
             })
         })
 
+        // Clean up any lingering listener from a previous lesson
+        if (window.currentActivityListener) {
+            document.removeEventListener('lesson-activity-complete', window.currentActivityListener);
+        }
+
         // Listen for activity completion
-        document.addEventListener('lesson-activity-complete', () => {
+        window.currentActivityListener = () => {
             console.log('Activity Completed!');
             isActivityComplete = true;
             updateNextButtonState();
 
-            // Visual feedback toast?
+            // Visual feedback toast
             const toast = document.createElement('div');
             toast.className = 'fade-in';
             toast.innerHTML = `<div style="background: #10b981; color: white; padding: 1rem 2rem; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-weight: bold; display: flex; align-items: center; gap: 0.5rem;"><span>✓</span> Activity Complete</div>`;
             toast.style.cssText = "position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1000;";
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
-        }, { once: true }); // Careful with once: true if there are multiple activities? usually 1 per lesson. Better remove listener on mount.
+        };
+        document.addEventListener('lesson-activity-complete', window.currentActivityListener, { once: true });
 
 
         document.querySelectorAll('.quiz-option').forEach(opt => {
@@ -960,7 +971,8 @@ export const renderCoursePlayer = (course, user) => {
                 }
 
                 // Check overall Quiz Completion
-                const totalQuestions = document.querySelectorAll('.quiz-container > div').length; // Each question is a div
+                const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
+                const totalQuestions = currentLesson.quiz ? currentLesson.quiz.length : 0;
                 const correctlyAnswered = document.querySelectorAll('.quiz-option.correct').length;
 
                 if (correctlyAnswered === totalQuestions) {

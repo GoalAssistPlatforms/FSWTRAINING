@@ -10,15 +10,33 @@ export function renderDebate(containerId, config) {
     let userStance = null;
     let messages = [];
     let pointsDiscussed = 0;
+    let failedAttemptsOnCurrentPoint = 0;
     const TOTAL_POINTS = 5;
 
     // Button Labels
     const [stanceA, stanceB] = stances && stances.length === 2 ? stances : ['Agreement', 'Disagreement'];
 
     container.innerHTML = `
+        <style>
+            @keyframes debate-typing-bounce {
+                0%, 80%, 100% { transform: translateY(0); }
+                40% { transform: translateY(-5px); }
+            }
+            .debate-typing-dot {
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                background: #f59e0b;
+                border-radius: 50%;
+                margin: 0 2px;
+                animation: debate-typing-bounce 1.4s infinite ease-in-out both;
+            }
+            .debate-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+            .debate-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        </style>
         <div class="debate-container fade-in" style="display: flex; flex-direction: column; height: 650px; border: 1px solid var(--glass-border); border-radius: var(--radius-lg); background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(10px); overflow: hidden; color: white; position: relative;">
             <div class="debate-header" style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-bottom: 1px solid var(--glass-border); text-align: center; display: flex; flex-direction: column; gap: 0.5rem; justify-content: center; align-items: center;">
-                 <div style="font-size: 0.7rem; text-transform: uppercase; color: #f59e0b; letter-spacing: 3px; font-weight: 800;">Socratic Seminar</div>
+                 <div style="font-size: 0.7rem; text-transform: uppercase; color: #f59e0b; letter-spacing: 3px; font-weight: 800;">The Hot Seat</div>
                  <div class="debate-topic" style="font-size: 1.1rem; font-weight: 600; line-height: 1.4; max-width: 80%; color: #fff;">"${topic}"</div>
                  <div id="debate-progress-${containerId}" style="display: none; font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 12px; color: #ccc; margin-top: 4px;">Point 0/${TOTAL_POINTS}</div>
             </div>
@@ -28,11 +46,9 @@ export function renderDebate(containerId, config) {
                 <p style="color: rgba(255, 255, 255, 0.7); margin: 0; font-size: 1.1rem;">Select a perspective to debate. You will defend this position.</p>
                 <div style="display: flex; gap: 1rem; width: 100%; max-width: 400px;">
                     <button class="stance-btn btn-agree" id="agree-${containerId}" style="flex: 1; padding: 1.5rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.2s;">
-                        <!-- Id: 30 Icon removed for neutrality -->
                         ${stanceA}
                     </button>
                     <button class="stance-btn btn-disagree" id="disagree-${containerId}" style="flex: 1; padding: 1.5rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.2s;">
-                        <!-- Id: 34 Icon removed for neutrality -->
                         ${stanceB}
                     </button>
                 </div>
@@ -42,15 +58,32 @@ export function renderDebate(containerId, config) {
             <div class="debate-chat-area" id="chat-${containerId}" style="flex: 1; overflow-y: auto; padding: 2rem; display: none; flex-direction: column; gap: 1.5rem; scrollbar-width: thin; background: rgba(0,0,0,0.1);"></div>
             
             <!-- Phase 3: Completion (Hidden initially) -->
-             <div class="debate-complete-area" id="complete-${containerId}" style="flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; gap: 1rem; text-align: center;">
-                <div style="font-size: 3rem;">🎓</div>
-                <h3 style="font-size: 1.5rem; margin: 0; color: white;">Seminar Completed</h3>
-                <p style="color: rgba(255,255,255,0.7); max-width: 400px; line-height: 1.5;">You've successfully analyzed the topic through Socratic inquiry.</p>
+             <div class="debate-complete-area" id="complete-${containerId}" style="flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; gap: 1rem; text-align: center; overflow-y: auto;">
+                <div style="font-size: 3rem; margin-bottom: -10px;">🎓</div>
+                <h3 style="font-size: 1.5rem; margin: 0; color: white;">The Hot Seat Verdict</h3>
+                
+                <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.5rem; width: 100%; max-width: 500px; text-align: left; margin-top: 1rem;">
+                    <div style="display:flex; justify-content: space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <span style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color:#ccc;">Critical Thinking Score</span>
+                        <span id="debate-score-${containerId}" style="font-size: 1.5rem; font-weight: 800; color: #f59e0b;">--/100</span>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: #4ade80; margin-bottom: 4px; font-weight: 600;">Strongest Argument</div>
+                        <div id="debate-strongest-${containerId}" style="font-size: 0.95rem; line-height: 1.5; color: #e5e7eb;">...</div>
+                    </div>
+
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: #f87171; margin-bottom: 4px; font-weight: 600;">Areas for Improvement</div>
+                        <div id="debate-weakness-${containerId}" style="font-size: 0.95rem; line-height: 1.5; color: #e5e7eb;">...</div>
+                    </div>
+                </div>
+
                 <button id="complete-btn-${containerId}" style="background: #f59e0b; color: black; border: none; padding: 12px 32px; font-weight: 800; border-radius: 24px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-top: 1rem;">Finish Activity</button>
             </div>
 
             <div class="input-bar" id="input-${containerId}" style="padding: 1.5rem; background: rgba(0, 0, 0, 0.4); border-top: 1px solid var(--glass-border); display: none; gap: 1rem; align-items: flex-end;">
-                <textarea class="debate-input" placeholder="Defense your assumption..." rows="1" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 1.5rem; border-radius: 20px; outline: none; font-size: 0.95rem; resize: none; min-height: 46px; line-height: 1.5; font-family: inherit; overflow-y: hidden;"></textarea>
+                <textarea class="debate-input" placeholder="Defend your position..." rows="1" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 1.5rem; border-radius: 20px; outline: none; font-size: 0.95rem; resize: none; min-height: 46px; line-height: 1.5; font-family: inherit; overflow-y: hidden;"></textarea>
                 <button class="debate-send" style="background: white; color: black; border: none; padding: 0 1.5rem; height: 46px; font-weight: 800; border-radius: 23px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Argue</button>
             </div>
         </div>
@@ -80,7 +113,7 @@ export function renderDebate(containerId, config) {
     });
 
     const updateProgress = () => {
-        progressEl.textContent = `Point ${Math.min(pointsDiscussed + 1, TOTAL_POINTS)}/${TOTAL_POINTS}`;
+        progressEl.textContent = `Point ${Math.min(pointsDiscussed, TOTAL_POINTS)}/${TOTAL_POINTS}`;
         progressEl.style.display = 'block';
     };
 
@@ -102,7 +135,7 @@ export function renderDebate(containerId, config) {
         // Label
         const label = document.createElement('div');
         label.style.cssText = 'font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; margin-bottom: 8px; font-weight: 800;';
-        label.textContent = isUser ? 'Your Argument' : `Socratic Inquiry ${pointsDiscussed > 0 ? '#' + pointsDiscussed : ''}`;
+        label.textContent = isUser ? 'Your Argument' : `Pressure Test ${pointsDiscussed > 0 ? '#' + pointsDiscussed : ''}`;
         bubble.appendChild(label);
 
         const content = document.createElement('div');
@@ -113,12 +146,21 @@ export function renderDebate(containerId, config) {
         chatArea.scrollTop = chatArea.scrollHeight;
     };
 
-    const showCompletion = () => {
+    const showCompletion = (feedback) => {
         chatArea.style.display = 'none';
         inputBar.style.display = 'none';
         progressEl.style.display = 'none';
+        
+        if (feedback) {
+            const scoreEl = container.querySelector(`#debate-score-${containerId}`);
+            const strongEl = container.querySelector(`#debate-strongest-${containerId}`);
+            const weakEl = container.querySelector(`#debate-weakness-${containerId}`);
+            if (scoreEl) scoreEl.textContent = `${feedback.score}/100`;
+            if (strongEl) strongEl.textContent = feedback.strongest_argument || "No clear strength noted.";
+            if (weakEl) weakEl.textContent = feedback.weakness || "No obvious weaknesses noted.";
+        }
+        
         completeArea.style.display = 'flex';
-        // Trigger generic completion event for tracking, though we wait for button to finalize
     };
 
     const startDebate = async (stance) => {
@@ -146,50 +188,53 @@ export function renderDebate(containerId, config) {
         addMessage('user', val);
         messages.push({ role: 'user', content: val });
 
-        // If we have discussed 5 points and the user just replied to the 5th, we are done.
-        // Logic: 
-        // Start: pt=1. AI asks Q1.
-        // User replies.
-        // AI asks Q2. pt=2.
-        // ...
-        // AI asks Q5. pt=5.
-        // User replies. -> We are effectively done, but let AI give final closing.
-
         try {
-            // "Thinking" indicator
+            // Typing indicator
             const loading = document.createElement('div');
-            loading.style.cssText = 'align-self: flex-start; color: #f59e0b; font-size: 0.8rem; font-style: italic; margin-left: 1rem;';
-            loading.textContent = 'Analysing assumptions...';
+            loading.style.cssText = 'align-self: flex-start; margin-left: 1rem; display: flex; align-items: center; height: 32px; padding: 0 12px; background: rgba(255,255,255,0.03); border-radius: 16px; border-left: 2px solid #f59e0b;';
+            loading.innerHTML = 'Wait<span style="margin: 0 6px;"></span><div class="debate-typing-dot"></div><div class="debate-typing-dot"></div><div class="debate-typing-dot"></div>';
             chatArea.appendChild(loading);
             chatArea.scrollTop = chatArea.scrollHeight;
 
-            // Determine next point context for AI
-            const nextPoint = pointsDiscussed < TOTAL_POINTS ? pointsDiscussed + 1 : TOTAL_POINTS;
-            const response = await chatWithDebater(messages, topic, aiSide === 'pro' ? 'pro' : 'con', nextPoint);
+            const responseData = await chatWithDebater(messages, topic, config.persona || aiSide, pointsDiscussed, failedAttemptsOnCurrentPoint);
 
             loading.remove();
 
-            // Check if AI indicates completion or if we hit limit
-            // We increment points after AI responds with the NEXT point
-            if (pointsDiscussed < TOTAL_POINTS) {
-                pointsDiscussed++;
-                updateProgress();
-                addMessage('ai', response);
-                messages.push({ role: 'assistant', content: response });
-            } else {
-                // Final response (closing)
-                addMessage('ai', response);
-                messages.push({ role: 'assistant', content: response });
+            const { reply, advance_progress, hint, final_feedback } = responseData;
 
-                // Wait a moment then show completion
-                setTimeout(showCompletion, 2000);
+            if (advance_progress) {
+                // User gave a good response
+                failedAttemptsOnCurrentPoint = 0;
+                addMessage('ai', reply);
+                messages.push({ role: 'assistant', content: reply });
+                
+                if (pointsDiscussed >= TOTAL_POINTS) {
+                    // It's over.
+                    setTimeout(() => showCompletion(final_feedback), 2000);
+                } else {
+                    pointsDiscussed++;
+                    updateProgress();
+                }
+            } else {
+                // User gave a weak response
+                failedAttemptsOnCurrentPoint++;
+                addMessage('ai', reply);
+                messages.push({ role: 'assistant', content: reply });
+                
+                if (hint) {
+                    const hintDiv = document.createElement('div');
+                    hintDiv.style.cssText = 'align-self: flex-start; color: #f59e0b; font-size: 0.8rem; font-style: italic; margin-left: 1rem; border-left: 2px solid #f59e0b; padding-left: 8px; margin-top: -8px; max-width: 80%; line-height: 1.4;';
+                    hintDiv.textContent = `Hint: ${hint}`;
+                    chatArea.appendChild(hintDiv);
+                }
+                chatArea.scrollTop = chatArea.scrollHeight;
             }
 
         } catch (e) {
             console.error("Debate failed:", e);
             addMessage('ai', "I apologize, my train of thought was interrupted. Could you restate that?");
         } finally {
-            if (pointsDiscussed <= TOTAL_POINTS && completeArea.style.display === 'none') {
+            if (completeArea.style.display === 'none') {
                 input.disabled = false;
                 sendBtn.disabled = false;
                 input.focus();
@@ -207,6 +252,13 @@ export function renderDebate(containerId, config) {
             bubbles: true,
             composed: true
         }));
+
+        // Automatically exit fullscreen to return to the course player
+        const wrapper = container.closest('.activity-wrapper.fullscreen');
+        if (wrapper) {
+            const btn = document.querySelector(`.activity-expand-btn[data-target="${wrapper.id}"]`);
+            if (btn) btn.click();
+        }
     });
 
     sendBtn.addEventListener('click', handleSend);
