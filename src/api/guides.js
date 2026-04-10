@@ -96,7 +96,7 @@ export async function searchCompanyContext(queryText, limit = 5) {
 /**
  * Helper: Uploads PDF, Extracts it, Embeds it, and saves to DB.
  */
-export async function processAndUploadGuide(file, title, description, onProgress) {
+export async function processAndUploadGuide(file, title, description, tags = [], onProgress) {
     try {
         if (onProgress) onProgress("Uploading file to storage...");
         
@@ -131,6 +131,7 @@ export async function processAndUploadGuide(file, title, description, onProgress
                 title: title || file.name,
                 description,
                 file_url: fileUrl,
+                tags,
                 created_by: userAuth.user.id
             })
             .select()
@@ -189,8 +190,41 @@ export async function chatWithGuides(userQuestion, conversationHistory = []) {
         throw new Error("Failed to search knowledge base.");
     }
     
+    // 2.5 Query all Interactive Guides (we inject these fully since they are short step-by-steps)
+    const { data: rawCourses } = await supabase
+        .from('courses')
+        .select('title, description, content_json')
+        .eq('status', 'live');
+        
+    let interactiveGuidesContext = '';
+    let interactiveSources = [];
+    if (rawCourses) {
+        const interactiveGuides = rawCourses.filter(c => c.content_json?.is_system_simulation === true);
+        interactiveGuides.forEach((g, idx) => {
+            interactiveSources.push({ 
+                document_title: `Interactive Guide: ${g.title}`,
+                is_interactive: true,
+                courseData: g 
+            });
+            interactiveGuidesContext += `[Source Interactive Guide: ${g.title}]\n`;
+            interactiveGuidesContext += `Description: ${g.description || 'Step-by-step guide'}\n`;
+            if (g.content_json.slides) {
+                interactiveGuidesContext += `Steps:\n`;
+                g.content_json.slides.forEach((slide, sIdx) => {
+                    interactiveGuidesContext += `Step ${sIdx + 1}: ${slide.instruction || ''} - ${slide.teachingText || ''}\n`;
+                });
+            }
+            interactiveGuidesContext += `\n`;
+        });
+    }
+
     // 3. Construct Context String
     let contextStr = matchedChunks.map((chunk, i) => `[Source ${i+1}: ${chunk.document_title}]\n${chunk.content}`).join('\n\n');
+    if (interactiveGuidesContext) {
+        contextStr += `\n\n=== INTERACTIVE GUIDES SYSTEM KNOWLEDGE ===\n\n${interactiveGuidesContext}`;
+        // We push interactive guides into matchedChunks so they appear in sources in the UI
+        interactiveSources.forEach(src => matchedChunks.push(src));
+    }
     
     // 4. Prompt AI
     const systemPrompt = `You are a helpful, professional "team member" digital assistant for the company. 
@@ -219,9 +253,17 @@ INSTRUCTIONS:
         temperature: 0.2
     });
 
+    const answerText = completion.choices[0].message.content;
+
+    // Filter to only include sources that the AI actually found relevant and cited
+    const relevantSources = matchedChunks.filter(chunk => {
+        const title = chunk.is_interactive ? chunk.courseData.title : chunk.document_title;
+        return answerText.includes(title);
+    });
+
     return {
-        answer: completion.choices[0].message.content,
-        sources: matchedChunks
+        answer: answerText,
+        sources: relevantSources
     };
 }
 
@@ -242,4 +284,32 @@ export async function deleteGuide(id) {
         .eq('id', id);
         
     if (error) throw error;
+}
+
+export async function fetchSystemTags() {
+    // Fetch unique tags from guide_documents and courses
+    const [guidesRes, coursesRes] = await Promise.all([
+        supabase.from('guide_documents').select('tags'),
+        supabase.from('courses').select('tags')
+    ]);
+
+    const allTags = new Set();
+    
+    if (guidesRes.data) {
+        guidesRes.data.forEach(g => {
+            if (g.tags && Array.isArray(g.tags)) {
+                g.tags.forEach(t => allTags.add(t));
+            }
+        });
+    }
+
+    if (coursesRes.data) {
+        coursesRes.data.forEach(c => {
+            if (c.tags && Array.isArray(c.tags)) {
+                c.tags.forEach(t => allTags.add(t));
+            }
+        });
+    }
+
+    return Array.from(allTags).sort();
 }

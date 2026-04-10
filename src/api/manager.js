@@ -100,15 +100,22 @@ export const assignCourseToUser = async (userId, courseId, dueDate = null, isMan
 }
 
 /**
- * Bulk assign a course to the entire team.
+ * Bulk assign a course to the entire team or a selected subset.
  */
-export const bulkAssignCourse = async (courseId, dueDate = null, isMandatory = false) => {
+export const bulkAssignCourse = async (courseId, dueDate = null, isMandatory = false, targetUserIds = null) => {
     const { members } = await getTeamMembers()
     if (!members || members.length === 0) return []
 
+    // Determine which users to assign to
+    const targetMembers = targetUserIds
+        ? members.filter(m => targetUserIds.includes(m.id))
+        : members;
+
+    if (targetMembers.length === 0) return []
+
     // Using loop for straightforward phase 2 implementation
     const results = []
-    for (const member of members) {
+    for (const member of targetMembers) {
         try {
             const result = await assignCourseToUser(member.id, courseId, dueDate, isMandatory)
             results.push(result)
@@ -154,4 +161,21 @@ export const forceResitCourse = async (userId, courseId) => {
 
     if (error) throw error
     return data
+}
+
+/**
+ * Update the department of a user.
+ */
+export const updateUserDepartment = async (userId, department) => {
+    const { error } = await supabase.rpc('update_user_department', {
+        p_user_id: userId,
+        p_department: department
+    });
+
+    if (error) {
+        console.error('Error updating user department:', error)
+        throw error
+    }
+
+    return { success: true }
 }

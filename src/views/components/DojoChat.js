@@ -1,4 +1,5 @@
 import { chatWithDojo } from '../../api/ai.js';
+import { fswAlert } from '../../utils/dialog.js';
 
 export function renderDojoChat(containerId, config = {}) {
     const container = document.getElementById(containerId);
@@ -211,9 +212,9 @@ export function renderDojoChat(containerId, config = {}) {
             renderActiveCall();
         };
 
-        container.querySelector('#decline-btn').onclick = () => {
+        container.querySelector('#decline-btn').onclick = async () => {
             stopRingtone();
-            alert("Simulation skipped (demo only)"); // Could also just reset
+            await fswAlert("Simulation skipped (demo only)"); // Could also just reset
         };
     };
 

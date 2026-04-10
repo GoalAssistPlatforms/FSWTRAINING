@@ -53,12 +53,18 @@ export const renderSimulationPlayer = (course, user) => {
         const slide = slides[currentSlide];
         
         let html = `
-            <div id="sim-container" style="position: fixed; inset: 0; background: #111; z-index: 1000; overflow: hidden; display: flex; flex-direction: column; cursor: none;">
+            <div id="sim-container" style="position: fixed; inset: 0; background: #111; z-index: 1000; overflow: hidden; display: flex; flex-direction: column;">
                 
                 <!-- HUD -->
-                <div style="background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 10;">
+                <div style="background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 10; position: relative;">
+                    <!-- Progress Bar Background -->
+                    <div style="position: absolute; top: 0; left: 0; height: 3px; background: rgba(16, 185, 129, 0.2); width: 100%;"></div>
+                    <!-- Progress Bar Fill -->
+                    <div style="position: absolute; top: 0; left: 0; height: 3px; background: #10b981; width: ${((currentSlide + 1) / slides.length) * 100}%; transition: width 0.3s ease;"></div>
+
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <button id="sim-exit-btn" class="btn-ghost" style="padding: 0.5rem; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Exit</button>
+                        ${currentSlide > 0 ? `<button id="sim-back-btn" class="btn-ghost" style="padding: 0.4rem 0.8rem; color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.9rem;">Back</button>` : ''}
                         <h3 style="margin: 0; color: white;">${course.title}</h3>
                         <span style="color: var(--text-muted); font-size: 0.9rem;">(Step ${currentSlide + 1} of ${slides.length})</span>
                     </div>
@@ -68,16 +74,19 @@ export const renderSimulationPlayer = (course, user) => {
                 </div>
 
                 <!-- Main Viewport -->
-                <div id="sim-viewport" style="flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden;">
+                <div id="sim-viewport" class="sim-viewport-transition" style="flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; opacity: 0; animation: simFadeIn 0.3s forwards;">
                      <img id="sim-img" src="${slide.imageUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; user-select: none;">
-                     <div id="sim-hotspot" style="position: absolute; border: 3px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); cursor: none;">
+                     <div id="sim-hotspot" style="position: absolute; border: 3px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); cursor: pointer;">
                         <div style="position: absolute; inset: -4px; border: 2px solid transparent; border-radius: 4px; animation: simPulse 2s infinite;"></div>
                      </div>
-                </div>
-
-                <!-- Custom Cursor Hand -->
-                <div id="sim-cursor" style="position: absolute; pointer-events: none; z-index: 9999; transform: translate(-5%, -5%); width: 30px; height: 30px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); transition: transform 0.1s;">
-                    <svg viewBox="0 0 24 24" fill="white" stroke="black" stroke-width="1"><path d="M11 2v9h-2L6 8 3 11l6 6v5h12v-9l-2-2v-4a2 2 0 0 0-4 0v4h-2V6a2 2 0 0 0-4 0v5H7V4L5 6V2a2 2 0 0 1 4 0z"/></svg>
+                     ${slide.teachingText ? `
+                     <!-- Teaching Text Popup -->
+                     <div id="sim-popup" style="position: absolute; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; width: 280px; color: white; font-size: 0.9rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); pointer-events: none; z-index: 5; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: scale(0.95); margin: 12px; line-height: 1.4;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem; color: #10b981; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.5rem;">
+                            Step ${currentSlide + 1}
+                        </div>
+                        ${slide.teachingText.replace(/\n/g, '<br>')}
+                     </div>` : ''}
                 </div>
             </div>
             
@@ -87,6 +96,15 @@ export const renderSimulationPlayer = (course, user) => {
                     70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
                     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
                 }
+                @keyframes simFadeIn {
+                    to { opacity: 1; }
+                }
+                @keyframes simShake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+                .shake { animation: simShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
                 /* Hide global scrollbars while simulating */
                 body { overflow: hidden !important; }
             </style>
@@ -99,52 +117,100 @@ export const renderSimulationPlayer = (course, user) => {
         const simViewport = document.getElementById('sim-viewport');
         const imgEl = document.getElementById('sim-img');
         const hotspotEl = document.getElementById('sim-hotspot');
-        const cursorEl = document.getElementById('sim-cursor');
         const exitBtn = document.getElementById('sim-exit-btn');
-
-        // Custom Cursor Mover
-        document.addEventListener('mousemove', (e) => {
-            if (cursorEl) {
-                cursorEl.style.left = e.clientX + 'px';
-                cursorEl.style.top = e.clientY + 'px';
-            }
-        });
-
-        // Click effect on cursor
-        document.addEventListener('mousedown', () => {
-            if (cursorEl) cursorEl.style.transform = 'translate(-5%, -5%) scale(0.9)';
-        });
-        document.addEventListener('mouseup', () => {
-            if (cursorEl) cursorEl.style.transform = 'translate(-5%, -5%) scale(1)';
-        });
+        const backBtn = document.getElementById('sim-back-btn');
 
         exitBtn.addEventListener('click', () => {
             document.body.style.overflow = '';
-            // Just reload to dashboard
-            window.location.reload(); 
+            // Just reload to guides tab
+            window.location.href = '/?tab=guides'; 
         });
+
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                window.removeEventListener('resize', positionHotspot);
+                currentSlide--;
+                renderSlide();
+            });
+        }
 
         // Wait for image to load to position the hotspot relative to its actual rendered bounds
         imgEl.onload = () => {
             positionHotspot();
         };
 
-        const positionHotspot = () => {
+         const positionHotspot = () => {
              // The image might be pillarboxed or letterboxed due to object-fit: contain.
-             // We need to find its actual rendered coordinates.
-             const rect = imgEl.getBoundingClientRect();
+             // We need to find its actual rendered footprint inside the bounding box.
+             const imgRect = imgEl.getBoundingClientRect();
+             const viewportRect = simViewport.getBoundingClientRect();
              const b = slide.box;
+             
+             // Calculate true scale ratio of the image
+             const scale = Math.min(imgRect.width / imgEl.naturalWidth, imgRect.height / imgEl.naturalHeight);
+             
+             // Visual dimensions of the image pixel data
+             const renderedWidth = imgEl.naturalWidth * scale;
+             const renderedHeight = imgEl.naturalHeight * scale;
+             
+             // Calculate empty letterbox padding
+             const padLeft = (imgRect.width - renderedWidth) / 2;
+             const padTop = (imgRect.height - renderedHeight) / 2;
 
-             hotspotEl.style.left = (rect.left + (b.rx * rect.width)) + 'px';
-             hotspotEl.style.top = (rect.top + (b.ry * rect.height)) + 'px';
-             hotspotEl.style.width = (b.rw * rect.width) + 'px';
-             hotspotEl.style.height = (b.rh * rect.height) + 'px';
+             // Map relative hotspot to the pixel footprint, adjusted for viewport offset
+             const relLeft = imgRect.left - viewportRect.left;
+             const relTop = imgRect.top - viewportRect.top;
+
+             const hotLeft = relLeft + padLeft + (b.rx * renderedWidth);
+             const hotTop = relTop + padTop + (b.ry * renderedHeight);
+             const hotWidth = b.rw * renderedWidth;
+             const hotHeight = b.rh * renderedHeight;
+
+             hotspotEl.style.left = hotLeft + 'px';
+             hotspotEl.style.top = hotTop + 'px';
+             hotspotEl.style.width = hotWidth + 'px';
+             hotspotEl.style.height = hotHeight + 'px';
+
+             // Position Teaching Text Popup
+             const popupEl = document.getElementById('sim-popup');
+             if (popupEl) {
+                 const screenWidth = window.innerWidth;
+                 const screenHeight = window.innerHeight;
+                 
+                 // Smart lateral positioning: try to place right of the hotspot, otherwise left.
+                 if (hotLeft + hotWidth + 300 < screenWidth) {
+                     // Plenty of room on the right
+                     popupEl.style.left = (hotLeft + hotWidth) + 'px';
+                     popupEl.style.right = 'auto';
+                 } else {
+                     // Forced to pop up on the left
+                     popupEl.style.right = (screenWidth - hotLeft) + 'px';
+                     popupEl.style.left = 'auto';
+                 }
+
+                 // Vertical positioning
+                 if (hotTop + 200 > screenHeight) {
+                     popupEl.style.bottom = (screenHeight - hotTop - hotHeight) + 'px';
+                     popupEl.style.top = 'auto';
+                 } else {
+                     popupEl.style.top = hotTop + 'px';
+                     popupEl.style.bottom = 'auto';
+                 }
+
+                 // Animate in shortly after rendering
+                 setTimeout(() => {
+                     popupEl.style.opacity = '1';
+                     popupEl.style.transform = 'scale(1)';
+                 }, 150);
+             }
         };
 
         window.addEventListener('resize', positionHotspot);
 
-        // Core Click Logic
-        simViewport.addEventListener('click', (e) => {
+        const handleClick = (e) => {
+             // Prevent UI buttons routing clicks to the viewport canvas
+             if (e.target.closest('#sim-exit-btn') || e.target.closest('#sim-back-btn')) return;
+
              // Did they hit the hotspot?
              const clickX = e.clientX;
              const clickY = e.clientY;
@@ -153,22 +219,63 @@ export const renderSimulationPlayer = (course, user) => {
 
              if (clickX >= spotRect.left && clickX <= spotRect.right &&
                  clickY >= spotRect.top && clickY <= spotRect.bottom) {
+                 
                  // SUCCESS
+                 // Visual spark indicator over cursor
+                 const spark = document.createElement('div');
+                 spark.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                 spark.style.position = 'absolute';
+                 spark.style.left = (clickX - 14) + 'px';
+                 spark.style.top = (clickY - 14) + 'px';
+                 spark.style.zIndex = '99999';
+                 spark.style.filter = 'drop-shadow(0 0 8px rgba(16, 185, 129, 1))';
+                 spark.style.animation = 'simFadeIn 0.2s forwards';
+                 simContainer.appendChild(spark);
+
                  playSuccessChime();
                  window.removeEventListener('resize', positionHotspot);
+                 
                  setTimeout(() => {
                      currentSlide++;
                      renderSlide();
-                 }, 300);
+                 }, 400); // Wait for chime and checkmark spark
+                 simViewport.removeEventListener('click', handleClick); // Prevent dbl click
              } else {
                  // FAIL
                  playErrorBeep();
-                 // Flash red viewport
-                 const origBg = simViewport.style.background;
-                 simViewport.style.background = '#450a0a';
-                 setTimeout(() => { simViewport.style.background = origBg; }, 150);
+                 
+                 // Shake Animation
+                 simViewport.classList.remove('shake');
+                 void simViewport.offsetWidth; // trigger reflow
+                 simViewport.classList.add('shake');
+                 
+                 // Show simple toast locally
+                 const existingToast = document.getElementById('sim-toast');
+                 if (existingToast) existingToast.remove();
+
+                 const toast = document.createElement('div');
+                 toast.id = 'sim-toast';
+                 toast.innerText = 'Incorrect click area. Please review the instruction and pop-up context.';
+                 toast.style.position = 'absolute';
+                 toast.style.top = '80px';
+                 toast.style.left = '50%';
+                 toast.style.transform = 'translateX(-50%)';
+                 toast.style.background = 'rgba(239, 68, 68, 0.9)';
+                 toast.style.backdropFilter = 'blur(4px)';
+                 toast.style.color = 'white';
+                 toast.style.padding = '8px 20px';
+                 toast.style.borderRadius = '20px';
+                 toast.style.zIndex = '99999';
+                 toast.style.fontWeight = 'bold';
+                 toast.style.fontSize = '0.9rem';
+                 toast.style.animation = 'simFadeIn 0.2s forwards';
+                 simContainer.appendChild(toast);
+                 setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2500);
              }
-        });
+        };
+
+        // Core Click Logic - Note: Added to capture phase in case nested elements intercept
+        simViewport.addEventListener('click', handleClick);
 
         // Ensure fallback positioning just in case it's instantly cached
         if (imgEl.complete) {
@@ -198,7 +305,7 @@ export const renderSimulationPlayer = (course, user) => {
                     </div>
                     <h2 style="color: white; font-size: 2rem;">Simulation Complete!</h2>
                     <p style="color: var(--text-muted); margin-bottom: 2rem;">You've successfully completed the system walkthrough.</p>
-                    <button class="btn-primary" onclick="window.location.reload()" style="padding: 1rem 3rem;">Return to Dashboard</button>
+                    <button class="btn-primary" onclick="window.location.href='/?tab=guides'" style="padding: 1rem 3rem;">Return to Guides</button>
                 </div>
             </div>
             <style>body { overflow: hidden !important; }</style>

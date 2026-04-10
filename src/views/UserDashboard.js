@@ -1,7 +1,9 @@
 import { getCourses, getUserProgress } from '../api/courses'
 import { renderCoursePlayer } from './CoursePlayer'
-import { getCurrentUser } from '../api/auth'
 import { downloadCertificate } from '../utils/certificateGenerator'
+import { requestExtension } from '../api/notifications'
+import { getCurrentUser } from '../api/auth'
+import { fswAlert, fswConfirm } from '../utils/dialog'
 
 export const renderUserDashboard = (user) => {
     return `
@@ -18,6 +20,25 @@ export const renderUserDashboard = (user) => {
         </div>
 
         <div id="view-user-guides" style="display: none;"></div>
+        
+        <!-- Extension Request Modal -->
+        <div id="extension-modal" class="hidden" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="glass" style="padding: 2rem; border-radius: var(--radius-lg); width: 400px; max-width: 90vw;">
+                <h3 style="margin-top: 0;">Request Extension</h3>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Requested Deadline Date</label>
+                    <input type="date" id="ext-date" class="input-base" style="width: 100%;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Reason</label>
+                    <textarea id="ext-reason" class="input-base" rows="3" style="width: 100%; resize: vertical;" placeholder="Briefly explain why you need an extension..."></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button class="btn-ghost" id="ext-cancel">Cancel</button>
+                    <button class="btn-primary" id="ext-submit">Submit Request</button>
+                </div>
+            </div>
+        </div>
     </div>
   `
 }
@@ -58,11 +79,14 @@ export const initUserEvents = async () => {
             }
         })
 
-        const [courses, userProgress] = await Promise.all([
+        const [allCourses, userProgress] = await Promise.all([
             getCourses('user'),
             getUserProgress(user.id)
         ])
         
+        // Filter out Interactive Guides (System Simulations) from the main courses tab
+        const courses = allCourses.filter(c => c.content_json?.is_system_simulation !== true);
+
         const progressMap = {}
         if (userProgress) {
             userProgress.forEach(p => { progressMap[p.course_id] = p })
@@ -115,6 +139,12 @@ export const initUserEvents = async () => {
                     <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: ${isExpired ? '#ef4444' : 'white'};">${course.title}</h3>
                     <p style="margin: 0 0 1.5rem 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">${course.description}</p>
                     
+                    ${progress && progress.due_date && !isCompleted && !isExpired ? `
+                        <div style="margin-bottom: 1rem; text-align: right;">
+                             <button class="btn-ghost extension-btn" data-assignment-id="${progress.id}" style="padding: 4px 8px; font-size: 0.75rem; color: var(--text-muted);">Request Extension</button>
+                        </div>
+                    ` : ''}
+                    
                     <div style="display: flex; gap: 0.5rem; margin-top: auto;">
                         <button class="${isExpired ? 'btn-secondary' : 'btn-primary'}" style="flex: 1;" ${isExpired ? 'title="You must resit this course."' : ''}>${isExpired ? 'Resit Course' : (isCompleted ? 'Review Course' : 'Start Course')}</button>
                         ${isCompleted && progress.certificate_id && !isExpired ? `
@@ -133,14 +163,15 @@ export const initUserEvents = async () => {
             const card = document.getElementById(`course-card-${index}`)
             const dlBtn = document.getElementById(`dl-cert-${index}`)
             
-            card.addEventListener('click', (e) => {
+            card.addEventListener('click', async (e) => {
                 if (dlBtn && dlBtn.contains(e.target)) return;
+                if (e.target.classList.contains('extension-btn')) return;
                 
                 const progress = progressMap[course.id]
                 const isExpired = progress && progress.expires_at && new Date(progress.expires_at) < new Date()
                 
                 if (isExpired) {
-                    if (!confirm('Your certification for this course has expired. You must resit the course and complete the knowledge checks again. Proceed?')) {
+                    if (!await fswConfirm('Your certification for this course has expired. You must resit the course and complete the knowledge checks again. Proceed?')) {
                         return;
                     }
                 }
@@ -161,12 +192,54 @@ export const initUserEvents = async () => {
                             progress.certificate_id
                         )
                     } catch(err) {
-                        alert('Failed to download certificate.')
+                        await fswAlert('Failed to download certificate.')
                     } finally {
                         dlBtn.style.opacity = '1'
                     }
                 })
             }
+        })
+
+        // Extension Modal Logic
+        const extModal = document.getElementById('extension-modal')
+        const extCancel = document.getElementById('ext-cancel')
+        const extSubmit = document.getElementById('ext-submit')
+        let currentExtAssignmentId = null
+
+        document.querySelectorAll('.extension-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                currentExtAssignmentId = e.target.getAttribute('data-assignment-id')
+                extModal.style.display = 'flex'
+            })
+        })
+
+        extCancel?.addEventListener('click', () => {
+            extModal.style.display = 'none'
+            currentExtAssignmentId = null
+            document.getElementById('ext-date').value = ''
+            document.getElementById('ext-reason').value = ''
+        })
+
+        extSubmit?.addEventListener('click', async () => {
+             const dateVal = document.getElementById('ext-date').value
+             const reasonVal = document.getElementById('ext-reason').value
+             if (!dateVal || !reasonVal) {
+                 await fswAlert('Please provide both a date and a reason.')
+                 return
+             }
+             extSubmit.textContent = 'Submitting...'
+             extSubmit.disabled = true
+             try {
+                 await requestExtension(currentExtAssignmentId, dateVal, reasonVal)
+                 await fswAlert('Extension requested successfully!')
+                 extModal.style.display = 'none'
+             } catch (err) {
+                 await fswAlert(err.message || 'Failed to request extension')
+             } finally {
+                 extSubmit.textContent = 'Submit Request'
+                 extSubmit.disabled = false
+                 currentExtAssignmentId = null
+             }
         })
 
     } catch (error) {
@@ -178,5 +251,13 @@ export const initUserEvents = async () => {
                 <p>Please check your network connection or try logging in again.</p>
             </div>
         `
+    }
+
+    // Auto-routing based on query parameter
+    if (window.location.search.includes('tab=guides')) {
+        setTimeout(() => {
+            document.getElementById('tab-user-guides')?.click()
+            window.history.replaceState({}, '', '/')
+        }, 50)
     }
 }

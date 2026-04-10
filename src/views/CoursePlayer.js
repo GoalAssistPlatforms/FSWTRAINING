@@ -6,6 +6,7 @@ import { renderToneAnalyser } from './components/ToneAnalyser.js'
 import { renderDojoChat } from './components/DojoChat.js'
 import { renderRedline } from './components/Redline.js'
 import { renderDebate } from './components/Debate.js'
+import { fswAlert } from '../utils/dialog.js'
 import { renderDecisionSwipe } from './components/DecisionSwipe.js'
 import { renderCertificate, downloadCertificate } from './components/Certificate.js'
 import { renderSimulationPlayer } from './components/SimulationPlayer.js'
@@ -721,7 +722,7 @@ export const renderCoursePlayer = (course, user) => {
                     mount(); 
                 } catch(e) {
                     console.error('Failed to save inline edit:', e);
-                    alert("Failed to save changes.");
+                    await fswAlert("Failed to save changes.");
                     saveBtn.innerText = originalText;
                     saveBtn.disabled = false;
                 }
@@ -785,7 +786,7 @@ export const renderCoursePlayer = (course, user) => {
                     mount(); // Re-render
                 } catch(e) {
                     console.error('Failed to save quiz edit:', e);
-                    alert("Failed to save changes.");
+                    await fswAlert("Failed to save changes.");
                     saveQuizBtn.innerText = originalText;
                     saveQuizBtn.disabled = false;
                 }
@@ -852,7 +853,7 @@ export const renderCoursePlayer = (course, user) => {
                     mount(); // Re-render to load new audio
                 } catch(e) {
                     console.error('Failed to regenerate audio:', e);
-                    alert("Failed to regenerate audio. Check your connections or credits.");
+                    await fswAlert("Failed to regenerate audio. Check your connections or credits.");
                     saveAudioBtn.innerHTML = originalText;
                     saveAudioBtn.disabled = false;
                 }

@@ -4,6 +4,8 @@ import { getCurrentUser, signOut } from './api/auth'
 import { renderLogin } from './views/Login'
 import { renderManagerDashboard, initManagerEvents } from './views/ManagerDashboard'
 import { renderUserDashboard, initUserEvents } from './views/UserDashboard'
+import { renderNotificationBell, initNotificationEvents } from './views/components/NotificationBell'
+import { checkAndGenerateDeadlineNotifications } from './utils/deadlineChecker'
 
 const initApp = async () => {
   const app = document.querySelector('#app')
@@ -33,7 +35,7 @@ const initApp = async () => {
     if (!user) {
       renderLogin()
     } else {
-      renderMainLayout(user)
+      await renderMainLayout(user)
     }
   } catch (error) {
     console.error('Init error:', error)
@@ -41,15 +43,20 @@ const initApp = async () => {
   }
 }
 
-export const renderMainLayout = (user) => {
+export const renderMainLayout = async (user) => {
   const app = document.querySelector('#app')
+
+  // Run the deadline checker on startup for the user
+  await checkAndGenerateDeadlineNotifications();
+
+  const bellHtml = await renderNotificationBell();
 
   const dashboardContent = user.role === 'manager'
     ? renderManagerDashboard(user)
     : renderUserDashboard(user)
 
   app.innerHTML = `
-    <header class="glass" style="padding: 1rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(20, 30, 60, 0.6);">
+    <header class="glass" style="padding: 1rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(20, 30, 60, 0.6); position: relative; z-index: 1000;">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div class="logo-badge">
           <img src="/fsw_logo_brand.png" alt="FSW Logo" style="height: 48px; width: auto;">
@@ -60,6 +67,9 @@ export const renderMainLayout = (user) => {
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 1rem;">
+        <div id="notification-bell-placeholder">
+            ${bellHtml}
+        </div>
         <div style="text-align: right;">
            <div style="font-weight: 600;">${user.email}</div>
            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">${user.role}</div>
@@ -84,6 +94,17 @@ export const renderMainLayout = (user) => {
   } else {
     initUserEvents()
   }
+  
+  initNotificationEvents();
+
+  // Listen for refresh requests
+  window.addEventListener('fsw-reload-notifications', async () => {
+      const ph = document.getElementById('notification-bell-placeholder');
+      if (ph) {
+          ph.innerHTML = await renderNotificationBell();
+          initNotificationEvents();
+      }
+  });
 }
 
 initApp()

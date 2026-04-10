@@ -6,6 +6,7 @@
 
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import { fswAlert } from '../../utils/dialog.js'
 
 export const renderCertificate = (courseTitle, userName, completionDate) => {
     // Unique ID for the certificate container to target for download
@@ -122,6 +123,6 @@ export const downloadCertificate = async (elementId, fileName) => {
 
     } catch (err) {
         console.error('Certificate download failed:', err);
-        alert('Failed to generate certificate. Please try again.');
+        await fswAlert('Failed to generate certificate. Please try again.');
     }
 }

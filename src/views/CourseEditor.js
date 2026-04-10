@@ -1,6 +1,7 @@
 import { updateCourse } from '../api/courses'
 import EasyMDE from 'easymde'
 import 'easymde/dist/easymde.min.css'
+import { fswAlert, fswConfirm } from '../utils/dialog'
 
 export const renderCourseEditor = (course, user) => {
     let modules = typeof course.content_json === 'string'
@@ -48,7 +49,7 @@ export const renderCourseEditor = (course, user) => {
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
                         <label style="color: var(--text-muted);">Certificate Validity</label>
                     </div>
-                    <select id="edit-expiry" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; box-sizing: border-box;">
+                    <select id="edit-expiry" style="width: 100%;">
                         <option value="" ${course.expiry_months ? '' : 'selected'}>Never Expires</option>
                         <option value="6" ${course.expiry_months === 6 ? 'selected' : ''}>6 Months</option>
                         <option value="12" ${course.expiry_months === 12 ? 'selected' : ''}>1 Year</option>
@@ -173,7 +174,7 @@ export const renderCourseEditor = (course, user) => {
                 course.status = newStatus
                 render()
             } catch (e) {
-                alert('Failed to update status')
+                await fswAlert('Failed to update status')
             }
         })
 
@@ -187,7 +188,7 @@ export const renderCourseEditor = (course, user) => {
 
         // Thumbnail Regeneration (Placeholder logic for now as it requires api/images)
         document.getElementById('thumb-re-gen').addEventListener('click', async () => {
-            if (confirm('Regenerate image using AI? This will create a new thumbnail based on the course title.')) {
+            if (await fswConfirm('Regenerate image using AI? This will create a new thumbnail based on the course title.')) {
                 try {
                     const genBtn = document.getElementById('thumb-re-gen');
                     genBtn.innerText = 'Generating...';
@@ -201,10 +202,10 @@ export const renderCourseEditor = (course, user) => {
                         const img = document.querySelector('#thumb-preview img');
                         if (img) img.src = newUrl;
                         else document.getElementById('thumb-preview').innerHTML = `<img src="${newUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                        alert('New thumbnail generated! Remember to click "Save Changes" to persist.');
+                        await fswAlert('New thumbnail generated! Remember to click "Save Changes" to persist.');
                     }
                 } catch (e) {
-                    alert('Failed to regenerate thumbnail');
+                    await fswAlert('Failed to regenerate thumbnail');
                 } finally {
                     document.getElementById('thumb-re-gen').innerText = 'Regenerate with AI';
                     document.getElementById('thumb-re-gen').style.opacity = '0';
@@ -241,11 +242,11 @@ export const renderCourseEditor = (course, user) => {
             const expiry = expiryRaw ? parseInt(expiryRaw) : null
 
             if (title.length > 50) {
-                alert('Course Title must be 50 characters or fewer for a consistent look.');
+                await fswAlert('Course Title must be 50 characters or fewer for a consistent look.');
                 return;
             }
             if (desc.length > 140) {
-                alert('Short Description should be 140 characters or fewer.');
+                await fswAlert('Short Description should be 140 characters or fewer.');
                 return;
             }
 
@@ -259,10 +260,10 @@ export const renderCourseEditor = (course, user) => {
                     expiry_months: expiry,
                     updated_at: new Date()
                 })
-                alert('Changes saved successfully!')
+                await fswAlert('Changes saved successfully!')
             } catch (e) {
                 console.error(e)
-                alert('Failed to save changes')
+                await fswAlert('Failed to save changes')
             } finally {
                 document.getElementById('save-changes').innerText = 'Save Changes'
             }
@@ -314,12 +315,12 @@ export const renderCourseEditor = (course, user) => {
             })
         }
 
-        document.getElementById('add-resource-btn').addEventListener('click', () => {
+        document.getElementById('add-resource-btn').addEventListener('click', async () => {
             const title = resTitleInput.value.trim()
             const url = resUrlInput.value.trim()
 
             if (!title || !url) {
-                alert('Please enter both a title and a URL')
+                await fswAlert('Please enter both a title and a URL')
                 return
             }
 

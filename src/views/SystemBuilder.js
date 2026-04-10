@@ -1,5 +1,7 @@
-import { createCourse } from '../api/courses.js';
+import { createCourse, updateCourse } from '../api/courses.js';
+import { fetchSystemTags } from '../api/guides.js';
 import { supabase } from '../api/supabase.js';
+import { fswAlert, fswConfirm } from '../utils/dialog';
 
 export const renderSystemBuilder = () => {
     return `
@@ -7,23 +9,27 @@ export const renderSystemBuilder = () => {
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 1rem;">
             <div>
-                <h2 style="margin: 0; color: white;">Interactive System Builder</h2>
-                <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Upload screenshots and draw hotspots to simulate software interactions.</p>
+                <h2 style="margin: 0; color: white;">Interactive Guide Builder</h2>
+                <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Create a step-by-step interactive software guide.</p>
             </div>
             <div style="display: flex; gap: 1rem;">
                 <button id="sys-cancel-btn" class="btn-ghost">Cancel</button>
-                <button id="sys-save-btn" class="btn-primary" disabled>Publish Simulator</button>
+                <button id="sys-save-btn" class="btn-primary" disabled>Publish Guide</button>
             </div>
         </div>
 
         <!-- Meta Setup -->
         <div id="sys-meta-step" style="display: flex; gap: 2rem;">
             <div style="flex: 1;">
-                <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem;">Simulator Title</label>
+                <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem;">Interactive Guide Title</label>
                 <input type="text" id="sys-title" placeholder="e.g. Sage 50: Raising a Purchase Order" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
                 
                 <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem;">Short Description</label>
                 <textarea id="sys-desc" rows="3" placeholder="Briefly explain what the user will learn to do..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; resize: none;"></textarea>
+                
+                <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem;">Tags (comma separated)</label>
+                <input type="text" id="sys-tags" list="sys-tags-list" placeholder="e.g. Sage 50, Sales" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+                <datalist id="sys-tags-list"></datalist>
             </div>
 
             <div style="flex: 1;">
@@ -59,7 +65,10 @@ export const renderSystemBuilder = () => {
                         <h4 style="margin: 0 0 0.5rem 0;">Slide Properties</h4>
                         
                         <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.8rem;">Instruction for User:</label>
-                        <input type="text" id="sys-instruction" placeholder="e.g. Click 'Submit' to proceed" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white;">
+                        <input type="text" id="sys-instruction" placeholder="e.g. Click 'Submit' to proceed" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+
+                        <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.8rem;">Detailed Explanation (Floating Popup):</label>
+                        <textarea id="sys-teaching" rows="3" placeholder="Explain why they need to click this or what it does..." style="width: 100%; padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; resize: none; font-size: 0.9rem; font-family: inherit;"></textarea>
 
                         <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
                             <strong>Hotspot Data:</strong>
@@ -69,8 +78,9 @@ export const renderSystemBuilder = () => {
                         <button id="sys-clear-hotspot" class="btn-ghost" style="width: 100%; padding: 0.4rem; font-size: 0.8rem; margin-top: 1rem; color: #ef4444;">Clear Hotspot</button>
                     </div>
 
-                    <div style="margin-top: auto;">
-                        <button id="sys-next-slide-btn" class="btn-secondary" style="width: 100%;">Next Slide</button>
+                    <div style="margin-top: auto; display: flex; gap: 0.5rem;">
+                        <button id="sys-delete-slide-btn" class="btn-ghost" style="color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); padding: 0.8rem; border-radius: var(--radius-md);" title="Delete Slide">🗑️</button>
+                        <button id="sys-next-slide-btn" class="btn-secondary" style="flex: 1;">Next Slide</button>
                     </div>
                  </div>
 
@@ -82,21 +92,29 @@ export const renderSystemBuilder = () => {
     `;
 };
 
-export const initSystemBuilder = (onClose) => {
+export const initSystemBuilder = (onClose, existingGuide = null) => {
     const cancelBtn = document.getElementById('sys-cancel-btn');
     const saveBtn = document.getElementById('sys-save-btn');
     const titleInput = document.getElementById('sys-title');
     const descInput = document.getElementById('sys-desc');
+    const tagsInput = document.getElementById('sys-tags');
+    const tagsList = document.getElementById('sys-tags-list');
     const uploadZone = document.getElementById('sys-upload-zone');
     const fileInput = document.getElementById('sys-files');
 
     const metaStep = document.getElementById('sys-meta-step');
     const editorStep = document.getElementById('sys-editor-step');
 
+    // Populate Datalist
+    fetchSystemTags().then(tags => {
+        tagsList.innerHTML = tags.map(t => `<option value="${t}"></option>`).join('');
+    });
+
     const slideNav = document.getElementById('sys-slide-nav');
     const canvas = document.getElementById('sys-canvas');
     const ctx = canvas.getContext('2d');
     const instructionInput = document.getElementById('sys-instruction');
+    const teachingInput = document.getElementById('sys-teaching');
     const hotspotDataText = document.getElementById('sys-hotspot-data');
     const clearHotspotBtn = document.getElementById('sys-clear-hotspot');
     const nextSlideBtn = document.getElementById('sys-next-slide-btn');
@@ -107,6 +125,7 @@ export const initSystemBuilder = (onClose) => {
     // slide: { id, imageUrl, imageObj, instruction, box: { x, y, width, height, rw, rh } }
     let slides = [];
     let activeSlideIndex = 0;
+    let insertIndex = -1;
 
     // Canvas drawing state
     let isDrawing = false;
@@ -118,60 +137,151 @@ export const initSystemBuilder = (onClose) => {
 
     uploadZone.addEventListener('click', () => fileInput.click());
 
+    const loadImageObject = (src) => {
+        return new Promise((resolve) => {
+            if (!src) return resolve(null);
+            const img = new Image();
+            let resolved = false;
+            const finish = (result) => {
+                if (resolved) return;
+                resolved = true;
+                resolve(result);
+            };
+            img.crossOrigin = "anonymous";
+            img.onload = () => finish(img);
+            img.onerror = () => {
+                console.error("Failed to load image", src);
+                finish(null);
+            };
+            img.src = src;
+            setTimeout(() => finish(null), 8000); // 8s timeout
+        });
+    };
+
+    // PRE-POPULATE IF EDITING
+    if (existingGuide) {
+        titleInput.value = existingGuide.title || '';
+        descInput.value = existingGuide.description || '';
+        tagsInput.value = (existingGuide.tags || []).join(', ');
+        
+        const loadExisting = async () => {
+             try {
+                 let cJson = existingGuide.content_json;
+                 if (typeof cJson === 'string') {
+                     try { cJson = JSON.parse(cJson); } catch (e) {}
+                 }
+                 const jsonSlides = cJson?.slides || [];
+                 
+                 const loadedSlides = await Promise.all(jsonSlides.map(async (s) => {
+                     if (!s) return null;
+                     const img = await loadImageObject(s.imageUrl);
+                     return {
+                         id: s.id || `slide_${Math.random()}`,
+                         imageUrl: s.imageUrl || '',
+                         originalImage: img,
+                         instruction: s.instruction || '',
+                         teachingText: s.teachingText || '',
+                         box: s.box ? { ...s.box } : null
+                     };
+                 }));
+                 slides = loadedSlides.filter(Boolean);
+                 
+                 if (slides.length > 0) {
+                     editorStep.style.display = 'flex';
+                     editorStep.style.borderTop = '1px solid var(--glass-border)';
+                     editorStep.style.paddingTop = '1.5rem';
+                     saveBtn.disabled = false;
+                     renderNav();
+                     setActiveSlide(0);
+                 } else {
+                     console.warn("No slides found in the existing guide.");
+                 }
+             } catch (err) {
+                 console.error("Error in loadExisting:", err);
+                 alert("Could not load previous slides: " + (err.message || err.toString()));
+             }
+        };
+        loadExisting();
+    }
+
     // 1. Loading Files
     fileInput.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
-        rawFiles = files;
-        slides = [];
-
-        // Preload images into objects
+        const newSlides = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const url = URL.createObjectURL(file);
             const img = await loadImageObject(url);
-            slides.push({
-                id: `slide_${i}`,
+            newSlides.push({
+                id: `slide_${Date.now()}_${i}`,
                 file: file,
                 imageUrl: url,
                 originalImage: img,
-                instruction: `Click the target on screen ${i+1}`,
+                instruction: `Click the target on this screen`,
+                teachingText: '',
                 box: null // No hotspot yet
             });
         }
 
-        // Switch purely to editor mode
-        // Note: Keep title inputs in DOM but hide meta if wanted. 
-        // We will just slide the editor in.
-        metaStep.style.display = 'none';
+        if (insertIndex === -1) {
+            slides.push(...newSlides);
+        } else {
+            slides.splice(insertIndex, 0, ...newSlides);
+            activeSlideIndex = insertIndex;
+            insertIndex = -1; // reset
+        }
+
+        fileInput.value = ''; // Clean input so same file can trigger again if needed
+
+        // Show editor mode
         editorStep.style.display = 'flex';
+        editorStep.style.borderTop = '1px solid var(--glass-border)';
+        editorStep.style.paddingTop = '1.5rem';
         
-        saveBtn.disabled = false; // We can save now (technically)
+        saveBtn.disabled = false; // We can save now
 
         renderNav();
-        setActiveSlide(0);
+        setActiveSlide(activeSlideIndex);
     });
-
-    const loadImageObject = (src) => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.src = src;
-        });
-    }
 
     // 2. Navigation
     const renderNav = () => {
-        slideNav.innerHTML = slides.map((s, i) => `
-            <div data-idx="${i}" class="sys-thumb ${i === activeSlideIndex ? 'active' : ''}" style="width: 80px; height: 50px; background-image: url(${s.imageUrl}); background-size: cover; background-position: center; border-radius: 4px; cursor: pointer; border: 2px solid ${i === activeSlideIndex ? 'var(--primary)' : 'transparent'}; opacity: ${i === activeSlideIndex ? '1' : '0.5'}; transition: all 0.2s; position: flex-shrink: 0;">
-                ${s.box ? `<div style="position: absolute; bottom: 0; right: 0; background: #10b981; width: 10px; height: 10px; border-radius: 50%;"></div>` : ''}
-            </div>
-        `).join('');
+        slideNav.innerHTML = '';
+        
+        // Initial insert button
+        const startPlus = document.createElement('button');
+        startPlus.innerHTML = '+';
+        startPlus.style = `background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 50px; flex-shrink: 0; font-size: 1.2rem; padding: 0 10px; transition: all 0.2s;`;
+        startPlus.onclick = () => { insertIndex = 0; fileInput.click(); };
+        startPlus.onmouseenter = () => startPlus.style.background = 'rgba(255,255,255,0.2)';
+        startPlus.onmouseleave = () => startPlus.style.background = 'rgba(255,255,255,0.05)';
+        slideNav.appendChild(startPlus);
 
-        document.querySelectorAll('.sys-thumb').forEach(t => {
-            t.style.position = 'relative'; // Ensure relative for badge
-            t.addEventListener('click', () => setActiveSlide(parseInt(t.dataset.idx, 10)));
+        slides.forEach((s, idx) => {
+            const thumb = document.createElement('div');
+            thumb.className = `sys-thumb ${idx === activeSlideIndex ? 'active' : ''}`;
+            thumb.style = `width: 80px; height: 50px; background-image: url(${s.imageUrl}); background-size: cover; background-position: center; border-radius: 4px; cursor: pointer; border: 2px solid ${idx === activeSlideIndex ? 'var(--primary)' : 'transparent'}; opacity: ${idx === activeSlideIndex ? '1' : '0.5'}; transition: all 0.2s; flex-shrink: 0; position: relative;`;
+            if (s.box) {
+                thumb.innerHTML = `<div style="position: absolute; bottom: 0; right: 0; background: #10b981; width: 10px; height: 10px; border-radius: 50%;"></div>`;
+            }
+            thumb.onclick = async () => {
+                if (idx !== activeSlideIndex && !slides[activeSlideIndex].box) {
+                    const proceed = await fswConfirm("You haven't drawn a click area for this slide. Are you sure you want to move on?");
+                    if (!proceed) return;
+                }
+                setActiveSlide(idx);
+            };
+            slideNav.appendChild(thumb);
+
+            const plusBtn = document.createElement('button');
+            plusBtn.innerHTML = '+';
+            plusBtn.style = `background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 50px; flex-shrink: 0; font-size: 1.2rem; padding: 0 10px; transition: all 0.2s;`;
+            plusBtn.onclick = () => { insertIndex = idx + 1; fileInput.click(); };
+            plusBtn.onmouseenter = () => plusBtn.style.background = 'rgba(255,255,255,0.2)';
+            plusBtn.onmouseleave = () => plusBtn.style.background = 'rgba(255,255,255,0.05)';
+            slideNav.appendChild(plusBtn);
         });
     };
 
@@ -180,6 +290,7 @@ export const initSystemBuilder = (onClose) => {
         const slide = slides[index];
         
         instructionInput.value = slide.instruction || '';
+        teachingInput.value = slide.teachingText || '';
         tempBox = slide.box ? { ...slide.box } : null;
 
         updateHotspotText();
@@ -191,6 +302,10 @@ export const initSystemBuilder = (onClose) => {
         slides[activeSlideIndex].instruction = e.target.value;
     });
 
+    teachingInput.addEventListener('input', (e) => {
+        slides[activeSlideIndex].teachingText = e.target.value;
+    });
+
     clearHotspotBtn.addEventListener('click', () => {
         slides[activeSlideIndex].box = null;
         tempBox = null;
@@ -199,18 +314,36 @@ export const initSystemBuilder = (onClose) => {
         renderNav(); // Update badge
     })
 
-    nextSlideBtn.addEventListener('click', () => {
+    nextSlideBtn.addEventListener('click', async () => {
         if (activeSlideIndex < slides.length - 1) {
+            if (!slides[activeSlideIndex].box) {
+                const proceed = await fswConfirm("You haven't drawn a click area for this slide. Are you sure you want to move on?");
+                if (!proceed) return;
+            }
             setActiveSlide(activeSlideIndex + 1);
         } else {
-            alert('You are on the final slide! If all target hotspots are drawn, hit Publish Simulator.');
+            await fswAlert('You are on the final slide! If all target hotspots are drawn, hit Publish Guide up top.');
+        }
+    });
+
+    const deleteSlideBtn = document.getElementById('sys-delete-slide-btn');
+    deleteSlideBtn.addEventListener('click', async () => {
+        if (slides.length <= 1) {
+            await fswAlert("You cannot delete the only slide. Cancel the builder instead.");
+            return;
+        }
+        if (await fswConfirm("Delete this slide from the sequence?")) {
+            slides.splice(activeSlideIndex, 1);
+            activeSlideIndex = Math.max(0, activeSlideIndex - 1);
+            renderNav();
+            setActiveSlide(activeSlideIndex);
         }
     });
 
     // 3. Canvas Interactions
     const resizeAndDrawCanvas = () => {
         const slide = slides[activeSlideIndex];
-        if (!slide) return;
+        if (!slide || !slide.originalImage) return;
         const img = slide.originalImage;
         
         // We want the canvas's internal resolution to perfectly match the raw image for accurate ratios
@@ -223,6 +356,8 @@ export const initSystemBuilder = (onClose) => {
     const renderCanvas = () => {
         const slide = slides[activeSlideIndex];
         const img = slide.originalImage;
+        
+        if (!img) return;
 
         // Clear and draw image base
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -315,12 +450,15 @@ export const initSystemBuilder = (onClose) => {
     // 4. Save and Upload
     saveBtn.addEventListener('click', async () => {
         const title = titleInput.value.trim();
-        if (!title) return alert('Please enter a Simulator Title');
+        if (!title) {
+            await fswAlert('Please enter a Simulator Title');
+            return;
+        }
         
         // Validate all have boxes
         const missing = slides.findIndex(s => !s.box);
         if (missing > -1) {
-            alert(`Slide ${missing + 1} is missing a hotspot! Please draw one before publishing.`);
+            await fswAlert(`Slide ${missing + 1} is missing a hotspot! Please draw one before publishing.`);
             setActiveSlide(missing);
             return;
         }
@@ -332,55 +470,64 @@ export const initSystemBuilder = (onClose) => {
             const { data: userAuth } = await supabase.auth.getUser();
 
             // 1. Upload Images to Storage
-            const finalContent = {
-                is_system_simulation: true,
-                slides: []
-            };
-
-            for (let i = 0; i < slides.length; i++) {
-                const s = slides[i];
-                const fileName = `sim_${Date.now()}_${i}_${s.file.name}`;
-                
-                // Usually we'd use a 'simulations' bucket, but 'courses' assets works too. Assuming we just use public thumbnail bucket
-                // For safety, let's assume 'course_thumbnails' exists from earlier or we can use the same bucket.
-                const { error: uploadError } = await supabase.storage
-                    .from('guides') // re-using guides public bucket for files
-                    .upload(fileName, s.file);
-                    
-                if (uploadError) throw new Error("File upload failed: " + uploadError.message);
-                
-                const { data: publicUrlData } = supabase.storage.from('guides').getPublicUrl(fileName);
-
-                finalContent.slides.push({
-                    imageUrl: publicUrlData.publicUrl,
+            // 1. Upload Images to Storage
+            const finalSlides = [];
+            for (let s of slides) {
+                let sUrl = s.imageUrl;
+                if (s.file) { // Needs upload
+                    saveBtn.innerText = `Uploading...`;
+                    const fileName = `sim_${Date.now()}_${s.file.name}`;
+                    const { error: uploadError } = await supabase.storage.from('guides').upload(fileName, s.file);
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = supabase.storage.from('guides').getPublicUrl(fileName);
+                    sUrl = publicUrl;
+                }
+                finalSlides.push({
+                    id: s.id,
+                    imageUrl: sUrl,
                     instruction: s.instruction,
-                    box: {
-                        rx: s.box.rx,  // relative X
-                        ry: s.box.ry,  // relative Y
-                        rw: s.box.rw,  // relative Width
-                        rh: s.box.rh   // relative Height
-                    }
+                    teachingText: s.teachingText,
+                    box: s.box
                 });
             }
-
+            
             // 2. Create Course Database Entry
-            const thumbnail_url = finalContent.slides[0].imageUrl; // Use slide 1 as thumbnail
+            const thumbnail_url = finalSlides[0].imageUrl; // Use slide 1 as thumbnail
+            const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
 
-            await createCourse({
-                title: title,
-                description: descInput.value,
-                thumbnail_url: thumbnail_url,
-                content_json: finalContent,
-                status: 'live' // Make it live directly for testing
-            });
+            const finalContent = {
+                is_system_simulation: true,
+                slides: finalSlides
+            };
 
-            alert('Simulator Published Successfully!');
-            onClose();
+            if (existingGuide) {
+                await updateCourse(existingGuide.id, {
+                    title: title,
+                    description: descInput.value,
+                    thumbnail_url: thumbnail_url,
+                    tags: tags,
+                    content_json: finalContent
+                });
+            } else {
+                await createCourse({
+                    title: title,
+                    description: descInput.value,
+                    thumbnail_url: thumbnail_url,
+                    tags: tags,
+                    content_json: finalContent,
+                    status: 'live' // Make it live directly for testing
+                });
+            }
+            
+            saveBtn.innerText = 'Success!';
+            // Delay 1 sec then close
+            setTimeout(() => {
+                onClose();
+            }, 1000);
 
         } catch (e) {
-            console.error(e);
-            alert("Error saving: " + e.message);
-            saveBtn.innerText = 'Publish Simulator';
+            console.error('Save failed:', e);
+            saveBtn.innerText = 'Error';
             saveBtn.disabled = false;
         }
     });

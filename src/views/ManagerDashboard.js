@@ -1,11 +1,13 @@
 import { generateCourseContent } from '../api/ai'
 import { createCourse, getCourses, deleteCourse } from '../api/courses'
-import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse } from '../api/manager'
+import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment } from '../api/manager'
 import { getTeamCompletionRates, exportTeamDataCSV } from '../api/analytics'
 import { renderCourseEditor } from './CourseEditor'
 import { renderCoursePlayer } from './CoursePlayer'
 import { getCurrentUser } from '../api/auth'
 import { downloadCertificate } from '../utils/certificateGenerator'
+import { fetchPendingExtensions, resolveExtension, sendNudge } from '../api/notifications'
+import { fswAlert, fswConfirm, fswPrompt } from '../utils/dialog'
 import * as pdfjsLib from 'pdfjs-dist'
 
 // Set worker source for pdf.js
@@ -46,6 +48,15 @@ export const renderManagerDashboard = (user) => {
           <!-- Metrics injected here via JS -->
         </div>
 
+        <!-- Manager Inbox / Action Items -->
+        <div id="manager-inbox-container" style="display: none; margin-bottom: 2rem;">
+            <h3 style="margin-top: 0; color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                Action Items
+            </h3>
+            <div id="manager-inbox-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        </div>
+
         <!-- Unified Control Toolbar -->
         <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05);">
           <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 300px;">
@@ -54,10 +65,13 @@ export const renderManagerDashboard = (user) => {
               <input type="text" id="user-search" placeholder="Search team by email..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; transition: border-color 0.2s;">
             </div>
             
-            <select id="user-status-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; cursor: pointer;">
+            <select id="user-status-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; margin-right: 0.5rem;">
                 <option value="all">All Members</option>
                 <option value="overdue">Has Overdue Courses</option>
                 <option value="in-progress">In Progress</option>
+            </select>
+            <select id="department-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                <option value="all">All Departments</option>
             </select>
           </div>
           
@@ -125,6 +139,13 @@ export const renderManagerDashboard = (user) => {
         </select>
       </div>
 
+      <div id="assign-department-container" style="margin-bottom: 1rem; display: none;">
+        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Target Department</label>
+        <select id="assign-department-select" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white;">
+           <option value="all">Entire Team</option>
+        </select>
+      </div>
+
       <div style="margin-bottom: 1rem;">
         <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Due Date (Optional)</label>
         <input type="date" id="assign-due-date" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; color-scheme: dark;">
@@ -164,13 +185,42 @@ export const initManagerEvents = async () => {
   const teamList = document.getElementById('team-list')
   const loadingTeam = document.getElementById('loading-team-stats')
   const teamMetrics = document.getElementById('team-metrics')
+  const inboxList = document.getElementById('manager-inbox-list')
   const userSearch = document.getElementById('user-search')
   const userStatusFilter = document.getElementById('user-status-filter')
+  const departmentFilter = document.getElementById('department-filter')
   const exportCsvBtn = document.getElementById('export-csv-btn')
 
   const user = await getCurrentUser()
 
   let currentTeamStats = [] // Store for filtering
+  let selectedUserIds = new Set()
+
+  const updateBulkAssignBtnState = () => {
+    const bulkAssignBtn = document.getElementById('bulk-assign-btn')
+    if (!bulkAssignBtn) return
+    if (selectedUserIds.size > 0) {
+      bulkAssignBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+        Assign to Selected (${selectedUserIds.size})
+      `
+    } else {
+      bulkAssignBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+        Bulk Assign
+      `
+    }
+  }
+
+  // Handle checkbox toggles for team members
+  teamList?.addEventListener('change', (e) => {
+    if (e.target.classList.contains('user-select-cb')) {
+      const userId = e.target.dataset.userid
+      if (e.target.checked) selectedUserIds.add(userId)
+      else selectedUserIds.delete(userId)
+      updateBulkAssignBtnState()
+    }
+  })
 
   // Event Delegation for dynamically rendered team list buttons
   teamList?.addEventListener('click', async (e) => {
@@ -185,7 +235,7 @@ export const initManagerEvents = async () => {
     if (revokeBtn) {
       const userId = revokeBtn.dataset.userid
       const courseId = revokeBtn.dataset.courseid
-      if (confirm('Are you sure you want to revoke this course assignment?')) {
+      if (await fswConfirm('Are you sure you want to revoke this course assignment?')) {
         try {
           revokeBtn.innerText = 'Revoking...'
           revokeBtn.disabled = true
@@ -193,7 +243,7 @@ export const initManagerEvents = async () => {
           loadTeamStats() // refresh ui
         } catch (error) {
           console.error(error)
-          alert('Failed to revoke assignment.')
+          await fswAlert('Failed to revoke assignment.')
           revokeBtn.innerText = 'Revoke'
           revokeBtn.disabled = false
         }
@@ -205,7 +255,7 @@ export const initManagerEvents = async () => {
     if (resitBtn) {
       const userId = resitBtn.dataset.userid
       const courseId = resitBtn.dataset.courseid
-      if (confirm('Are you sure you want to force this user to resit the course? This will completely reset their progress and previous completion date.')) {
+      if (await fswConfirm('Are you sure you want to force this user to resit the course? This will completely reset their progress and previous completion date.')) {
         try {
           resitBtn.innerText = 'Resetting...'
           resitBtn.disabled = true
@@ -213,7 +263,7 @@ export const initManagerEvents = async () => {
           loadTeamStats() // refresh ui
         } catch (error) {
           console.error(error)
-          alert('Failed to force resit.')
+          await fswAlert('Failed to force resit.')
           resitBtn.innerText = 'Force Resit'
           resitBtn.disabled = false
         }
@@ -228,20 +278,161 @@ export const initManagerEvents = async () => {
       try {
         await downloadCertificate(useremail, coursetitle, issuedate, expirydate !== 'null' ? expirydate : null, certid)
       } catch (err) {
-        alert('Could not generate PDF')
+        await fswAlert('Could not generate PDF')
       } finally {
         certBtn.innerText = 'Download Cert'
       }
     }
+
+    // 6. Edit Department
+    if (e.target.closest('.edit-dept-btn')) {
+      const btn = e.target.closest('.edit-dept-btn');
+      const userId = btn.dataset.userid;
+      const currentDept = btn.dataset.dept || '';
+      const newDept = await fswPrompt('Enter department name:', currentDept);
+      if (newDept !== null) {
+        try {
+          btn.innerText = '...';
+          await updateUserDepartment(userId, newDept);
+          loadTeamStats();
+        } catch (err) {
+          await fswAlert('Failed to update department.');
+          btn.innerText = currentDept || '+ Add Dept';
+        }
+      }
+    }
+
+    // 5. Send Nudge
+    const nudgeBtn = e.target.closest('.nudge-user-btn')
+    if (nudgeBtn) {
+        const userId = nudgeBtn.dataset.userid
+        if (await fswConfirm('Send a notification nudge to this user regarding their overdue/upcoming courses?')) {
+            try {
+                nudgeBtn.innerText = 'Sending...'
+                nudgeBtn.disabled = true
+                await sendNudge(userId, null, 'Please review your assigned courses. You have deadlines approaching or overdue.')
+                await fswAlert('Nudge sent successfully!')
+            } catch (err) {
+                await fswAlert('Failed to send nudge.')
+            } finally {
+                nudgeBtn.innerText = 'Nudge'
+                nudgeBtn.disabled = false
+            }
+        }
+    }
   })
+
+  // Inbox Delegation Handler
+  inboxList?.addEventListener('click', async (e) => {
+      const approveBtn = e.target.closest('.approve-ext-btn');
+      const denyBtn = e.target.closest('.deny-ext-btn');
+
+      if (approveBtn || denyBtn) {
+          const id = (approveBtn || denyBtn).dataset.id;
+          const status = approveBtn ? 'approved' : 'denied';
+          const newDate = approveBtn ? approveBtn.dataset.date : null;
+          const reply = await fswPrompt('Optional reply to the user:', '');
+          
+          if (reply !== null) {
+               try {
+                  const btn = (approveBtn || denyBtn);
+                  const origTxt = btn.innerText;
+                  btn.innerText = 'Working...';
+                  btn.disabled = true;
+                  
+                  await resolveExtension(id, status, newDate, reply);
+                  loadTeamStats(); // Reload to remove from inbox and update metrics
+               } catch (err) {
+                  await fswAlert("Error resolving request.");
+               }
+          }
+      }
+  });
+
+  function updateTopMetrics(statsList) {
+      if (!teamMetrics) return;
+      let totalAssigned = 0;
+      let totalCompleted = 0;
+      let totalOverdue = 0;
+
+      statsList.forEach(member => {
+          totalAssigned += member.totalAssigned;
+          totalCompleted += member.completed;
+          if (member.progressData) {
+              member.progressData.forEach(p => {
+                  if (p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed') {
+                      totalOverdue++;
+                  }
+              })
+          }
+      });
+      
+      const overallCompletionPercent = totalAssigned > 0 
+          ? Math.round((totalCompleted / totalAssigned) * 100) 
+          : 0;
+
+      const totalMembers = statsList.length;
+
+      const radius = 30;
+      const circumference = 2 * Math.PI * radius;
+      const offset = circumference - (overallCompletionPercent / 100) * circumference;
+
+      teamMetrics.innerHTML = `
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(16, 185, 129, 0.3); box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);">
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Overall Completion</div>
+              <div style="font-size: 2rem; font-weight: bold; color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);">${overallCompletionPercent}%</div>
+            </div>
+            <div style="position: relative; width: 70px; height: 70px;">
+              <svg width="70" height="70" style="transform: rotate(-90deg);">
+                <circle cx="35" cy="35" r="${radius}" fill="transparent" stroke="rgba(255,255,255,0.1)" stroke-width="6" />
+                <circle cx="35" cy="35" r="${radius}" fill="transparent" stroke="#10b981" stroke-width="6" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transition: stroke-dashoffset 1s ease-out; filter: drop-shadow(0 0 4px rgba(16,185,129,0.8));" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(18, 142, 205, 0.3); box-shadow: inset 0 0 20px rgba(18, 142, 205, 0.05);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(18, 142, 205, 0.1); display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#128ecd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(18,142,205,0.8));"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Members</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${totalMembers}</div>
+            </div>
+          </div>
+          
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(245, 158, 11, 0.3); box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.05);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(245,158,11,0.8));"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Assigned</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${totalAssigned}</div>
+            </div>
+          </div>
+
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05);">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(239,68,68,0.8));"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div>
+              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Overdue</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);">${totalOverdue}</div>
+            </div>
+          </div>
+      `;
+  }
 
   const applyTeamFilters = () => {
     const query = userSearch ? userSearch.value.toLowerCase() : ''
     const statusVal = userStatusFilter ? userStatusFilter.value : 'all'
+    const deptVal = departmentFilter ? departmentFilter.value : 'all'
 
     const filteredStats = currentTeamStats.filter(s => {
       // 1. Text Search
       if (!s.email.toLowerCase().includes(query)) return false
+
+      if (deptVal !== 'all' && s.department !== deptVal) return false
 
       // 2. Status Filter
       if (statusVal === 'overdue') {
@@ -259,10 +450,12 @@ export const initManagerEvents = async () => {
     })
 
     renderTeamList(filteredStats)
+    updateTopMetrics(filteredStats)
   }
 
   userSearch?.addEventListener('input', applyTeamFilters)
   userStatusFilter?.addEventListener('change', applyTeamFilters)
+  departmentFilter?.addEventListener('change', applyTeamFilters)
   
   exportCsvBtn?.addEventListener('click', async () => {
      exportCsvBtn.innerText = 'Exporting...'
@@ -317,7 +510,10 @@ export const initManagerEvents = async () => {
 
     try {
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const rates = await getTeamCompletionRates()
+      const [rates, pendingExtensions] = await Promise.all([
+         getTeamCompletionRates(),
+         fetchPendingExtensions()
+      ]);
       loadingTeam.style.display = 'none'
 
       if (!rates || !rates.memberStats || rates.memberStats.length === 0) {
@@ -329,7 +525,16 @@ export const initManagerEvents = async () => {
       
       const totalMembers = rates.memberStats.length
 
-      // Render Visual Metrics
+      // Populate Department Filter
+      if (departmentFilter) {
+          const currentDeptVal = departmentFilter.value;
+          const depts = new Set(rates.memberStats.map(s => s.department).filter(Boolean));
+          departmentFilter.innerHTML = `<option value="all">All Departments</option>` + 
+            Array.from(depts).map(d => `<option value="${d}">${d}</option>`).join('');
+          
+          if (depts.has(currentDeptVal)) departmentFilter.value = currentDeptVal;
+      }
+      /*
       if (teamMetrics) {
         const radius = 30;
         const circumference = 2 * Math.PI * radius;
@@ -380,6 +585,31 @@ export const initManagerEvents = async () => {
           </div>
         `
       }
+      
+      */
+      // Render extensions inbox
+      const inboxCont = document.getElementById('manager-inbox-container');
+      if (inboxCont && inboxList) {
+          if (pendingExtensions && pendingExtensions.length > 0) {
+              inboxCont.style.display = 'block';
+              inboxList.innerHTML = pendingExtensions.map(ext => `
+                  <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #f59e0b; display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                          <div style="font-weight: bold;">${ext.user?.email || 'A user'} requested an extension</div>
+                          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Course: ${ext.course_assignment?.course?.title} (Originally due: ${new Date(ext.course_assignment?.due_date).toLocaleDateString()})</div>
+                          <div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; font-size: 0.9rem; font-style: italic;">"${ext.reason_text}"</div>
+                          <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #10b981;">Requested new date: ${new Date(ext.requested_date).toLocaleDateString()}</div>
+                      </div>
+                      <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                          <button class="btn-primary approve-ext-btn" data-id="${ext.id}" data-date="${ext.requested_date}" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Approve</button>
+                          <button class="btn-ghost deny-ext-btn" data-id="${ext.id}" style="padding: 0.4rem 1rem; font-size: 0.8rem; color: #ef4444;">Deny</button>
+                      </div>
+                  </div>
+              `).join('');
+          } else {
+              inboxCont.style.display = 'none';
+          }
+      }
 
       // Show bulk assign if members exist
       const bulkAssignBtn = document.getElementById('bulk-assign-btn')
@@ -417,9 +647,18 @@ export const initManagerEvents = async () => {
         return `
         <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 1rem; border-left: 4px solid ${completionPct === 100 ? '#10b981' : (overdueCount > 0 ? '#ef4444' : 'var(--glass-border)')};">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div style="flex: 1;">
-              <h4 style="margin: 0 0 0.5rem 0;">${member.email}</h4>
-              <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${member.team_role || 'member'}</span>
+            <div style="flex: 1; display: flex; gap: 0.75rem;">
+              <div style="padding-top: 0.2rem;">
+                <input type="checkbox" class="user-select-cb" data-userid="${member.id}" ${selectedUserIds.has(member.id) ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
+              </div>
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem 0;">${member.email}</h4>
+              <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${member.team_role || 'member'}</span>
+                <button class="edit-dept-btn" data-userid="${member.id}" data-dept="${member.department || ''}" style="background: ${member.department ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${member.department ? '#10b981' : 'var(--glass-border)'}; color: ${member.department ? '#10b981' : 'var(--text-muted)'}; font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                  ${member.department || '+ Dept'}
+                </button>
+              </div>
               
               <div style="margin-top: 1.5rem; width: 80%;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
@@ -429,6 +668,7 @@ export const initManagerEvents = async () => {
                 <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
                   <div style="height: 100%; width: ${completionPct}%; background: ${completionPct === 100 ? '#10b981' : 'var(--primary)'}; border-radius: 3px; transition: width 0.5s ease-out;"></div>
                 </div>
+              </div>
               </div>
             </div>
             
@@ -452,7 +692,11 @@ export const initManagerEvents = async () => {
             </div>
             
             <div>
-               <button class="btn-secondary assign-user-btn" data-userid="${member.id}" data-email="${member.email}" style="display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 10px rgba(18,142,205,0.2);">
+               <button class="btn-ghost nudge-user-btn" data-userid="${member.id}" style="display: flex; align-items: center; gap: 0.5rem; color: #f59e0b; margin-bottom: 0.5rem; width: 100%; justify-content: center;">
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                 Nudge
+               </button>
+               <button class="btn-secondary assign-user-btn" data-userid="${member.id}" data-email="${member.email}" style="display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 10px rgba(18,142,205,0.2); width: 100%; justify-content: center;">
                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                  Assign Course
                </button>
@@ -540,9 +784,28 @@ export const initManagerEvents = async () => {
     overlay.style.display = 'block'
   }
 
+  const assignDepartmentContainer = document.getElementById('assign-department-container')
+  const assignDepartmentSelect = document.getElementById('assign-department-select')
+
   const openBulkAssignModal = () => {
-    currentAssignTarget = { type: 'bulk' }
-    assignModalTitle.innerText = `Bulk Assign to Team`
+    assignDepartmentContainer.style.display = 'none'
+    if (selectedUserIds.size > 0) {
+      currentAssignTarget = { type: 'selected', ids: Array.from(selectedUserIds) }
+      assignModalTitle.innerText = `Assign to ${selectedUserIds.size} Selected Users`
+    } else {
+      currentAssignTarget = { type: 'bulk' }
+      assignModalTitle.innerText = `Bulk Assign to Team`
+      assignModalTitle.innerText = `Bulk Assign to Team`
+      assignDepartmentContainer.style.display = 'block'
+      
+      const depts = new Set(currentTeamStats.map(s => s.department).filter(Boolean));
+      assignDepartmentSelect.innerHTML = `<option value="all">Entire Team</option>` + 
+          Array.from(depts).map(d => `<option value="${d}">${d}</option>`).join('');
+      const currentDeptFilter = document.getElementById('department-filter')?.value;
+      if (currentDeptFilter && currentDeptFilter !== 'all') {
+         assignDepartmentSelect.value = currentDeptFilter;
+      }
+    }
     
     assignCourseSelect.value = ''
     assignDueDate.value = ''
@@ -567,7 +830,7 @@ export const initManagerEvents = async () => {
 
   confirmAssignBtn?.addEventListener('click', async () => {
     const courseId = assignCourseSelect.value
-    if (!courseId) return alert('Please select a course.')
+    if (!courseId) return await fswAlert('Please select a course.')
     
     const dueDate = assignDueDate.value || null
     const isMandatory = assignMandatory.checked
@@ -577,17 +840,26 @@ export const initManagerEvents = async () => {
       confirmAssignBtn.disabled = true
       
       if (currentAssignTarget.type === 'bulk') {
-        await bulkAssignCourse(courseId, dueDate, isMandatory)
+        const selectedDept = assignDepartmentSelect.value;
+        let targetIds = null;
+        if (selectedDept !== 'all') {
+            targetIds = currentTeamStats.filter(s => s.department === selectedDept).map(s => s.id);
+        }
+        await bulkAssignCourse(courseId, dueDate, isMandatory, targetIds)
+      } else if (currentAssignTarget.type === 'selected') {
+        await bulkAssignCourse(courseId, dueDate, isMandatory, currentAssignTarget.ids)
+        selectedUserIds.clear() // Clear selection on successful assignment
+        updateBulkAssignBtnState()
       } else {
         await assignCourseToUser(currentAssignTarget.id, courseId, dueDate, isMandatory)
       }
       
       closeAssignModal()
       loadTeamStats()
-      alert('Assignment successful!')
+      await fswAlert('Assignment successful!')
     } catch (e) {
       console.error(e)
-      alert('Failed to assign course:\n' + (e.message || JSON.stringify(e)))
+      await fswAlert('Failed to assign course:\n' + (e.message || JSON.stringify(e)))
     } finally {
       confirmAssignBtn.innerText = 'Assign'
       confirmAssignBtn.disabled = false
@@ -609,7 +881,10 @@ export const initManagerEvents = async () => {
       const liveCourses = courses.filter(c => c.status === 'live')
       const assignSelect = document.getElementById('assign-course-select')
       if (assignSelect) {
-        assignSelect.innerHTML = '<option value="">-- Select a Course --</option>' + liveCourses.map(c => `<option value="${c.id}">${c.title}</option>`).join('')
+        assignSelect.innerHTML = '<option value="">-- Select --</option>' + liveCourses.map(c => {
+          const prefix = c.content_json?.is_system_simulation ? '[Guide] ' : '[Course] '
+          return `<option value="${c.id}">${prefix}${c.title}</option>`
+        }).join('')
       }
       
     } catch (error) {
@@ -630,21 +905,11 @@ export const initManagerEvents = async () => {
         <h3 style="margin: 0; color: white;">Create Course</h3>
         <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">AI Powered</p>
       </div>
-
-      <div id="create-simulator-card" class="glass card-hover" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; cursor: pointer; border: 2px dashed #f59e0b; background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-lg);">
-        <div style="width: 60px; height: 60px; border-radius: 50%; background: #f59e0b; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
-        </div>
-        <h3 style="margin: 0; color: white;">Build Simulator</h3>
-        <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Click-through Systems Menu</p>
-      </div>
     `
 
-    const courseCardsHTML = courses.map((course, index) => `
+    const displayCourses = courses.filter(c => !c.content_json?.is_system_simulation)
+
+    const courseCardsHTML = displayCourses.map((course, index) => `
       <div class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 300px;">
         <div style="height: 160px; background: #2a2a35; position: relative;">
           ${course.thumbnail_url
@@ -677,28 +942,8 @@ export const initManagerEvents = async () => {
     // Bind Create Card Event
     document.getElementById('create-course-card').addEventListener('click', () => toggleModal(true))
 
-    document.getElementById('create-simulator-card').addEventListener('click', async () => {
-        const { renderSystemBuilder, initSystemBuilder } = await import('./SystemBuilder.js');
-        const viewCourses = document.getElementById('view-courses');
-        
-        // Hide list, show builder inline
-        courseList.style.display = 'none';
-        
-        const builderDiv = document.createElement('div');
-        builderDiv.id = 'sys-builder-container';
-        builderDiv.innerHTML = renderSystemBuilder();
-        viewCourses.appendChild(builderDiv);
-        
-        initSystemBuilder(() => {
-            // onClose callback
-            builderDiv.remove();
-            courseList.style.display = 'grid'; // restore
-            loadCourses(); // reload to show new course
-        });
-    });
-
     // Bind View and Edit Buttons
-    courses.forEach((course, index) => {
+    displayCourses.forEach((course, index) => {
       document.getElementById(`view-btn-${index}`).addEventListener('click', () => {
         renderCoursePlayer(course, user)
       })
@@ -709,7 +954,7 @@ export const initManagerEvents = async () => {
 
       const deleteBtn = document.getElementById(`delete-btn-${index}`)
       deleteBtn.addEventListener('click', async () => {
-        if (confirm(`Are you sure you want to delete "${course.title}"? This cannot be undone.`)) {
+        if (await fswConfirm(`Are you sure you want to delete "${course.title}"? This cannot be undone.`)) {
           try {
             console.log(`[Manager] Deleting course ${course.id} with role ${user.role}`)
 
@@ -723,13 +968,13 @@ export const initManagerEvents = async () => {
             console.log('[Manager] Delete result:', result)
 
             // Success
-            alert('Course deleted successfully')
+            await fswAlert('Course deleted successfully')
             console.log('[Manager] Reloading courses...')
             await loadCourses()
 
           } catch (e) {
             console.error('[Manager] Delete Error:', e)
-            alert(`Failed to delete course:\n${e.message}`)
+            await fswAlert(`Failed to delete course:\n${e.message}`)
 
             // Reset button if failed
             deleteBtn.innerText = 'Delete'
@@ -872,7 +1117,7 @@ export const initManagerEvents = async () => {
         toggleModal(false)
         if (logContainer) logContainer.style.display = 'none' // Reset for next time
         await loadCourses()
-        alert('Course successfully generated! It is now in Draft mode.')
+        await fswAlert('Course successfully generated! It is now in Draft mode.')
       }, 1500)
 
     } catch (error) {
@@ -880,7 +1125,7 @@ export const initManagerEvents = async () => {
       if (logContainer) {
         logContainer.innerHTML += `<div style="color: #ef4444; margin-top: 1rem; border-top: 1px solid #ef4444; padding-top: 0.5rem;">CRITICAL FAILURE: ${error.message}</div>`
       }
-      alert(`Generation Failed:\n${error.message}\n\nCheck the log for details.`)
+      await fswAlert(`Generation Failed:\n${error.message}\n\nCheck the log for details.`)
     } finally {
       confirmBtn.innerText = 'Generate Course'
       confirmBtn.disabled = false
@@ -983,10 +1228,17 @@ export const initManagerEvents = async () => {
           exportCsvBtn.innerText = origText
           exportCsvBtn.disabled = false
       } catch(e) {
-          alert('Failed to export CSV')
+          await fswAlert('Failed to export CSV')
           exportCsvBtn.innerText = 'Export to CSV'
           exportCsvBtn.disabled = false
       }
   })
 
+  // Auto-routing based on query parameter
+  if (window.location.search.includes('tab=guides')) {
+      setTimeout(() => {
+          document.getElementById('tab-guides')?.click()
+          window.history.replaceState({}, '', '/')
+      }, 50)
+  }
 }
