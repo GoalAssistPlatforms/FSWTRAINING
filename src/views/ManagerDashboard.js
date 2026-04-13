@@ -11,7 +11,8 @@ import { fswAlert, fswConfirm, fswPrompt } from '../utils/dialog'
 import * as pdfjsLib from 'pdfjs-dist'
 
 // Set worker source for pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export const renderManagerDashboard = (user) => {
   return `
@@ -273,10 +274,10 @@ export const initManagerEvents = async () => {
     // 4. Download Cert
     const certBtn = e.target.closest('.download-cert-btn')
     if (certBtn) {
-      const { useremail, coursetitle, issuedate, expirydate, certid } = certBtn.dataset
+      const { username, coursetitle, issuedate, expirydate, certid } = certBtn.dataset
       certBtn.innerText = 'Downloading...'
       try {
-        await downloadCertificate(useremail, coursetitle, issuedate, expirydate !== 'null' ? expirydate : null, certid)
+        await downloadCertificate(username, coursetitle, issuedate, expirydate !== 'null' ? expirydate : null, certid)
       } catch (err) {
         await fswAlert('Could not generate PDF')
       } finally {
@@ -652,7 +653,8 @@ export const initManagerEvents = async () => {
                 <input type="checkbox" class="user-select-cb" data-userid="${member.id}" ${selectedUserIds.has(member.id) ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
               </div>
               <div style="flex: 1;">
-                <h4 style="margin: 0 0 0.5rem 0;">${member.email}</h4>
+                <h4 style="margin: 0 0 0.25rem 0;">${member.full_name || member.email}</h4>
+                ${member.full_name ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${member.email}</div>` : ''}
               <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
                 <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${member.team_role || 'member'}</span>
                 <button class="edit-dept-btn" data-userid="${member.id}" data-dept="${member.department || ''}" style="background: ${member.department ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${member.department ? '#10b981' : 'var(--glass-border)'}; color: ${member.department ? '#10b981' : 'var(--text-muted)'}; font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
@@ -741,7 +743,7 @@ export const initManagerEvents = async () => {
                       </div>
                       <div style="display: flex; gap: 0.5rem; align-items: center;">
                         ${p.status === 'completed' && !isExpired && p.certificate_id ? `
-                          <button class="btn-ghost download-cert-btn" data-useremail="${member.email}" data-coursetitle="${p.courses?.title}" data-issuedate="${p.completed_at}" data-expirydate="${p.expires_at || 'null'}" data-certid="${p.certificate_id}" style="color: #0ea5e9; font-size: 0.75rem; padding: 0.2rem 0.5rem; border: 1px solid rgba(14,165,233,0.3);">
+                          <button class="btn-ghost download-cert-btn" data-username="${member.full_name || member.email}" data-coursetitle="${p.courses?.title}" data-issuedate="${p.completed_at}" data-expirydate="${p.expires_at || 'null'}" data-certid="${p.certificate_id}" style="color: #0ea5e9; font-size: 0.75rem; padding: 0.2rem 0.5rem; border: 1px solid rgba(14,165,233,0.3);">
                             Download Cert
                           </button>
                         ` : ''}

@@ -2,8 +2,9 @@ import { supabase } from './supabase.js';
 import OpenAI from 'openai';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Define the worker script source for pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.mjs`;
+// Import the worker locally using Vite's URL resolution
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -170,6 +171,123 @@ export async function processAndUploadGuide(file, title, description, tags = [],
         throw error;
     }
 }
+
+/**
+ * Helper: Fetches a URL via proxy, cleans HTML to extract text or metadata, and embeds it.
+ */
+export async function processAndUploadWebLink(url, tags = [], onProgress) {
+    try {
+        if (onProgress) onProgress("Fetching content from link...");
+        
+        const { data: userAuth } = await supabase.auth.getUser();
+        if (!userAuth.user) throw new Error("Not authenticated");
+
+        // --- Deduplication Check ---
+        // If the URL already exists in the database, safely skip it.
+        const { data: existingDoc } = await supabase
+            .from('guide_documents')
+            .select('id')
+            .eq('file_url', url)
+            .maybeSingle();
+
+        if (existingDoc) {
+            if (onProgress) onProgress("Link already exists, skipping...");
+            return { skipped: true, doc: existingDoc };
+        }
+
+        // Fetch via open cors proxy (api.codetabs.com is much more reliable)
+        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("Failed to fetch link");
+        
+        const htmlString = await response.text();
+        
+        if (!htmlString) throw new Error("No readable content returned from URL");
+
+        if (onProgress) onProgress("Extracting text from website...");
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        
+        // YouTube specific parsing using oEmbed
+        let title = doc.title || url;
+        let description = "Web Resource";
+        let rawText = "";
+
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            description = "YouTube Video";
+            try {
+                if (onProgress) onProgress("Fetching YouTube metadata...");
+                const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+                const oRes = await fetch(oembedUrl);
+                if (oRes.ok) {
+                    const ytData = await oRes.json();
+                    title = ytData.title || title;
+                    rawText = `Video Title: ${ytData.title}\nChannel: ${ytData.author_name}\nDescription: This is a YouTube Video reference training material. Please advise the user to click the link to watch this video.`;
+                }
+            } catch (e) {
+                console.error("YouTube oEmbed failed", e);
+            }
+        } else {
+            // Remove known non-content tags
+            doc.querySelectorAll('script, style, nav, footer, iframe, img, svg, header').forEach(el => el.remove());
+            const bodyText = doc.body ? doc.body.innerText.replace(/\s+/g, ' ').trim() : '';
+            if (bodyText) {
+                rawText = document.body ? bodyText : '';
+            }
+        }
+        
+        // Ensure there is something to embed
+        if (!rawText || rawText.trim().length < 10) {
+            // fallback to title
+            rawText = title + " \n " + description; 
+        }
+
+        if (onProgress) onProgress("Creating database record...");
+        const { data: docData, error: docError } = await supabase
+            .from('guide_documents')
+            .insert({
+                title: title.substring(0, 150),
+                description,
+                file_url: url, // For generic links, file_url holds the http link
+                tags,
+                created_by: userAuth.user.id
+            })
+            .select()
+            .single();
+            
+        if (docError) throw docError;
+
+        if (onProgress) onProgress("Analyzing content with AI...");
+        const chunks = chunkText(rawText);
+        
+        const totalChunks = chunks.length;
+        let pidx = 0;
+        
+        for (const chunk of chunks) {
+            pidx++;
+            if (onProgress) onProgress(`Generating AI embeddings (${pidx}/${totalChunks})...`);
+            
+            const embedding = await generateEmbedding(chunk);
+            
+            await supabase
+                .from('guide_chunks')
+                .insert({
+                    document_id: docData.id,
+                    content: chunk,
+                    embedding,
+                    chunk_index: pidx
+                });
+        }
+
+        if (onProgress) onProgress("Complete!");
+        return docData;
+
+    } catch (error) {
+        console.error("Web Link Processing Error:", error);
+        throw error;
+    }
+}
+
 
 /**
  * Searches the Knowledge Base and answers a question using Context

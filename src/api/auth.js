@@ -26,7 +26,7 @@ export const updatePassword = async (newPassword) => {
     return data
 }
 
-export const signUp = async (email, password) => {
+export const signUp = async (email, password, fullName, department) => {
     // 1. Sign up the user
     const { data, error } = await supabase.auth.signUp({
         email,
@@ -34,11 +34,15 @@ export const signUp = async (email, password) => {
     })
     if (error) throw error
 
-    // 2. Create a profile entry (optional if you have triggers, but good for safety)
+    // 2. Create a profile entry
     if (data.user) {
+        const profileData = { id: data.user.id, email: data.user.email, role: 'user' }
+        if (fullName) profileData.full_name = fullName
+        if (department) profileData.department = department
+
         const { error: profileError } = await supabase
             .from('profiles')
-            .insert([{ id: data.user.id, email: data.user.email, role: 'user' }])
+            .upsert([profileData])
 
         if (profileError) {
             console.warn('Profile creation failed (might already exist via trigger):', profileError)

@@ -50,6 +50,19 @@ export const renderLogin = () => {
             </div>
             ` : ''}
 
+            ${isSignUp ? `
+            <div>
+              <label for="fullname" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Full Name</label>
+              <input type="text" id="fullname" required placeholder="Enter your full name" 
+                style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; box-sizing: border-box;">
+            </div>
+            <div>
+              <label for="department" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Department</label>
+              <input type="text" id="department" required placeholder="e.g. Sales, Engineering..." 
+                style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; box-sizing: border-box;">
+            </div>
+            ` : ''}
+
             <p id="error-msg" style="color: var(--accent); font-size: 0.9rem; text-align: center; display: none;"></p>
             <p id="success-msg" style="color: #10b981; font-size: 0.9rem; text-align: center; display: none;"></p>
 
@@ -127,7 +140,9 @@ export const renderLogin = () => {
           btn.disabled = false
         } else if (isSignUp) {
           btn.innerText = 'Creating Account...'
-          await signUp(email, password)
+          const fullNameInput = document.querySelector('#fullname')
+          const departmentInput = document.querySelector('#department')
+          await signUp(email, password, fullNameInput?.value, departmentInput?.value)
           successMsg.textContent = 'Account created! Please check your email to confirm.'
           successMsg.style.display = 'block'
           btn.innerText = 'Sign Up'

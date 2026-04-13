@@ -1,4 +1,4 @@
-import { processAndUploadGuide, chatWithGuides, fetchAllGuides, deleteGuide, fetchSystemTags } from '../api/guides.js';
+import { processAndUploadGuide, processAndUploadWebLink, chatWithGuides, fetchAllGuides, deleteGuide, fetchSystemTags } from '../api/guides.js';
 import { getCourses, deleteCourse } from '../api/courses.js';
 import { fswAlert, fswConfirm } from '../utils/dialog';
 
@@ -17,7 +17,7 @@ export const renderGuides = (user) => {
             </div>
 
             ${user.role === 'manager' ? `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem;">
                 <div id="upload-zone" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 0.8rem; text-align: center; cursor: pointer; transition: all 0.3s; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 1.2rem; margin-bottom: 0.2rem;">📄</div>
                     <div style="font-size: 0.7rem; color: var(--text-muted);">Upload PDF</div>
@@ -28,20 +28,32 @@ export const renderGuides = (user) => {
                     <div style="font-size: 1.2rem; margin-bottom: 0.2rem;">🖱️</div>
                     <div style="font-size: 0.7rem; color: #10b981;">Build Guide</div>
                 </div>
+
+                <div id="add-link-btn" style="background: rgba(66, 133, 244, 0.1); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: var(--radius-md); padding: 0.8rem; text-align: center; cursor: pointer; transition: all 0.3s; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 1.2rem; margin-bottom: 0.2rem;">🔗</div>
+                    <div style="font-size: 0.7rem; color: #4285f4;">Add Link</div>
+                </div>
+
             </div>
             <div id="upload-progress" style="margin-top: 0; margin-bottom: 1rem; font-size: 0.8rem; color: var(--primary); font-weight: bold; display: none; text-align: center;"></div>
             ` : ''}
 
+            <!-- Interactive Guides -->
+            <h4 onclick="const l = document.getElementById('interactive-guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Interactive Software Guides <span style="float: right; font-size: 0.7rem;">▼</span></h4>
+            <div id="interactive-guides-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading interactive guides...</div>
+            </div>
+
             <!-- Document Guides -->
-            <h4 style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Documents</h4>
+            <h4 onclick="const l = document.getElementById('guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Documents <span style="float: right; font-size: 0.7rem;">▼</span></h4>
             <div id="guides-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
                 <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading documents...</div>
             </div>
 
-            <!-- Interactive Guides -->
-            <h4 style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Interactive Software Guides</h4>
-            <div id="interactive-guides-list" style="display: flex; flex-direction: column; gap: 0.8rem; padding-bottom: 2rem;">
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading interactive guides...</div>
+            <!-- Web Links -->
+            <h4 onclick="const l = document.getElementById('links-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Links & Web Resources <span style="float: right; font-size: 0.7rem;">▼</span></h4>
+            <div id="links-list" style="display: flex; flex-direction: column; gap: 0.8rem; padding-bottom: 2rem;">
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading links...</div>
             </div>
         </div>
 
@@ -100,6 +112,25 @@ export const renderGuides = (user) => {
             </div>
         </div>
     </div>
+
+    <!-- Web Link Modal -->
+    <div id="add-link-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: var(--bg-dark); padding: 2rem; border-radius: var(--radius-lg); width: 400px; max-width: 90%; border: 1px solid var(--glass-border);">
+            <h3 style="margin-top: 0; color: white;">Add Web Resource</h3>
+            
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">URLs (Enter multiple links separated by commas or new lines)</label>
+            <textarea id="link-url" placeholder="https://..." style="width: 100%; height: 100px; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; resize: vertical;"></textarea>
+            
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Tags (comma separated)</label>
+            <input type="text" id="link-tags" placeholder="e.g. Training, External" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+
+            <div style="display: flex; gap: 1rem; justify-content: space-between;">
+                <button id="cancel-link-btn" class="btn-ghost" style="flex: 1;">Cancel</button>
+                <button id="confirm-link-btn" class="btn-primary" style="flex: 1; background: #4285f4; border-color: #4285f4;">Add Link</button>
+            </div>
+        </div>
+    </div>
+    
     
     <style>
         #upload-zone:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
@@ -122,23 +153,48 @@ export const initGuidesEvents = async (user) => {
     const loadGuides = async () => {
         try {
             const guides = await fetchAllGuides()
-            if (!guides || guides.length === 0) {
-                guidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No guides available yet.</div>`
+            const linksList = document.getElementById('links-list')
+            
+            const pdfs = guides.filter(g => g.file_url && g.file_url.includes('/storage/'));
+            const links = guides.filter(g => g.file_url && !g.file_url.includes('/storage/'));
+            
+            if (!pdfs || pdfs.length === 0) {
+                guidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No documents available yet.</div>`
             } else {
-            guidesList.innerHTML = guides.map(g => `
-                <div class="guide-card ${g.file_url ? 'clickable-doc-card card-hover' : ''}" data-url="${g.file_url || ''}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: ${g.file_url ? 'pointer' : 'default'};">
-                   <div>
-                        <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem; color: white;">${g.title}</h4>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Added ${new Date(g.created_at).toLocaleDateString()}</div>
-                        ${g.tags && g.tags.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            ${g.tags.map(t => `<span class="guide-tag" data-tag="${t}" style="background: rgba(var(--primary-rgb), 0.2); border: 1px solid rgba(var(--primary-rgb), 0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; color: var(--primary); cursor: pointer;">${t}</span>`).join('')}
-                        </div>` : ''}
+                guidesList.innerHTML = pdfs.map(g => `
+                    <div class="guide-card clickable-doc-card card-hover" data-url="${g.file_url || ''}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;">
+                       <div>
+                            <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem; color: white;">${g.title}</h4>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Added ${new Date(g.created_at).toLocaleDateString()}</div>
+                            ${g.tags && g.tags.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                ${g.tags.map(t => `<span class="guide-tag" data-tag="${t}" style="background: rgba(var(--primary-rgb), 0.2); border: 1px solid rgba(var(--primary-rgb), 0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; color: var(--primary); cursor: pointer;">${t}</span>`).join('')}
+                            </div>` : ''}
+                        </div>
+                       <div style="display: flex; gap: 0.5rem;" onclick="event.stopPropagation()">
+                           ${user.role === 'manager' ? `<button class="delete-guide-btn" data-id="${g.id}" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); padding: 4px 8px; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8rem;">X</button>` : ''}
+                       </div>
                     </div>
-                   <div style="display: flex; gap: 0.5rem;" onclick="event.stopPropagation()">
-                       ${user.role === 'manager' ? `<button class="delete-guide-btn" data-id="${g.id}" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); padding: 4px 8px; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8rem;">X</button>` : ''}
-                   </div>
-                </div>
-            `).join('')
+                `).join('')
+            }
+            
+            if (!links || links.length === 0) {
+                linksList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No external links available yet.</div>`
+            } else {
+                linksList.innerHTML = links.map(g => `
+                    <div class="guide-card card-hover clickable-web-link" data-url="${g.file_url}" style="background: rgba(66, 133, 244, 0.05); border: 1px solid rgba(66, 133, 244, 0.2); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;">
+                       <div>
+                            <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem; color: white;">${g.description === 'YouTube Video' ? '▶️' : '🌐'} ${g.title}</h4>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Added ${new Date(g.created_at).toLocaleDateString()}</div>
+                            ${g.tags && g.tags.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                ${g.tags.map(t => `<span class="guide-tag" data-tag="${t}" style="background: rgba(66, 133, 244, 0.2); border: 1px solid rgba(66, 133, 244, 0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; color: #4285f4; cursor: pointer;">${t}</span>`).join('')}
+                            </div>` : ''}
+                        </div>
+                       <div style="display: flex; gap: 0.5rem;" onclick="event.stopPropagation()">
+                           ${user.role === 'manager' ? `<button class="delete-guide-btn" data-id="${g.id}" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); padding: 4px 8px; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8rem;">X</button>` : ''}
+                       </div>
+                    </div>
+                `).join('')
+            }
 
             // Attach view listeners to the whole card
             document.querySelectorAll('.clickable-doc-card').forEach(card => {
@@ -147,6 +203,16 @@ export const initGuidesEvents = async (user) => {
                     if (url) {
                         document.getElementById('pdf-iframe').src = url;
                         document.getElementById('pdf-modal').style.display = 'flex';
+                    }
+                });
+            });
+            
+            // Attach view listeners to web links
+            document.querySelectorAll('.clickable-web-link').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const url = e.currentTarget.dataset.url;
+                    if (url) {
+                        window.open(url, '_blank');
                     }
                 });
             });
@@ -167,7 +233,6 @@ export const initGuidesEvents = async (user) => {
                     })
                 })
             }
-            } // Close the else block
         } catch (e) {
             console.error("Failed to load guides", e)
             guidesList.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem;">Error loading guides</div>`
@@ -331,6 +396,55 @@ export const initGuidesEvents = async (user) => {
             fileInput.value = '';
         })
 
+        // Web Link upload logic
+        const addLinkBtn = document.getElementById('add-link-btn')
+        const linkModal = document.getElementById('add-link-modal')
+        const linkUrlInput = document.getElementById('link-url')
+        const linkTagsInput = document.getElementById('link-tags')
+        const cancelLinkBtn = document.getElementById('cancel-link-btn')
+        const confirmLinkBtn = document.getElementById('confirm-link-btn')
+
+        if (addLinkBtn) {
+            addLinkBtn.addEventListener('click', () => {
+                linkUrlInput.value = '';
+                linkTagsInput.value = '';
+                linkModal.style.display = 'flex';
+            })
+
+            cancelLinkBtn.addEventListener('click', () => {
+                linkModal.style.display = 'none';
+            });
+
+            confirmLinkBtn.addEventListener('click', async () => {
+                const rawUrls = linkUrlInput.value.trim();
+                if (!rawUrls) return;
+                
+                linkModal.style.display = 'none';
+                progressDiv.style.display = 'block';
+
+                const urlsToProcess = rawUrls.split(/[\n,]+/).map(u => u.trim()).filter(u => u.length > 5 && u.startsWith('http'));
+                const tags = linkTagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+                
+                try {
+                    for (let i = 0; i < urlsToProcess.length; i++) {
+                        const isBatch = urlsToProcess.length > 1;
+                        if (isBatch) progressDiv.innerText = `Processing link ${i+1}/${urlsToProcess.length}...`;
+                        
+                        await processAndUploadWebLink(urlsToProcess[i], tags, (progressMsg) => {
+                            if (!isBatch) progressDiv.innerText = progressMsg;
+                        });
+                    }
+                    
+                    progressDiv.innerText = 'All links uploaded and processed!'
+                    setTimeout(() => progressDiv.style.display = 'none', 3000)
+                    loadGuides()
+                } catch (err) {
+                    await fswAlert("Link processing failed: " + err.message)
+                    progressDiv.style.display = 'none'
+                }
+            })
+        }
+
         // Event listener for creating Interactive Guide
         const createInteractiveBtn = document.getElementById('create-interactive-guide-btn');
         if (createInteractiveBtn) {
@@ -372,6 +486,8 @@ export const initGuidesEvents = async (user) => {
         const formattedContent = content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         
         let sourceHtml = '';
+        let embedHtml = '';
+        
         if (sources && sources.length > 0) {
             // Deduplicate sources by document title
             const uniqueSources = [];
@@ -387,9 +503,27 @@ export const initGuidesEvents = async (user) => {
                          uniqueSources.map(src => {
                              if (src.is_interactive && src.courseData) {
                                  const courseDataStr = JSON.stringify(src.courseData).replace(/'/g, "&#39;");
+                                 const embedId = 'sim-embed-' + Math.random().toString(36).substr(2, 9);
+                                 embedHtml += `<div id="${embedId}" class="interactive-chat-embed" data-course='${courseDataStr}'></div>`;
+                                 
                                  return `<span class="source-link interactive-source-link" data-course='${courseDataStr}' style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"><span style="color: #34a853;">🖱️</span> ${src.document_title.replace('Interactive Guide: ', '')}</span>`;
                              } else {
-                                 return `<span class="source-link" style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1);"><span style="color: #fbbc04;">📄</span> ${src.document_title}</span>`;
+                                 const fileUrl = src.file_url || '';
+                                 const isYoutube = fileUrl.includes('youtube.com') || fileUrl.includes('youtu.be');
+                                 
+                                 // Build ChatGPT-style video embed if it's a YouTube source
+                                 if (isYoutube) {
+                                     const vidMatch = fileUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+                                     if (vidMatch) {
+                                         embedHtml += `
+                                            <div style="margin-top: 20px; margin-bottom: 5px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                                                <iframe width="100%" height="280" src="https://www.youtube.com/embed/${vidMatch[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                            </div>
+                                         `;
+                                     }
+                                 }
+                                 
+                                 return `<span class="source-link web-source-link" data-url="${fileUrl}" style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"><span style="color: #fbbc04;">${isYoutube ? '▶️' : '📄'}</span> ${src.document_title}</span>`;
                              }
                          }).join(' ') +
                          `</div>`;
@@ -398,14 +532,37 @@ export const initGuidesEvents = async (user) => {
         // Clean AI responses without sparkles
         const iconHtml = '';
 
-        msgDiv.innerHTML = `<div style="display: flex; align-items: flex-start;">${iconHtml}<div style="flex: 1;">${formattedContent}${sourceHtml}</div></div>`;
+        msgDiv.innerHTML = `<div style="display: flex; align-items: flex-start;">${iconHtml}<div style="flex: 1; width: 100%;">${formattedContent}${embedHtml}${sourceHtml}</div></div>`;
         
-        // Attach click listeners to interactive guides in this message
+        // Render Interactive Guides Inline
+        msgDiv.querySelectorAll('.interactive-chat-embed').forEach(async container => {
+            const courseData = JSON.parse(container.dataset.course);
+            const { renderSimulationPlayer } = await import('./components/SimulationPlayer.js');
+            renderSimulationPlayer(courseData, user, container.id);
+        });
+
+        // Attach click listeners to isolated citation chips (allows fullscreen popup as well)
         msgDiv.querySelectorAll('.interactive-source-link').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const courseData = JSON.parse(e.target.dataset.course);
                 const { renderCoursePlayer } = await import('./CoursePlayer.js');
                 renderCoursePlayer(courseData, user);
+            });
+        });
+        
+        // Attach click listeners to external sources so they actually open
+        msgDiv.querySelectorAll('.web-source-link').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const url = e.currentTarget.dataset.url;
+                if (url && url !== 'undefined') {
+                    if (url.includes('/storage/')) {
+                        // For PDFs, load into PDF modal
+                        document.getElementById('pdf-iframe').src = url;
+                        document.getElementById('pdf-modal').style.display = 'flex';
+                    } else {
+                        window.open(url, '_blank');
+                    }
+                }
             });
         });
 
@@ -468,8 +625,9 @@ export const initGuidesEvents = async (user) => {
             const val = e.target.value.toLowerCase();
             const docs = document.querySelectorAll('#guides-list .guide-card');
             const interactives = document.querySelectorAll('#interactive-guides-list .guide-card');
+            const links = document.querySelectorAll('#links-list .guide-card');
             
-            [...docs, ...interactives].forEach(card => {
+            [...docs, ...interactives, ...links].forEach(card => {
                 const text = card.innerText.toLowerCase();
                 card.style.display = text.includes(val) ? 'flex' : 'none';
             });

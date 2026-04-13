@@ -1,8 +1,10 @@
 import { updateCourse } from '../../api/courses.js';
 import { supabase } from '../../api/supabase.js';
 
-export const renderSimulationPlayer = (course, user) => {
+export const renderSimulationPlayer = (course, user, embeddedContainerId = null) => {
     
+    const isEmbedded = !!embeddedContainerId;
+
     // Parse slides
     const content = typeof course.content_json === 'string' 
         ? JSON.parse(course.content_json) 
@@ -11,8 +13,8 @@ export const renderSimulationPlayer = (course, user) => {
     const slides = content.slides || [];
     let currentSlide = 0;
 
-    // We take over the whole app screen
-    const appEl = document.getElementById('app');
+    // Use specific container or take over the app screen
+    const appEl = embeddedContainerId ? document.getElementById(embeddedContainerId) : document.getElementById('app');
 
     // Create a generic beep sound (Data URI)
     const errorBeep = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='); // Stub for silence or base64 beep. We'll use Web Audio API for a real beep.
@@ -53,22 +55,24 @@ export const renderSimulationPlayer = (course, user) => {
         const slide = slides[currentSlide];
         
         let html = `
-            <div id="sim-container" style="position: fixed; inset: 0; background: #111; z-index: 1000; overflow: hidden; display: flex; flex-direction: column;">
+            <div id="sim-container" style="${isEmbedded ? 'position: relative; width: 100%; min-height: 480px; aspect-ratio: 16/9; background: #000; overflow: hidden; display: flex; flex-direction: column; border-radius: 12px; margin-top: 20px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);' : 'position: fixed; inset: 0; background: #000; z-index: 1000; overflow: hidden; display: flex; flex-direction: column;'}">
                 
                 <!-- HUD -->
-                <div style="background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 10; position: relative;">
+                <div style="background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.1); padding: ${isEmbedded ? '0.5rem 1rem' : '1rem 2rem'}; display: flex; justify-content: space-between; align-items: center; z-index: 10; position: relative;">
                     <!-- Progress Bar Background -->
                     <div style="position: absolute; top: 0; left: 0; height: 3px; background: rgba(16, 185, 129, 0.2); width: 100%;"></div>
                     <!-- Progress Bar Fill -->
                     <div style="position: absolute; top: 0; left: 0; height: 3px; background: #10b981; width: ${((currentSlide + 1) / slides.length) * 100}%; transition: width 0.3s ease;"></div>
 
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <button id="sim-exit-btn" class="btn-ghost" style="padding: 0.5rem; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Exit</button>
-                        ${currentSlide > 0 ? `<button id="sim-back-btn" class="btn-ghost" style="padding: 0.4rem 0.8rem; color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.9rem;">Back</button>` : ''}
-                        <h3 style="margin: 0; color: white;">${course.title}</h3>
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">(Step ${currentSlide + 1} of ${slides.length})</span>
+                    <div style="display: flex; align-items: center; gap: ${isEmbedded ? '0.5rem' : '1rem'};">
+                        ${isEmbedded 
+                            ? `<button id="sim-fullscreen-btn" class="btn-ghost" style="padding: 0.3rem 0.6rem; color: #34a853; border: 1px solid rgba(52, 168, 83, 0.3); font-size: 0.8rem; border-radius: 4px;">⛶ Fullscreen</button>` 
+                            : `<button id="sim-exit-btn" class="btn-ghost" style="padding: 0.5rem; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Exit</button>`}
+                        ${currentSlide > 0 ? `<button id="sim-back-btn" class="btn-ghost" style="padding: 0.4rem 0.8rem; color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.2); font-size: ${isEmbedded ? '0.8rem' : '0.9rem'};">Back</button>` : ''}
+                        <h3 style="margin: 0; color: white; font-size: ${isEmbedded ? '0.9rem' : '1.2rem'};">${course.title}</h3>
+                        <span style="color: var(--text-muted); font-size: ${isEmbedded ? '0.7rem' : '0.9rem'};">(Step ${currentSlide + 1} of ${slides.length})</span>
                     </div>
-                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; max-width: 50%; text-align: center; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);">
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; padding: ${isEmbedded ? '0.3rem 0.8rem' : '0.5rem 1rem'}; border-radius: 8px; font-weight: bold; max-width: 50%; text-align: center; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2); font-size: ${isEmbedded ? '0.8rem' : '1rem'};">
                         ${slide.instruction}
                     </div>
                 </div>
@@ -105,8 +109,8 @@ export const renderSimulationPlayer = (course, user) => {
                     20%, 40%, 60%, 80% { transform: translateX(5px); }
                 }
                 .shake { animation: simShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-                /* Hide global scrollbars while simulating */
-                body { overflow: hidden !important; }
+                .shake { animation: simShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+                ${isEmbedded ? '' : '/* Hide global scrollbars while simulating fullscreen */\nbody { overflow: hidden !important; }'}
             </style>
         `;
 
@@ -118,13 +122,27 @@ export const renderSimulationPlayer = (course, user) => {
         const imgEl = document.getElementById('sim-img');
         const hotspotEl = document.getElementById('sim-hotspot');
         const exitBtn = document.getElementById('sim-exit-btn');
+        const fsBtn = document.getElementById('sim-fullscreen-btn');
         const backBtn = document.getElementById('sim-back-btn');
 
-        exitBtn.addEventListener('click', () => {
-            document.body.style.overflow = '';
-            // Just reload to guides tab
-            window.location.href = '/?tab=guides'; 
-        });
+        if (exitBtn) {
+            exitBtn.addEventListener('click', () => {
+                document.body.style.overflow = '';
+                window.location.href = '/?tab=guides'; 
+            });
+        }
+        
+        if (fsBtn) {
+            fsBtn.addEventListener('click', async () => {
+                // Kill embedded instance
+                window.removeEventListener('resize', positionHotspot);
+                appEl.innerHTML = ``;
+                
+                // Launch global course player override
+                const { renderCoursePlayer } = await import('../CoursePlayer.js');
+                renderCoursePlayer(course, user);
+            });
+        }
 
         if (backBtn) {
             backBtn.addEventListener('click', () => {
@@ -174,8 +192,8 @@ export const renderSimulationPlayer = (course, user) => {
              // Position Teaching Text Popup
              const popupEl = document.getElementById('sim-popup');
              if (popupEl) {
-                 const screenWidth = window.innerWidth;
-                 const screenHeight = window.innerHeight;
+                 const screenWidth = viewportRect.width;
+                 const screenHeight = viewportRect.height;
                  
                  // Smart lateral positioning: try to place right of the hotspot, otherwise left.
                  if (hotLeft + hotWidth + 300 < screenWidth) {
@@ -257,7 +275,7 @@ export const renderSimulationPlayer = (course, user) => {
                  toast.id = 'sim-toast';
                  toast.innerText = 'Incorrect click area. Please review the instruction and pop-up context.';
                  toast.style.position = 'absolute';
-                 toast.style.top = '80px';
+                 toast.style.top = isEmbedded ? '60px' : '80px';
                  toast.style.left = '50%';
                  toast.style.transform = 'translateX(-50%)';
                  toast.style.background = 'rgba(239, 68, 68, 0.9)';
@@ -297,19 +315,31 @@ export const renderSimulationPlayer = (course, user) => {
              }
         }
 
-        appEl.innerHTML = `
-            <div style="position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                <div class="fade-in" style="text-align: center;">
-                    <div style="width: 80px; height: 80px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        if (isEmbedded) {
+             appEl.innerHTML = `
+                 <div class="fade-in" style="background: rgba(16, 185, 129, 0.05); padding: 2rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3); text-align: center; margin-top: 20px; margin-bottom: 20px;">
+                     <div style="width: 50px; height: 50px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                     </div>
+                     <h3 style="color: white; margin: 0 0 0.5rem 0;">Simulation Complete!</h3>
+                     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">You've successfully completed the guide.</p>
+                 </div>
+             `;
+        } else {
+            appEl.innerHTML = `
+                <div style="position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <div class="fade-in" style="text-align: center;">
+                        <div style="width: 80px; height: 80px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <h2 style="color: white; font-size: 2rem;">Simulation Complete!</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 2rem;">You've successfully completed the system walkthrough.</p>
+                        <button class="btn-primary" onclick="window.location.href='/?tab=guides'" style="padding: 1rem 3rem;">Return to Guides</button>
                     </div>
-                    <h2 style="color: white; font-size: 2rem;">Simulation Complete!</h2>
-                    <p style="color: var(--text-muted); margin-bottom: 2rem;">You've successfully completed the system walkthrough.</p>
-                    <button class="btn-primary" onclick="window.location.href='/?tab=guides'" style="padding: 1rem 3rem;">Return to Guides</button>
                 </div>
-            </div>
-            <style>body { overflow: hidden !important; }</style>
-        `;
+                <style>body { overflow: hidden !important; }</style>
+            `;
+        }
     };
 
     // Initialize

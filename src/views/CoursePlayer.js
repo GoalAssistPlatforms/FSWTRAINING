@@ -130,10 +130,14 @@ document.addEventListener('click', (e) => {
     }
 });
 
-export const renderCoursePlayer = (course, user) => {
+export const renderCoursePlayer = (course, user, options = {}) => {
     let currentModuleIndex = 0
     let currentLessonIndex = 0
+    let highestModuleIndex = 0
+    let highestLessonIndex = 0
     let isSidebarCollapsed = false
+
+    const isCourseComplete = options.isCourseComplete || false;
 
     // Completion State
     let isQuizComplete = false
@@ -206,13 +210,17 @@ export const renderCoursePlayer = (course, user) => {
                             ${mod.title}
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                            ${mod.lessons.map((lesson, lIdx) => `
-                                <button class="lesson-btn ${mIdx === currentModuleIndex && lIdx === currentLessonIndex ? 'active' : ''}" 
-                                    data-m="${mIdx}" data-l="${lIdx}">
+                            ${mod.lessons.map((lesson, lIdx) => {
+                                const isUnlocked = user.role === 'manager' || isCourseComplete || (mIdx < highestModuleIndex) || (mIdx === highestModuleIndex && lIdx <= highestLessonIndex);
+                                return `
+                                <button class="lesson-btn ${mIdx === currentModuleIndex && lIdx === currentLessonIndex ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}" 
+                                    data-m="${mIdx}" data-l="${lIdx}"
+                                    ${!isUnlocked ? 'disabled title="You must complete the previous lessons first."' : ''}
+                                    style="${!isUnlocked ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
                                     ${mIdx === currentModuleIndex && lIdx === currentLessonIndex ? '▶' : '•'}
-                                    ${lesson.title}
+                                    ${!isUnlocked ? '🔒 ' : ''}${lesson.title}
                                 </button>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                     </div>
                 `).join('')}
@@ -1022,6 +1030,12 @@ export const renderCoursePlayer = (course, user) => {
                         currentModuleIndex++
                         currentLessonIndex = 0
                     }
+                    
+                    if (currentModuleIndex > highestModuleIndex || (currentModuleIndex === highestModuleIndex && currentLessonIndex > highestLessonIndex)) {
+                        highestModuleIndex = currentModuleIndex;
+                        highestLessonIndex = currentLessonIndex;
+                    }
+
                     mount()
                 }
             })
@@ -1054,7 +1068,7 @@ export const renderCoursePlayer = (course, user) => {
         const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
         // Render Certificate
-        main.innerHTML = renderCertificate(course.title, user.email.split('@')[0], date) // Using email user part if name not available, or pass user.name if exists
+        main.innerHTML = renderCertificate(course.title, user.full_name || user.email.split('@')[0], date) 
 
         // Add event listeners for the new DOM elements
         setTimeout(() => {

@@ -169,13 +169,15 @@ export const initUserEvents = async () => {
                 
                 const progress = progressMap[course.id]
                 const isExpired = progress && progress.expires_at && new Date(progress.expires_at) < new Date()
+                const isCompleted = progress && progress.status === 'completed'
                 
                 if (isExpired) {
                     if (!await fswConfirm('Your certification for this course has expired. You must resit the course and complete the knowledge checks again. Proceed?')) {
                         return;
                     }
                 }
-                renderCoursePlayer(course, user)
+                const isCourseComplete = isCompleted && !isExpired;
+                renderCoursePlayer(course, user, { isCourseComplete })
             })
 
             if (dlBtn) {
@@ -185,7 +187,7 @@ export const initUserEvents = async () => {
                     dlBtn.style.opacity = '0.5'
                     try {
                         await downloadCertificate(
-                            user.email, 
+                            user.full_name || user.email, 
                             course.title, 
                             progress.completed_at, 
                             progress.expires_at, 
