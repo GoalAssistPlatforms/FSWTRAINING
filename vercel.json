@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/gamma/(.*)", "destination": "https://public-api.gamma.app/v1.0/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -19,7 +19,7 @@ async function uploadToCloudinary(imageUrl, topic) {
     console.log('[Images.js] ENV DEBUG:', {
         cloudName: cloudName,
         uploadPreset: uploadPreset,
-        envVite: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+        envVite: import.meta.env?.VITE_CLOUDINARY_UPLOAD_PRESET
     });
 
     if (!cloudName || !uploadPreset) {
@@ -29,14 +29,9 @@ async function uploadToCloudinary(imageUrl, topic) {
 
     console.log(`Starting Cloudinary upload with preset: "${uploadPreset}"`);
 
-    // 1. Fetch the image
-    const response = await fetch(imageUrl);
-    if (!response.ok) throw new Error(`Failed to fetch image from OpenAI: ${response.statusText}`);
-    const blob = await response.blob();
-
-    // 2. Prepare FormData for Cloudinary
+    // 1. Prepare FormData for Cloudinary (Cloudinary accepts Data URIs directly)
     const formData = new FormData();
-    formData.append('file', blob);
+    formData.append('file', imageUrl); // Pass the base64 data URI directly
     formData.append('upload_preset', uploadPreset);
     // Add context/tags if useful for management
     formData.append('context', `caption=${topic}`);

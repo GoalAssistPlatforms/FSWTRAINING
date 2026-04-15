@@ -1,0 +1,10 @@
+[[redirects]]
+  from = "/api/gamma/*"
+  to = "https://public-api.gamma.app/v1.0/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
