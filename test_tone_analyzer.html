@@ -18,7 +18,11 @@
         import { renderToneAnalyser } from './src/views/components/ToneAnalyser.js';
         
         console.log("Initializing Tone Analyser...");
-        renderToneAnalyser('test-container');
+        renderToneAnalyser('test-container', {
+          "context": "Dave messaged you regarding safety concerns in his home workspace. He is working remotely today.",
+          "incoming_email": "Hi, I'm reaching out because I'm a bit concerned about some safety hazards in my home workspace. My desk is right next to a heating vent and some wires are exposed. What should I do about this?",
+          "initialText": ""
+        });
     </script>
 </body>
 </html>

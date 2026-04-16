@@ -397,14 +397,14 @@ export const chatWithDojo = async (messages, scenario) => {
                 URGENT: The conversation is dragging on (Turn ${userTurns}).
                 - STOP asking probing questions.
                 - If the user has made ANY reasonable attempt or if they try to sign off, ACCEPT it immediately.
-                - Wrap up the call politely and append [SUCCESS].
+                - Wrap up the call politely, thank them, say goodbye, and append [SUCCESS].
                 `;
             } else if (userTurns >= 3) {
                 fatigueInstructions = `
                 NOTE: The conversation is progressing (Turn ${userTurns}).
                 - Be constructive but efficient.
                 - Don't nitpick minor details.
-                - If the user's answer is "good enough", accept it and append [SUCCESS].
+                - If the user's answer is "good enough", conclude the conversation naturally, say goodbye, and append [SUCCESS].
                 `;
             }
 
@@ -430,8 +430,8 @@ export const chatWithDojo = async (messages, scenario) => {
 
                 COMPLETION LOGIC:
                 - Stay in character. 
-                - If the user achieves the objective, add [SUCCESS] at the end.
-                - If the user explicitly asks to end the call, and they have done a decent job, add [SUCCESS].
+                - If the user's latest message achieves the objective, you MUST naturally conclude the conversation. Express gratitude ("Thanks for the help", "I'll let you get on with your day", etc.), say goodbye, and append [SUCCESS] at the very end. DO NOT ask any further questions or request more work if you are appending [SUCCESS].
+                - If the user explicitly asks to end the call, and they have done a decent job, gracefully accept, say goodbye, and add [SUCCESS].
 
                 ${fatigueInstructions}
                 `

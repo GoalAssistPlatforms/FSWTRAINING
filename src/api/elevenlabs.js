@@ -73,3 +73,45 @@ export const createAudio = async (text) => {
         return null;
     }
 };
+
+/**
+ * Creates temporary audio from text for fast chat playback without uploading
+ * @param {string} text - The text to convert to speech
+ * @returns {Promise<string>} The local Object URL of the generated audio
+ */
+export const generateChatAudio = async (text) => {
+    if (!ELEVENLABS_API_KEY) {
+        console.warn("VITE_ELEVENLABS_API_KEY is missing. Returning null.");
+        return null;
+    }
+
+    try {
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'xi-api-key': ELEVENLABS_API_KEY
+            },
+            body: JSON.stringify({
+                text: text,
+                model_id: "eleven_turbo_v2_5",
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75,
+                    use_speaker_boost: true
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`ElevenLabs Chat API Error: ${response.status} - ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    } catch (error) {
+        console.error("Chat Audio Generation Failed:", error);
+        return null;
+    }
+};

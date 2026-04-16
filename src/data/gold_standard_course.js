@@ -227,6 +227,12 @@ The goal is to use the powerful leg muscles (quadriceps/glutes) rather than the 
                             feedback: "Correct. Keeping the center of gravity close to the body reduces strain."
                         }
                     ]
+                },
+                {
+                    title: "2.3 Communication Lab Testing",
+                    audio_summary: "Welcome to the interactive communication lab testing module.",
+                    content: `# Communication Lab Test\n\nThis lesson contains an example of the newly updated communication lab activity structure. Notice how the description text refers to the activity in plain text rather than using a markdown link.\n\n### Interactive Activity\n\`\`\`ai-tone\n{\n  "context": "Dave messaged you regarding safety concerns in his home workspace. He is working remotely today.",\n  "incoming_email": "Hi, I'm reaching out because I'm a bit concerned about some safety hazards in my home workspace. My desk is right next to a heating vent and some wires are exposed. What should I do about this?",\n  "initialText": ""\n}\n\`\`\``,
+                    quiz: []
                 }
             ]
         }

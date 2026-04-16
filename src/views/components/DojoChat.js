@@ -1,4 +1,5 @@
 import { chatWithDojo } from '../../api/ai.js';
+import { generateChatAudio } from '../../api/elevenlabs.js';
 import { fswAlert } from '../../utils/dialog.js';
 
 export function renderDojoChat(containerId, config = {}) {
@@ -247,6 +248,9 @@ export function renderDojoChat(containerId, config = {}) {
                         </div>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
+                         <button id="voice-toggle-btn" title="Toggle Voice Mode" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                        </button>
                          <button id="mission-info-btn" title="Mission Info" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                         </button>
@@ -266,6 +270,9 @@ export function renderDojoChat(containerId, config = {}) {
                     <div style="flex: 1; position: relative; min-width: 0;">
                          <textarea id="chat-input" rows="1" placeholder="Type your response..." style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 20px; padding: 10px 1.25rem; outline: none; transition: all 0.2s; resize: none; font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
                     </div>
+                    <button id="dictate-btn" title="Hold to Speak" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; width: 42px; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
                     <button id="send-btn" style="background: var(--primary); color: white; border: none; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                     </button>
@@ -275,16 +282,18 @@ export function renderDojoChat(containerId, config = {}) {
                 <div id="end-call-modal" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; backdrop-filter: blur(5px); flex-direction: column; align-items: center; justify-content: center;">
                     <div style="background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid var(--glass-border); width: 80%; max-width: 320px; text-align: center;">
                         <h3 style="margin-top: 0; color: white;">End Call?</h3>
-                        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">If you have achieved the goal, you can mark this as complete.</p>
+                        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">Are you sure you want to hang up? The AI will automatically end the simulation once you successfully achieve the goal.</p>
                         
                         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                              <button id="modal-resume" style="padding: 10px; background: transparent; border: 1px solid #475569; color: white; border-radius: 8px; cursor: pointer;">Resume Call</button>
                              <button id="modal-end-incomplete" style="padding: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; cursor: pointer;">End (Retry Later)</button>
-                             <button id="modal-end-complete" style="padding: 10px; background: #22c55e; border: none; color: black; font-weight: bold; border-radius: 8px; cursor: pointer;">Mark as Complete</button>
                         </div>
                     </div>
                 </div>
 
+                <style>
+                    @keyframes pulse-recording { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+                </style>
             </div>
         `;
 
@@ -305,7 +314,90 @@ export function renderDojoChat(containerId, config = {}) {
         const endModal = container.querySelector('#end-call-modal');
         const modalResume = container.querySelector('#modal-resume');
         const modalEndIncomplete = container.querySelector('#modal-end-incomplete');
-        const modalEndComplete = container.querySelector('#modal-end-complete');
+
+        // Voice Mode Toggle
+        let isVoiceMode = false;
+        const voiceBtn = container.querySelector('#voice-toggle-btn');
+        const voiceIconContent = voiceBtn.querySelector('svg');
+        const iconVolumeX = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
+        const iconVolume2 = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>`;
+
+        voiceBtn.onclick = () => {
+            isVoiceMode = !isVoiceMode;
+            if (isVoiceMode) {
+                voiceBtn.style.color = '#22c55e';
+                voiceBtn.style.borderColor = '#22c55e';
+                voiceIconContent.innerHTML = iconVolume2;
+            } else {
+                voiceBtn.style.color = '#cbd5e1';
+                voiceBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                voiceIconContent.innerHTML = iconVolumeX;
+            }
+        };
+
+        // Dictation (Speech to Text)
+        const dictateBtn = container.querySelector('#dictate-btn');
+        let recognition = null;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            let isRecording = false;
+
+            recognition.onstart = () => {
+                isRecording = true;
+                dictateBtn.style.color = '#ef4444';
+                dictateBtn.style.borderColor = '#ef4444';
+                dictateBtn.style.animation = 'pulse-recording 1.5s infinite';
+                input.placeholder = "Listening...";
+                input.focus();
+            };
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    }
+                }
+                if (finalTranscript) {
+                   input.value = (input.value + " " + finalTranscript).trim();
+                   input.style.height = 'auto';
+                   input.style.height = (input.scrollHeight) + 'px';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech Recognition Error", event.error);
+                stopDictation();
+            };
+
+            recognition.onend = () => {
+                stopDictation();
+            };
+
+            const toggleDictation = () => {
+                if (isRecording) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            };
+
+            const stopDictation = () => {
+                isRecording = false;
+                dictateBtn.style.color = '#cbd5e1';
+                dictateBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                dictateBtn.style.animation = 'none';
+                input.placeholder = "Type your response...";
+            };
+
+            dictateBtn.onclick = toggleDictation;
+        } else {
+            dictateBtn.style.display = 'none';
+        }
 
         // Toggle Mission Info
         missionBtn.onclick = () => missionOverlay.style.display = 'block';
@@ -330,12 +422,6 @@ export function renderDojoChat(containerId, config = {}) {
         modalEndIncomplete.onclick = () => {
             clearInterval(callTimerInterval);
             renderCallEndedScreen(false);
-        }
-
-        modalEndComplete.onclick = () => {
-            clearInterval(callTimerInterval);
-            triggerCompletion();
-            renderCallEndedScreen(true);
         }
 
         const triggerCompletion = () => {
@@ -376,6 +462,8 @@ export function renderDojoChat(containerId, config = {}) {
             chatHistory.push({ role: 'user', content: text });
             renderMessages();
 
+            let callComplete = false;
+
             try {
                 // Typing effect indicator
                 const loadingMsg = { role: 'ai', content: '...' };
@@ -389,12 +477,30 @@ export function renderDojoChat(containerId, config = {}) {
                 saveChat();
                 renderMessages();
 
+                if (isVoiceMode) {
+                    const cleanResponseForAudio = response.replace(/\[SUCCESS\]/g, '').trim();
+                    if (cleanResponseForAudio) {
+                        generateChatAudio(cleanResponseForAudio).then(audioUrl => {
+                            if (audioUrl) {
+                                const audio = new Audio(audioUrl);
+                                audio.play().catch(e => console.error("Audio play failed:", e));
+                            }
+                        });
+                    }
+                }
+
                 if (response.includes('[SUCCESS]')) {
+                    callComplete = true;
                     clearInterval(callTimerInterval);
                     container.querySelector('#call-status').innerHTML = '<span style="color:var(--accent)">✓ MISSION COMPLETE</span>';
 
                     // Explicitly trigger completion event
                     triggerCompletion();
+
+                    // Automatically end the call after a short delay so the user can read the final message
+                    setTimeout(() => {
+                        renderCallEndedScreen(true);
+                    }, 4000);
                 }
             } catch (error) {
                 console.error("Dojo Chat failed:", error);
@@ -414,11 +520,13 @@ export function renderDojoChat(containerId, config = {}) {
 
                 renderMessages();
             } finally {
-                if (input) {
-                    input.disabled = false;
-                    input.focus();
+                if (!callComplete) {
+                    if (input) {
+                        input.disabled = false;
+                        input.focus();
+                    }
+                    if (sendBtn) sendBtn.disabled = false;
                 }
-                if (sendBtn) sendBtn.disabled = false;
             }
         };
 
