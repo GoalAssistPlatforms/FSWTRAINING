@@ -44,6 +44,8 @@ FORMATTING & CONTEXT (CRITICAL):
 - Do NOT use phrases like "Presented by", "Welcome to my presentation", "Any questions?", "Thank you for listening", or "We are now open for questions".
 - Do NOT include a Q&A section at the end.
 - The content should be direct and informational, suitable for reading or listening without a live presenter, but written as if 'WE' (FSW) are teaching 'YOU' (the employee).
+- NEVER invent, hallucinate, or reference non-existent company policies, guides, forms, or help sheets. Do NOT suggest the user refers to external documentation or an intranet unless explicitly provided in the context.
+- ANTI-FLUFF: Avoid generic AI introductory or concluding phrases (e.g., 'In conclusion...', 'It is important to note that...', 'Welcome to this module...'). Start directly with the core information.
 `;
 
 /**
@@ -225,7 +227,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 Output JSON format:
                                 {
                                     "presentation_input": "Detailed script content for the 10 slides, including bullet points and headers. This will be sent to Gamma AI.",
-                                    "audio_summary": "A detailed 3-4 minute (approx 600-800 words) audio script covering the ENTIRE lesson deeply. It should be engaging, professional, and flow like a podcast or expert briefing.",
+                                    "audio_summary": "A comprehensive 3-4 minute (approx 600-800 words) audio script that strictly follows the structural narrative and key points of your 'presentation_input'. Deliver this as a continuous, engaging expert masterclass. CRITICAL CONSTRAINTS: 1. Do NOT explicitly mention 'slides', 'bullet points', or say 'on the next slide'. 2. USE rhetorical questions and smooth transitions between core concepts to maintain pacing. 3. Do NOT read lists verbatim; summarize them conversationally. The delivery must sound like a natural, flowing expert conversation.",
                                     "markdown_content": "Detailed markdown content (Min 800 words) for the reading mode...",
                                     "quiz": [
                                         { "question": "...", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Brief context." }
@@ -239,32 +241,37 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 CRITICAL CONSTRAINTS:
                                 1. **presentation_input**: Needs to be structured for a slide deck.
                                 2. **audio_summary**: This is crucial. It must be LONG and comprehensive.
-                                3. **markdown_content**: Must be UK English. If a component is used, place the '### Interactive Activity' section AT THE VERY END, after the Conclusion.
-                                4. **quiz**: Must contain exactly 3 questions.
-                                5. **ai_component**: YOU MUST GENERATE A COMPONENT OF TYPE "${lesson.targetActivity}". CREATE A SENSIBLE ACTIVITY OF THIS TYPE THAT RELATES TO THE LESSON CONTENT.
+                                3. **markdown_content**: Must be UK English. DO NOT put the Interactive Activity or Quiz inside this string. Introduce them naturally, but let our system render them from the separate JSON keys.
+                                4. **quiz**: Must contain exactly 3 questions. MUST be a separate top-level key in the JSON output.
+                                5. **ai_component**: YOU MUST GENERATE A COMPONENT OF TYPE "${lesson.targetActivity}". CREATE A SENSIBLE ACTIVITY OF THIS TYPE THAT RELATES TO THE LESSON CONTENT. MUST be a separate top-level key in the JSON output, NOT embedded in markdown_content.
 
                                 **TERMINOLOGY RULES (CRITICAL):**
                                 - NEVER use terms like "AI", "AI tool", "chatbot", "swipe tool", "automated system", or "robot".
                                 - NEVER say "Interact with the AI below".
                                 - INSTREAD USE: "Interactive Simulation", "Scenario", "Module", "Digital Customer", "Virtual Colleague", or the specific premium activity name.
                                 - Make the experience feel like high-end professional training software.
+                                - NEVER include markdown links to the interactive module in your description text (e.g., do not write \`[Communication Lab]\`).
                                 
                                 AI Component Configs (Use these PRECISE TITLES):
-                                - ai-tone: { "context": "Brief context...", "incoming_email": "...", "initialText": "" } (Title: "Communication Lab")
-                                - ai-dojo: { "scenarioId": "generated_id", "intro": "...", "role": "...", "objective": "...", "skills": ["..."], "initialText": "..." } (Title: "Live Scenario Simulation")
-                                - ai-redline: { "title": "Name of Policy/Document", "intro": "Start of document context...", "outro": "End of document context...", "items": [{ "content": "...", "isRisk": true, "feedback": "Explanation..." }] } (Title: "Risk & Compliance Audit")
+                                - ai-tone: { "context": "A 1-2 sentence background highlighting the specific challenge (e.g., 'An irate contractor is demanding a refund for a supposedly faulty VRF unit').", "incoming_email": "A realistic, 2-3 paragraph email written in the FIRST PERSON from the sender. It must contain subtle professional or technical gaps for the user to navigate.", "initialText": "" } (Title: "Communication Lab")
+                                  * CRITICAL for ai-tone: The objective is for the USER to draft a professional reply. The email must sound like a real person using UK English. Do not formulate it as a scenario description.
+                                - ai-dojo: { "scenarioId": "generated_id", "intro": "A 1-sentence UI stage-setter (e.g., 'You are on a call with a site manager').", "role": "The distinct personality, job title, and CURRENT MOOD of the AI (e.g., 'Frustrated Project Manager under a tight deadline').", "objective": "A highly specific, achievable goal for the USER (e.g., 'De-escalate the situation and firmly request photos of the fault.').", "skills": ["Conflict Resolution", "Technical Troubleshooting"], "initialText": "MUST be written in the FIRST PERSON as a realistic, conversational opening from the character you are roleplaying. NEVER break character. NEVER give the user instructions. Start the conversation right away." } (Title: "Live Scenario Simulation")
+                                  * CRITICAL for ai-dojo: The persona must be mildly resistant but conquerable. The scenario must tie directly to the core lesson concept.
+                                - ai-redline: { "title": "A realistic internal document title (e.g., 'Q3 Safety Protocol Memo')", "intro": "Formal document header/introduction.", "outro": "Official sign-off or footer.", "items": [{ "content": "A specific, realistic paragraph or clause in the document.", "isRisk": true, "feedback": "Detailed explanation of why this clause is risky or safe, referencing FSW best practices." }] } (Title: "Risk & Compliance Audit")
                                   * CRITICAL for ai-redline:
-                                  * Generate 5-7 items total. 
-                                  * 2-3 items MUST be risks (isRisk: true).
+                                  * Generate exactly 5-7 items.
+                                  * 2-3 items MUST be risks (isRisk: true). Risks must be subtle, realistic operational mistakes (e.g., bypassing a safety check to save time), not cartoonish errors.
                                   * 3-4 items MUST be safe (isRisk: false).
-                                  * ALWAYS provide 'feedback' for SAFE items too (e.g., "Correct. This is standard procedure.").
-                                  * Include 'intro' and 'outro' text to make it look like a real document excerpt (e.g. "1. Purpose...", "Signed by...").
-                                - ai-debate: { "topic": "Debate topic...", "persona": "Role for the AI to play (e.g. Stubborn Manager)...", "stances": ["Option A", "Option B"] } (Title: "Strategic Analysis")
-                                - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "Statement...", "isCorrect": true, "feedback": "Why..." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
-                                  * IMPORTANT for ai-swipe: 
-                                  * "isCorrect": true  -> User should ACCEPT (Swipe Right). The statement is clear/good/safe.
-                                  * "isCorrect": false -> User should REJECT (Swipe Left). The statement is risky/incorrect/bad.
-                                  * FEEDBACK: Do NOT start with "Correct" or "Incorrect". Just explain the reasoning directly (e.g. "This creates a safety hazard because...").
+                                  * ALWAYS provide educational 'feedback' for SAFE items (don't just say 'Correct'). The text MUST read like a real technical document.
+                                - ai-debate: { "topic": "A controversial or nuanced operational decision anchored to the lesson (e.g., 'Should we replace the old HVAC system or keep repairing it?').", "persona": "A contrarian stakeholder who will push back against the likely user path (e.g., 'Budget-conscious Operations Director').", "stances": ["A clear action path", "The opposing action path"] } (Title: "Strategic Analysis")
+                                  * CRITICAL for ai-debate: The topic must not have a simple "trick" answer. It must force the user to defend best practices against a stubborn, financially or time-motivated persona.
+                                - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "A brief, actionable scenario (Max 150 characters, e.g., 'A technician arrives without PPE but promises to just stay in the van.').", "isCorrect": true, "feedback": "Why this is the right course of action." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
+                                  * CRITICAL for ai-swipe:
+                                  * Generate exactly 6-8 cards.
+                                  * CARDS MUST NOT BE TRUE/FALSE TRIVIA. They must be practical snapshot scenarios requiring split-second decisions at work.
+                                  * "isCorrect": true -> User should ACCEPT (Swipe Right). The action is highly compliant/safe.
+                                  * "isCorrect": false -> User should REJECT (Swipe Left). The action is poor practice/dangerous.
+                                  * FEEDBACK must explicitly teach the user the 'why' behind the policy.
                                 `;
 
                     if (supportingDocs) {
