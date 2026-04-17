@@ -625,6 +625,16 @@ export const initManagerEvents = async () => {
     }
   }
 
+  const escapeHTML = (str) => {
+      if (!str) return '';
+      return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+  };
+
   function renderTeamList(filteredStats) {
       if (!teamList) return
 
@@ -653,12 +663,12 @@ export const initManagerEvents = async () => {
                 <input type="checkbox" class="user-select-cb" data-userid="${member.id}" ${selectedUserIds.has(member.id) ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
               </div>
               <div style="flex: 1;">
-                <h4 style="margin: 0 0 0.25rem 0;">${member.full_name || member.email}</h4>
-                ${member.full_name ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${member.email}</div>` : ''}
+                <h4 style="margin: 0 0 0.25rem 0;">${escapeHTML(member.full_name || member.email)}</h4>
+                ${member.full_name ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${escapeHTML(member.email)}</div>` : ''}
               <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${member.team_role || 'member'}</span>
-                <button class="edit-dept-btn" data-userid="${member.id}" data-dept="${member.department || ''}" style="background: ${member.department ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${member.department ? '#10b981' : 'var(--glass-border)'}; color: ${member.department ? '#10b981' : 'var(--text-muted)'}; font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                  ${member.department || '+ Dept'}
+                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${escapeHTML(member.team_role) || 'member'}</span>
+                <button class="edit-dept-btn" data-userid="${member.id}" data-dept="${escapeHTML(member.department) || ''}" style="background: ${member.department ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${member.department ? '#10b981' : 'var(--glass-border)'}; color: ${member.department ? '#10b981' : 'var(--text-muted)'}; font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                  ${escapeHTML(member.department) || '+ Dept'}
                 </button>
               </div>
               

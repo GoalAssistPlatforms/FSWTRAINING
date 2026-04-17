@@ -55,9 +55,8 @@ export const createAudio = async (text) => {
 
         if (error) {
             console.error("Supabase Upload Error:", error);
-            // Fallback: return local blob URL if upload fails (active for this session only)
-            console.warn("Falling back to local blob URL due to upload failure.");
-            return URL.createObjectURL(blob);
+            // Throwing an error so the upstream ai.js catches it and correctly handles a failed audio generation (returning null) instead of a transient, unreachable Blob URL.
+            throw new Error(`Supabase Audio Upload Failed: ${error.message}`);
         }
 
         // Get Public URL

@@ -264,10 +264,15 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                 </button>
 
                 <!-- Edit in Gamma Button (Managers Only) -->
-                ${(user.role === 'manager' && currentLesson.gamma_url) ? `
-                <button id="edit-gamma-btn" onclick="window.open('${currentLesson.gamma_url}', '_blank')" class="hover-glow" style="position: absolute; top: 2rem; right: 5rem; z-index: 50; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Edit Presentation">
-                    <span>✏️ Edit Slides</span>
-                </button>
+                ${(user.role === 'manager') ? `
+                    <button id="regenerate-gamma-btn" class="hover-glow" style="position: absolute; top: 2rem; right: ${currentLesson.gamma_url ? '14rem' : '5rem'}; z-index: 50; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Regenerate Presentation via AI">
+                        <span>🔄 Regenerate Slides</span>
+                    </button>
+                    ${currentLesson.gamma_url ? `
+                    <button id="edit-gamma-btn" onclick="window.open('${currentLesson.gamma_url}', '_blank')" class="hover-glow" style="position: absolute; top: 2rem; right: 5rem; z-index: 50; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Edit Presentation">
+                        <span>✏️ Edit Slides</span>
+                    </button>
+                    ` : ''}
                 ` : ''}
                 
                 <!-- Audio Player (Repositioned to bottom right) -->
@@ -864,6 +869,40 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                     await fswAlert("Failed to regenerate audio. Check your connections or credits.");
                     saveAudioBtn.innerHTML = originalText;
                     saveAudioBtn.disabled = false;
+                }
+            });
+        }
+
+        // Regenerate Gamma Logic
+        const regenGammaBtn = document.getElementById('regenerate-gamma-btn');
+        if (regenGammaBtn) {
+            regenGammaBtn.addEventListener('click', async () => {
+                const { fswConfirm, fswAlert } = await import('../utils/dialog.js');
+                if (await fswConfirm("Regenerate the presentation via AI? This may take up to a minute.")) {
+                    regenGammaBtn.querySelector('span').innerText = '🔄 Generating...';
+                    regenGammaBtn.disabled = true;
+                    try {
+                        const { createPresentation } = await import('../api/gamma.js');
+                        const l = modules[currentModuleIndex].lessons[currentLessonIndex];
+                        const input = l.presentation_input || l.audio_script || l.content;
+                        const newUrl = await createPresentation(l.title, input);
+                        if (newUrl) {
+                            l.gamma_url = newUrl;
+                            const { updateCourse } = await import('../api/courses.js');
+                            await updateCourse(course.id, { content_json: modules, updated_at: new Date() });
+                            mount();
+                        } else {
+                            throw new Error("Gamma returned null");
+                        }
+                    } catch (e) {
+                         console.error('Failed to regenerate presentation:', e);
+                         await fswAlert("Failed to regenerate presentation.");
+                    } finally {
+                        if (document.getElementById('regenerate-gamma-btn')) {
+                            document.getElementById('regenerate-gamma-btn').querySelector('span').innerText = '🔄 Regenerate Slides';
+                            document.getElementById('regenerate-gamma-btn').disabled = false;
+                        }
+                    }
                 }
             });
         }

@@ -340,6 +340,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                     lesson.gamma_url = gammaUrl;
                     lesson.audio_url = audioUrl;
                     lesson.audio_script = contentData.audio_summary; // Save script for future editing
+                    lesson.presentation_input = contentData.presentation_input;
                     lesson.ai_component = contentData.ai_component;
 
                     success = true;
