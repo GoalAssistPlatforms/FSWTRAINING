@@ -12,7 +12,7 @@ export const signIn = async (email, password) => {
 
 export const resetPassword = async (email) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password', // Optional: customize redirect URL
+        redirectTo: 'https://fswtraining.vercel.app/reset-password', // Open live app even if initiated locally
     })
     if (error) throw error
     return data
@@ -36,7 +36,7 @@ export const signUp = async (email, password, fullName, department) => {
                 full_name: fullName,
                 department: department
             },
-            emailRedirectTo: window.location.origin
+            emailRedirectTo: 'https://fswtraining.vercel.app' // Force live app direction instead of localhost
         }
     })
     if (error) throw error
