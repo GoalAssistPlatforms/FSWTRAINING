@@ -27,10 +27,17 @@ export const updatePassword = async (newPassword) => {
 }
 
 export const signUp = async (email, password, fullName, department) => {
-    // 1. Sign up the user
+    // 1. Sign up the user with metadata and redirect URL
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+            data: {
+                full_name: fullName,
+                department: department
+            },
+            emailRedirectTo: window.location.origin
+        }
     })
     if (error) throw error
 
@@ -40,12 +47,15 @@ export const signUp = async (email, password, fullName, department) => {
         if (fullName) profileData.full_name = fullName
         if (department) profileData.department = department
 
+        // Note: For this to work before user clicks the confirmation email, 
+        // there must either be a DB trigger or the RLS policy for profiles 
+        // must allow inserts based on raw JWT claims, as the session might be null.
         const { error: profileError } = await supabase
             .from('profiles')
             .upsert([profileData])
 
         if (profileError) {
-            console.warn('Profile creation failed (might already exist via trigger):', profileError)
+            console.warn('Profile creation failed (might already exist via trigger or blocked by RLS):', profileError)
         }
     }
 
