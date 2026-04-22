@@ -2,7 +2,18 @@ import { processAndUploadGuide, processAndUploadWebLink, chatWithGuides, fetchAl
 import { getCourses, deleteCourse } from '../api/courses.js';
 import { fswAlert, fswConfirm } from '../utils/dialog';
 
-export const renderGuides = (user) => {
+export const renderGuides = (user, stats) => {
+    let statsHtml = '';
+    if (stats && user.role === 'manager') {
+        const renewalDateStr = stats.renewalDate ? stats.renewalDate.toLocaleDateString() : 'N/A';
+        statsHtml = `
+            <div style="font-size: 0.8rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); padding: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--primary); font-weight: bold;">${stats.used} / ${stats.total} Guides Used</span>
+                <span style="color: var(--text-muted);">Renews: ${renewalDateStr}</span>
+            </div>
+        `;
+    }
+
     return `
     <div class="guides-container fade-in" style="display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 180px);">
         
@@ -17,7 +28,7 @@ export const renderGuides = (user) => {
             </div>
 
             ${user.role === 'manager' ? `
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
                 <div id="upload-zone" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 0.8rem; text-align: center; cursor: pointer; transition: all 0.3s; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 1.2rem; margin-bottom: 0.2rem;">📄</div>
                     <div style="font-size: 0.7rem; color: var(--text-muted);">Upload PDF</div>
@@ -35,6 +46,7 @@ export const renderGuides = (user) => {
                 </div>
 
             </div>
+            ${statsHtml}
             <div id="upload-progress" style="margin-top: 0; margin-bottom: 1rem; font-size: 0.8rem; color: var(--primary); font-weight: bold; display: none; text-align: center;"></div>
             ` : ''}
 

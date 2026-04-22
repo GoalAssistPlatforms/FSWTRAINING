@@ -66,6 +66,29 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+-- PLATFORM SETTINGS
+create table if not exists public.platform_settings (
+  id integer primary key default 1,
+  max_users integer default 10,
+  max_courses_per_period integer default 12,
+  max_guides_per_period integer default 12,
+  subscription_start_date timestamptz default now(),
+  renewal_period_months integer default 12,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  check (id = 1) -- Ensures only one row exists
+);
+
+-- Platform Settings RLS
+alter table public.platform_settings enable row level security;
+drop policy if exists "Admins manage platform settings" on public.platform_settings;
+drop policy if exists "Managers view platform settings" on public.platform_settings;
+
+create policy "Admins manage platform settings" on public.platform_settings
+  for all using (public.get_my_role() = 'admin');
+
+create policy "Managers view platform settings" on public.platform_settings
+  for select using (public.get_my_role() = 'manager' or public.get_my_role() = 'admin');
 -- Team Code Regeneration Func and Join Logic Removed
 -- Because the application is now a single-tenant model where managers see all users.
 
@@ -104,19 +127,19 @@ drop policy if exists "Managers can view team member profiles" on public.profile
 create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
 
-create policy "Managers can view all profiles" on public.profiles
+create policy "Managers and Admins can view all profiles" on public.profiles
   for select using (
-    public.get_my_role() = 'manager'
+    public.get_my_role() = 'manager' or public.get_my_role() = 'admin'
   );
 
 -- Courses
 drop policy if exists "Public view live courses" on public.courses;
 drop policy if exists "Managers view all courses" on public.courses;
 create policy "Public view live courses" on public.courses
-  for select using (status = 'live');
+  for select using (status = 'live' or public.get_my_role() = 'admin');
 
-create policy "Managers view all courses" on public.courses
-  for all using (public.get_my_role() = 'manager');
+create policy "Managers and Admins view all courses" on public.courses
+  for all using (public.get_my_role() = 'manager' or public.get_my_role() = 'admin');
 
 -- User Progress
 drop policy if exists "Users view own progress" on public.user_progress;
@@ -127,9 +150,9 @@ drop policy if exists "Managers manage all user progress" on public.user_progres
 create policy "Users view own progress" on public.user_progress
   for all using (auth.uid() = user_id);
 
-create policy "Managers manage all user progress" on public.user_progress
+create policy "Managers and Admins manage all user progress" on public.user_progress
   for all using (
-    public.get_my_role() = 'manager'
+    public.get_my_role() = 'manager' or public.get_my_role() = 'admin'
   );
 
 -- USER DELETION FUNCTION (RPC)
@@ -141,9 +164,9 @@ begin
     -- Get the role of the user making the request
     select role into caller_role from public.profiles where id = auth.uid();
     
-    -- Ensure the caller is a manager
-    if caller_role != 'manager' then
-        raise exception 'Unauthorized: Only managers can delete users';
+    -- Ensure the caller is a manager or admin
+    if caller_role != 'manager' and caller_role != 'admin' then
+        raise exception 'Unauthorized: Only managers and admins can delete users';
     end if;
 
     -- Ensure a manager isn't deleting themselves

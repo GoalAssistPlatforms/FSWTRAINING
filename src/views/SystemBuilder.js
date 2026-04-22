@@ -527,6 +527,7 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
 
         } catch (e) {
             console.error('Save failed:', e);
+            await fswAlert(e.message || 'Failed to publish guide');
             saveBtn.innerText = 'Error';
             saveBtn.disabled = false;
         }

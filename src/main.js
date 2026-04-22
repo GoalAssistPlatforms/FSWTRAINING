@@ -4,6 +4,7 @@ import { getCurrentUser, signOut } from './api/auth'
 import { renderLogin } from './views/Login'
 import { renderManagerDashboard, initManagerEvents } from './views/ManagerDashboard'
 import { renderUserDashboard, initUserEvents } from './views/UserDashboard'
+import { renderAdminDashboard, initAdminEvents } from './views/AdminDashboard'
 import { renderNotificationBell, initNotificationEvents } from './views/components/NotificationBell'
 import { checkAndGenerateDeadlineNotifications } from './utils/deadlineChecker'
 
@@ -51,9 +52,34 @@ export const renderMainLayout = async (user) => {
 
   const bellHtml = await renderNotificationBell();
 
-  const dashboardContent = user.role === 'manager'
-    ? renderManagerDashboard(user)
-    : renderUserDashboard(user)
+  // Determine effective role based on admin toggle
+  let effectiveRole = user.role;
+  let adminToggleHtml = '';
+
+  if (user.role === 'admin') {
+      const savedView = sessionStorage.getItem('adminViewMode') || 'admin';
+      effectiveRole = savedView;
+
+      adminToggleHtml = `
+        <div style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; margin-right: 1rem;">
+            <span style="color: var(--text-muted); text-transform: uppercase;">View As:</span>
+            <select id="admin-view-toggle" style="background: transparent; color: white; border: none; outline: none; cursor: pointer; font-weight: bold;">
+                <option value="admin" ${savedView === 'admin' ? 'selected' : ''} style="color: black;">Admin</option>
+                <option value="manager" ${savedView === 'manager' ? 'selected' : ''} style="color: black;">Manager</option>
+                <option value="user" ${savedView === 'user' ? 'selected' : ''} style="color: black;">User</option>
+            </select>
+        </div>
+      `;
+  }
+
+  let dashboardContent = '';
+  if (effectiveRole === 'admin') {
+      dashboardContent = renderAdminDashboard(user);
+  } else if (effectiveRole === 'manager') {
+      dashboardContent = renderManagerDashboard(user);
+  } else {
+      dashboardContent = renderUserDashboard(user);
+  }
 
   app.innerHTML = `
     <header class="glass" style="padding: 1rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(20, 30, 60, 0.6); position: relative; z-index: 1000;">
@@ -67,6 +93,7 @@ export const renderMainLayout = async (user) => {
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 1rem;">
+        ${adminToggleHtml}
         <div id="notification-bell-placeholder">
             ${bellHtml}
         </div>
@@ -85,14 +112,30 @@ export const renderMainLayout = async (user) => {
 
   document.querySelector('#logout-btn').addEventListener('click', async () => {
     await signOut()
+    sessionStorage.removeItem('adminViewMode')
     window.location.reload()
   })
 
+  // Setup Admin Toggle Listener
+  if (user.role === 'admin') {
+      const toggle = document.getElementById('admin-view-toggle');
+      if (toggle) {
+          toggle.addEventListener('change', (e) => {
+              sessionStorage.setItem('adminViewMode', e.target.value);
+              renderMainLayout(user); // Re-render the layout
+          });
+      }
+  }
+
   // Initialize event listeners for dashboards
-  if (user.role === 'manager') {
-    initManagerEvents()
+  const effectiveUser = { ...user, role: effectiveRole };
+  
+  if (effectiveRole === 'admin') {
+      initAdminEvents();
+  } else if (effectiveRole === 'manager') {
+      initManagerEvents(effectiveUser);
   } else {
-    initUserEvents()
+      initUserEvents(effectiveUser);
   }
   
   initNotificationEvents();

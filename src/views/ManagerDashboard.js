@@ -1,5 +1,5 @@
 import { generateCourseContent } from '../api/ai'
-import { createCourse, getCourses, deleteCourse } from '../api/courses'
+import { createCourse, getCourses, deleteCourse, getCourseUsageStats } from '../api/courses'
 import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment, deleteUser } from '../api/manager'
 import { getTeamCompletionRates, exportTeamDataCSV } from '../api/analytics'
 import { renderCourseEditor } from './CourseEditor'
@@ -165,7 +165,7 @@ export const renderManagerDashboard = (user) => {
   `
 }
 
-export const initManagerEvents = async () => {
+export const initManagerEvents = async (effectiveUser) => {
   const modal = document.getElementById('create-modal')
   const overlay = document.getElementById('modal-overlay')
   const cancelBtn = document.getElementById('cancel-create')
@@ -192,7 +192,7 @@ export const initManagerEvents = async () => {
   const departmentFilter = document.getElementById('department-filter')
   const exportCsvBtn = document.getElementById('export-csv-btn')
 
-  const user = await getCurrentUser()
+  const user = effectiveUser || await getCurrentUser()
 
   let currentTeamStats = [] // Store for filtering
   let selectedUserIds = new Set()
@@ -509,7 +509,10 @@ export const initManagerEvents = async () => {
     
     if (!viewGuides.dataset.loaded) {
        const { renderGuides, initGuidesEvents } = await import('./Guides.js')
-       viewGuides.innerHTML = renderGuides(user)
+       const { getGuideUsageStats } = await import('../api/guides.js')
+       let guideStats = null;
+       try { guideStats = await getGuideUsageStats(); } catch(e) {}
+       viewGuides.innerHTML = renderGuides(user, guideStats)
        await initGuidesEvents(user)
        viewGuides.dataset.loaded = 'true'
     }
@@ -913,7 +916,9 @@ export const initManagerEvents = async () => {
     courseList.innerHTML = '<p>Loading...</p>'
     try {
       const courses = await getCourses('manager')
-      renderCourses(courses)
+      let courseStats = null;
+      try { courseStats = await getCourseUsageStats(); } catch(e) { console.error('Failed to load course stats', e); }
+      renderCourses(courses, courseStats)
       
       // Populate Assign Course Dropdown (Only Live courses!)
       const liveCourses = courses.filter(c => c.status === 'live')
@@ -931,7 +936,14 @@ export const initManagerEvents = async () => {
     }
   }
 
-  function renderCourses(courses) {
+  function renderCourses(courses, stats) {
+    let statsHtml = '<p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">AI Powered</p>';
+    if (stats) {
+        const renewalDateStr = stats.renewalDate ? stats.renewalDate.toLocaleDateString() : 'N/A';
+        statsHtml += `<p style="margin: 0.5rem 0 0 0; color: var(--primary); font-size: 0.8rem; font-weight: bold;">${stats.used} / ${stats.total} Used</p>`;
+        statsHtml += `<p style="margin: 0; color: var(--text-muted); font-size: 0.7rem;">Renews: ${renewalDateStr}</p>`;
+    }
+
     const createCardHTML = `
       <div id="create-course-card" class="glass card-hover" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; cursor: pointer; border: 2px dashed var(--glass-border); background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-lg);">
         <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(18, 142, 205, 0.4);">
@@ -941,7 +953,7 @@ export const initManagerEvents = async () => {
           </svg>
         </div>
         <h3 style="margin: 0; color: white;">Create Course</h3>
-        <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">AI Powered</p>
+        ${statsHtml}
       </div>
     `
 

@@ -3,7 +3,23 @@
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  current_user_count integer;
+  max_allowed_users integer;
 BEGIN
+  -- Check user limit
+  SELECT count(*) INTO current_user_count FROM public.profiles;
+  
+  BEGIN
+    SELECT max_users INTO max_allowed_users FROM public.platform_settings WHERE id = 1;
+    -- Note: We exclude 'admin' from the limit logic if we want, but since admin is 1 user it's fine to just count all profiles.
+    IF max_allowed_users IS NOT NULL AND current_user_count >= max_allowed_users THEN
+      RAISE EXCEPTION 'Platform user limit reached. Please contact your administrator.';
+    END IF;
+  EXCEPTION WHEN undefined_table THEN
+    -- Ignore if platform_settings doesn't exist yet
+  END;
+
   INSERT INTO public.profiles (id, email, role, full_name, department)
   VALUES (
     new.id,

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getPlatformSettings, getBillingPeriodDates } from './admin'
 
 export const getCourses = async (role) => {
     let query = supabase
@@ -28,7 +29,53 @@ export const getUserProgress = async (userId) => {
     return data
 }
 
+export const getCourseUsageStats = async () => {
+    const settings = await getPlatformSettings();
+    if (!settings) return null;
+    const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
+    if (!dates) return null;
+
+    const { count, error } = await supabase
+        .from('courses')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', dates.periodStart.toISOString())
+        .neq('status', 'archived');
+        
+    if (error) throw error;
+    
+    return {
+        used: count || 0,
+        total: settings.max_courses_per_period,
+        renewalDate: dates.nextRenewal
+    };
+}
+
 export const createCourse = async (courseData) => {
+    // Check limits if user is a manager
+    const { data: userAuth } = await supabase.auth.getUser();
+    if (userAuth?.user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
+        if (profile?.role === 'manager') {
+            const settings = await getPlatformSettings();
+            if (settings) {
+                const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
+                if (dates) {
+                    const { count, error: countError } = await supabase
+                        .from('courses')
+                        .select('*', { count: 'exact', head: true })
+                        .gte('created_at', dates.periodStart.toISOString())
+                        .neq('status', 'archived');
+                        
+                    if (countError) throw countError;
+                    
+                    if (count >= settings.max_courses_per_period) {
+                        throw new Error(`Limit Reached: You have created ${count} courses in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
+                    }
+                }
+            }
+        }
+    }
+
     const { data, error } = await supabase
         .from('courses')
         .insert([courseData])

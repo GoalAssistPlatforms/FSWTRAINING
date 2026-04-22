@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { getPlatformSettings } from './admin.js';
 import OpenAI from 'openai';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -104,6 +105,28 @@ export async function processAndUploadGuide(file, title, description, tags = [],
         const { data: userAuth } = await supabase.auth.getUser();
         if (!userAuth.user) throw new Error("Not authenticated");
 
+        // Check limits if user is a manager
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
+        if (profile?.role === 'manager') {
+            const { getPlatformSettings, getBillingPeriodDates } = await import('./admin.js');
+            const settings = await getPlatformSettings();
+            if (settings) {
+                const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
+                if (dates) {
+                    const { count, error: countError } = await supabase
+                        .from('guide_documents')
+                        .select('*', { count: 'exact', head: true })
+                        .gte('created_at', dates.periodStart.toISOString());
+                        
+                    if (countError) throw countError;
+                    
+                    if (count >= settings.max_guides_per_period) {
+                        throw new Error(`Limit Reached: You have created ${count} guides in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
+                    }
+                }
+            }
+        }
+
         // 1. Upload to Supabase Storage (assuming a 'guides' bucket exists, if not we'll create it)
         const fileName = `${Date.now()}_${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -172,6 +195,29 @@ export async function processAndUploadGuide(file, title, description, tags = [],
     }
 }
 
+
+
+export const getGuideUsageStats = async () => {
+    const { getPlatformSettings, getBillingPeriodDates } = await import('./admin.js');
+    const settings = await getPlatformSettings();
+    if (!settings) return null;
+    const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
+    if (!dates) return null;
+
+    const { count, error } = await supabase
+        .from('knowledge_base')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', dates.periodStart.toISOString());
+        
+    if (error) throw error;
+    
+    return {
+        used: count || 0,
+        total: settings.max_guides_per_period,
+        renewalDate: dates.nextRenewal
+    };
+}
+
 /**
  * Helper: Fetches a URL via proxy, cleans HTML to extract text or metadata, and embeds it.
  */
@@ -181,6 +227,28 @@ export async function processAndUploadWebLink(url, tags = [], onProgress) {
         
         const { data: userAuth } = await supabase.auth.getUser();
         if (!userAuth.user) throw new Error("Not authenticated");
+
+        // Check limits if user is a manager
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
+        if (profile?.role === 'manager') {
+            const { getPlatformSettings, getBillingPeriodDates } = await import('./admin.js');
+            const settings = await getPlatformSettings();
+            if (settings) {
+                const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
+                if (dates) {
+                    const { count, error: countError } = await supabase
+                        .from('guide_documents')
+                        .select('*', { count: 'exact', head: true })
+                        .gte('created_at', dates.periodStart.toISOString());
+                        
+                    if (countError) throw countError;
+                    
+                    if (count >= settings.max_guides_per_period) {
+                        throw new Error(`Limit Reached: You have created ${count} guides in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
+                    }
+                }
+            }
+        }
 
         // --- Deduplication Check ---
         // If the URL already exists in the database, safely skip it.
