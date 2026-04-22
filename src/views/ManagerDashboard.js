@@ -1,6 +1,6 @@
 import { generateCourseContent } from '../api/ai'
 import { createCourse, getCourses, deleteCourse } from '../api/courses'
-import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment } from '../api/manager'
+import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment, deleteUser } from '../api/manager'
 import { getTeamCompletionRates, exportTeamDataCSV } from '../api/analytics'
 import { renderCourseEditor } from './CourseEditor'
 import { renderCoursePlayer } from './CoursePlayer'
@@ -320,6 +320,26 @@ export const initManagerEvents = async () => {
                 nudgeBtn.disabled = false
             }
         }
+    }
+
+    // 7. Delete User
+    const deleteBtn = e.target.closest('.delete-user-btn')
+    if (deleteBtn) {
+      const userId = deleteBtn.dataset.userid
+      if (await fswConfirm('Are you absolutely sure you want to permanently delete this user? This action cannot be undone and will remove all their data.')) {
+        try {
+          deleteBtn.innerText = 'Deleting...'
+          deleteBtn.disabled = true
+          await deleteUser(userId)
+          await fswAlert('User deleted successfully.')
+          loadTeamStats() // refresh ui
+        } catch (error) {
+          console.error('Delete error details:', error)
+          await fswAlert('Failed to delete user: ' + (error.message || JSON.stringify(error)))
+          deleteBtn.innerText = 'Delete'
+          deleteBtn.disabled = false
+        }
+      }
     }
   })
 
@@ -671,6 +691,12 @@ export const initManagerEvents = async () => {
                   ${escapeHTML(member.department) || '+ Dept'}
                 </button>
               </div>
+              <div style="margin-top: 0.5rem;">
+                <button class="btn-ghost delete-user-btn" data-userid="${member.id}" style="display: inline-flex; align-items: center; gap: 0.25rem; color: #ef4444; font-size: 0.75rem; padding: 0;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  Delete User
+                </button>
+              </div>
               
               <div style="margin-top: 1.5rem; width: 80%;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
@@ -703,7 +729,7 @@ export const initManagerEvents = async () => {
               </div>
             </div>
             
-            <div>
+             <div>
                <button class="btn-ghost nudge-user-btn" data-userid="${member.id}" style="display: flex; align-items: center; gap: 0.5rem; color: #f59e0b; margin-bottom: 0.5rem; width: 100%; justify-content: center;">
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                  Nudge
@@ -712,7 +738,7 @@ export const initManagerEvents = async () => {
                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                  Assign Course
                </button>
-            </div>
+             </div>
           </div>
           
           ${member.progressData && member.progressData.length > 0 ? `

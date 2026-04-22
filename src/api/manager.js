@@ -180,3 +180,20 @@ export const updateUserDepartment = async (userId, department) => {
 
     return { success: true }
 }
+
+/**
+ * Delete a user and all their associated data.
+ * Requires the calling user to be a manager.
+ */
+export const deleteUser = async (userId) => {
+    const { data, error } = await supabase.rpc('delete_user_by_manager', {
+        target_user_id: userId
+    });
+
+    if (error) {
+        console.error('Error deleting user:', error)
+        throw error
+    }
+
+    return data
+}

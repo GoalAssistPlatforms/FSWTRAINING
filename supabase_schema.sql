@@ -131,3 +131,37 @@ create policy "Managers manage all user progress" on public.user_progress
   for all using (
     public.get_my_role() = 'manager'
   );
+
+-- USER DELETION FUNCTION (RPC)
+create or replace function public.delete_user_by_manager(target_user_id uuid)
+returns boolean as $$
+declare
+    caller_role text;
+begin
+    -- Get the role of the user making the request
+    select role into caller_role from public.profiles where id = auth.uid();
+    
+    -- Ensure the caller is a manager
+    if caller_role != 'manager' then
+        raise exception 'Unauthorized: Only managers can delete users';
+    end if;
+
+    -- Ensure a manager isn't deleting themselves
+    if auth.uid() = target_user_id then
+        raise exception 'Unauthorized: Managers cannot delete their own accounts using this function';
+    end if;
+
+    -- Explicitly delete child records to avoid any FK constraint issues
+    -- Some Supabase environments link these directly to auth.users without cascade
+    delete from public.user_progress where user_id = target_user_id;
+    delete from public.team_members where user_id = target_user_id;
+
+    -- Delete from public.profiles
+    delete from public.profiles where id = target_user_id;
+
+    -- Delete from auth.users (this deletes the core auth account)
+    delete from auth.users where id = target_user_id;
+
+    return true;
+end;
+$$ language plpgsql security definer set search_path = public;
