@@ -62,5 +62,15 @@ export const deleteCourse = async (id, role) => {
         throw new Error(`Delete failed: ${error.message}`)
     }
 
+    // Automatically unassign the course from all users
+    const { error: unassignError } = await supabase
+        .from('user_progress')
+        .delete()
+        .eq('course_id', id)
+
+    if (unassignError) {
+        console.error('Failed to unassign users during course deletion:', unassignError)
+    }
+
     return { success: true }
 }

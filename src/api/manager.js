@@ -32,8 +32,9 @@ export const getTeamProgress = async () => {
             due_date,
             expires_at,
             certificate_id,
-            courses:course_id ( id, title, thumbnail_url )
+            courses!inner ( id, title, thumbnail_url, status )
         `)
+        .neq('courses.status', 'archived')
 
     if (error) {
         console.error('Error fetching team progress:', error)
