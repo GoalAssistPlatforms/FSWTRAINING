@@ -397,7 +397,7 @@ export const initManagerEvents = async (effectiveUser) => {
       const totalMembers = statsList.length;
       const maxUsers = currentPlatformSettings ? currentPlatformSettings.max_users : 10;
       const isAtCapacity = totalMembers >= maxUsers;
-      const membersText = `${totalMembers} <span style="font-size: 1.2rem; color: var(--text-muted);">/ ${maxUsers}</span>`;
+      const percentUsed = Math.min(100, Math.round((totalMembers / maxUsers) * 100));
       const membersColor = isAtCapacity ? '#ef4444' : 'white';
 
       const radius = 30;
@@ -418,13 +418,22 @@ export const initManagerEvents = async (effectiveUser) => {
             </div>
           </div>
 
-          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(18, 142, 205, 0.3); box-shadow: inset 0 0 20px rgba(18, 142, 205, 0.05);">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(18, 142, 205, 0.1); display: flex; align-items: center; justify-content: center;">
+          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(18, 142, 205, 0.3); box-shadow: inset 0 0 20px rgba(18, 142, 205, 0.05); position: relative; overflow: hidden;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(18, 142, 205, 0.1); display: flex; align-items: center; justify-content: center; z-index: 1;">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#128ecd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(18,142,205,0.8));"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             </div>
-            <div>
-              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Members</div>
-              <div style="font-size: 1.8rem; font-weight: bold; color: ${membersColor};">${membersText}</div>
+            <div style="flex: 1; z-index: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+                <div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.1rem; text-transform: uppercase;">Team Capacity</div>
+                  <div style="font-size: 1.6rem; font-weight: bold; color: ${membersColor}; display: flex; align-items: baseline; gap: 0.4rem;">
+                    ${totalMembers} <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted);">of ${maxUsers} seats</span>
+                  </div>
+                </div>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${percentUsed}%; background: ${isAtCapacity ? '#ef4444' : '#128ecd'}; border-radius: 3px; transition: width 0.5s ease-out;"></div>
+              </div>
             </div>
           </div>
           
