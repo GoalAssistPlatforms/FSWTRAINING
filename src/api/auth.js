@@ -27,6 +27,18 @@ export const updatePassword = async (newPassword) => {
 }
 
 export const signUp = async (email, password, fullName, department) => {
+    // 0. Check capacity limit
+    const { data: limitReached, error: limitError } = await supabase.rpc('check_user_quota')
+    
+    if (limitError) {
+        console.error('Error checking user quota:', limitError)
+        throw new Error('Could not verify platform capacity. Please try again later.')
+    }
+    
+    if (limitReached) {
+        throw new Error('Registration is currently closed: the platform has reached its maximum user capacity.')
+    }
+
     // 1. Sign up the user with metadata and redirect URL
     const { data, error } = await supabase.auth.signUp({
         email,

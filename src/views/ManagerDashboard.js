@@ -2,6 +2,7 @@ import { generateCourseContent } from '../api/ai'
 import { createCourse, getCourses, deleteCourse, getCourseUsageStats } from '../api/courses'
 import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment, deleteUser } from '../api/manager'
 import { getTeamCompletionRates, exportTeamDataCSV } from '../api/analytics'
+import { getPlatformSettings } from '../api/admin'
 import { renderCourseEditor } from './CourseEditor'
 import { renderCoursePlayer } from './CoursePlayer'
 import { getCurrentUser } from '../api/auth'
@@ -195,6 +196,7 @@ export const initManagerEvents = async (effectiveUser) => {
   const user = effectiveUser || await getCurrentUser()
 
   let currentTeamStats = [] // Store for filtering
+  let currentPlatformSettings = null // Store for limit display
   let selectedUserIds = new Set()
 
   const updateBulkAssignBtnState = () => {
@@ -393,6 +395,10 @@ export const initManagerEvents = async (effectiveUser) => {
           : 0;
 
       const totalMembers = statsList.length;
+      const maxUsers = currentPlatformSettings ? currentPlatformSettings.max_users : 10;
+      const isAtCapacity = totalMembers >= maxUsers;
+      const membersText = `${totalMembers} <span style="font-size: 1.2rem; color: var(--text-muted);">/ ${maxUsers}</span>`;
+      const membersColor = isAtCapacity ? '#ef4444' : 'white';
 
       const radius = 30;
       const circumference = 2 * Math.PI * radius;
@@ -418,7 +424,7 @@ export const initManagerEvents = async (effectiveUser) => {
             </div>
             <div>
               <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Members</div>
-              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${totalMembers}</div>
+              <div style="font-size: 1.8rem; font-weight: bold; color: ${membersColor};">${membersText}</div>
             </div>
           </div>
           
@@ -534,10 +540,13 @@ export const initManagerEvents = async (effectiveUser) => {
 
     try {
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const [rates, pendingExtensions] = await Promise.all([
+      const [rates, pendingExtensions, platformSettings] = await Promise.all([
          getTeamCompletionRates(),
-         fetchPendingExtensions()
+         fetchPendingExtensions(),
+         getPlatformSettings()
       ]);
+      
+      currentPlatformSettings = platformSettings;
       loadingTeam.style.display = 'none'
 
       if (!rates || !rates.memberStats || rates.memberStats.length === 0) {
