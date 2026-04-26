@@ -268,7 +268,9 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "A brief, actionable scenario (Max 150 characters, e.g., 'A technician arrives without PPE but promises to just stay in the van.').", "isCorrect": true, "feedback": "Why this is the right course of action." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
                                   * CRITICAL for ai-swipe:
                                   * Generate exactly 6-8 cards.
-                                  * CARDS MUST NOT BE TRUE/FALSE TRIVIA. They must be practical snapshot scenarios describing an action or decision that fundamentally makes sense to either "Accept" or "Reject". Do not ask open-ended questions.
+                                  * CARDS MUST NOT BE TRUE/FALSE TRIVIA. They must be practical snapshot scenarios describing a proposed action or decision. 
+                                  * It MUST fundamentally make grammatical and logical sense for the user to reply to the scenario with either "Accept" or "Reject".
+                                  * NEVER use open-ended questions. NEVER use questions like "Should we do this?". Instead, write statements like "A technician offers to..." so the user can Accept or Reject the offer.
                                   * "isCorrect": true -> User should ACCEPT (Swipe Right). The action is highly compliant/safe.
                                   * "isCorrect": false -> User should REJECT (Swipe Left). The action is poor practice/dangerous.
                                   * FEEDBACK must explicitly teach the user the 'why' behind the policy.
