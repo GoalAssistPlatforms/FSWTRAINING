@@ -95,9 +95,9 @@ export const getCurrentUser = async () => {
 
     if (error) {
         console.error('Error fetching profile:', error)
-        return { ...user, role: 'user' } // Default to user if profile missing
+        return { ...user, role: 'user', full_name: user.user_metadata?.full_name } // Default to user if profile missing
     }
 
-    return { ...user, role: profile.role }
+    return { ...user, ...profile }
 }
 
