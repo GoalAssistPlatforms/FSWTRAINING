@@ -3,8 +3,10 @@ create extension if not exists "uuid-ossp";
 
 -- PROFILES
 create table if not exists public.profiles (
-  id uuid references auth.users not null primary key,
+  id uuid references auth.users on delete cascade not null primary key,
   email text,
+  full_name text,
+  department text,
   role text default 'user',
   created_at timestamptz default now()
 );
@@ -21,7 +23,7 @@ create table if not exists public.teams (
 -- TEAM MEMBERS
 create table if not exists public.team_members (
   team_id uuid references public.teams(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
   role text default 'member',
   created_at timestamptz default now(),
   unique(team_id, user_id)
@@ -44,7 +46,7 @@ create table if not exists public.courses (
 -- USER PROGRESS
 create table if not exists public.user_progress (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
   course_id uuid references public.courses(id) on delete cascade not null,
   status text, -- 'completed', 'in-progress'
   assigned_by uuid references public.profiles(id) on delete set null,
@@ -121,11 +123,15 @@ create policy "Users view own team members" on public.team_members
 
 -- Profiles
 drop policy if exists "Users can view own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
 drop policy if exists "Managers can view all profiles" on public.profiles;
 drop policy if exists "Managers can view team member profiles" on public.profiles;
 
 create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
+
+create policy "Users can update own profile" on public.profiles
+  for update using (auth.uid() = id);
 
 create policy "Managers and Admins can view all profiles" on public.profiles
   for select using (

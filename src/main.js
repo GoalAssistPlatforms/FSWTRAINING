@@ -6,6 +6,7 @@ import { renderManagerDashboard, initManagerEvents } from './views/ManagerDashbo
 import { renderUserDashboard, initUserEvents } from './views/UserDashboard'
 import { renderAdminDashboard, initAdminEvents } from './views/AdminDashboard'
 import { renderNotificationBell, initNotificationEvents } from './views/components/NotificationBell'
+import { renderSettingsModal, initSettingsEvents } from './views/components/SettingsModal'
 import { checkAndGenerateDeadlineNotifications } from './utils/deadlineChecker'
 
 const initApp = async () => {
@@ -97,6 +98,9 @@ export const renderMainLayout = async (user) => {
         <div id="notification-bell-placeholder">
             ${bellHtml}
         </div>
+        <button id="settings-btn" class="glass icon-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%; padding: 0.5rem; cursor: pointer; margin-right: 0.5rem; display: flex; align-items: center; justify-content: center; color: white;" title="Settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
         <div style="text-align: right;">
            <div style="font-weight: 600;">${user.email}</div>
            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">${user.role}</div>
@@ -108,6 +112,7 @@ export const renderMainLayout = async (user) => {
     <main>
       ${dashboardContent}
     </main>
+    ${renderSettingsModal(user)}
   `
 
   document.querySelector('#logout-btn').addEventListener('click', async () => {
@@ -115,6 +120,13 @@ export const renderMainLayout = async (user) => {
     sessionStorage.removeItem('adminViewMode')
     window.location.reload()
   })
+
+  const settingsBtn = document.querySelector('#settings-btn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      document.getElementById('settings-modal').style.display = 'flex'
+    })
+  }
 
   // Setup Admin Toggle Listener
   if (user.role === 'admin') {
@@ -139,6 +151,7 @@ export const renderMainLayout = async (user) => {
   }
   
   initNotificationEvents();
+  initSettingsEvents(user);
 
   // Listen for refresh requests
   window.addEventListener('fsw-reload-notifications', async () => {

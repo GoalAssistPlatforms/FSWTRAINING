@@ -26,6 +26,31 @@ export const updatePassword = async (newPassword) => {
     return data
 }
 
+export const updateUserProfile = async (userId, { fullName, department }) => {
+    // 1. Update auth.users metadata
+    const { error: authError } = await supabase.auth.updateUser({
+        data: {
+            full_name: fullName,
+            department: department
+        }
+    })
+    if (authError) throw authError
+
+    // 2. Update profiles table
+    const profileUpdate = {}
+    if (fullName !== undefined) profileUpdate.full_name = fullName
+    if (department !== undefined) profileUpdate.department = department
+
+    if (Object.keys(profileUpdate).length > 0) {
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update(profileUpdate)
+            .eq('id', userId)
+            
+        if (profileError) throw profileError
+    }
+}
+
 export const signUp = async (email, password, fullName, department) => {
     // 0. Check capacity limit
     const { data: limitReached, error: limitError } = await supabase.rpc('check_user_quota')
