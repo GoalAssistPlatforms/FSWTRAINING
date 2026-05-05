@@ -276,27 +276,31 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                 ` : ''}
                 
                 <!-- Audio Player (Repositioned to bottom right) -->
-                ${currentLesson.audio_url ? `
+                ${(currentLesson.audio_url || user.role === 'manager') ? `
                     <div class="audio-player-wrapper fade-in" style="position: absolute; bottom: 2rem; right: 2rem; z-index: 60;">
                         <div class="glass" style="padding: 0.75rem 1.25rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.6);">
                             <div style="display: flex; flex-direction: column;">
-                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                                    <span style="font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: var(--primary);">Audio Briefing</span>
-                                    ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" style="background:none; border:none; color: var(--primary); font-size: 0.65rem; cursor: pointer; padding: 0; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">✏️ Edit Audio</button>` : ''}
+                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; gap: 1rem;">
+                                    <span style="font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: ${currentLesson.audio_url ? 'var(--primary)' : 'var(--text-muted)'};">${currentLesson.audio_url ? 'Audio Briefing' : 'No Audio'}</span>
+                                    ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" style="background:none; border:none; color: var(--primary); font-size: 0.65rem; cursor: pointer; padding: 0; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">✏️ ${currentLesson.audio_url ? 'Edit Audio' : 'Generate Audio'}</button>` : ''}
                                 </div>
+                                ${currentLesson.audio_url ? `
                                 <audio id="lesson-audio" controls src="${currentLesson.audio_url}" style="height: 30px; outline: none; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.8;"></audio>
+                                ` : `
+                                <div style="height: 30px; display: flex; align-items: center; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Audio generation failed or pending</div>
+                                `}
                             </div>
                         </div>
                         
                         <!-- Hidden Audio Editor -->
                         ${user.role === 'manager' ? `
                         <div id="audio-edit-mode" style="display: none; position: absolute; bottom: 110%; right: 0; width: 400px; max-width: 90vw; background: rgba(10, 10, 10, 0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-lg); padding: 1.5rem; backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
-                            <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: white;">Edit Audio Script</h4>
+                            <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: white;">${currentLesson.audio_url ? 'Edit Audio Script' : 'Generate Audio Script'}</h4>
                             <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Changes made here will be re-synthesized into a new voiceover track.</p>
                             <textarea id="edit-audio-script" style="width: 100%; height: 200px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 0.75rem; font-family: inherit; font-size: 0.85rem; outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5;"></textarea>
                             <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
                                 <button id="cancel-audio-edit" class="btn-ghost" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Cancel</button>
-                                <button id="save-audio-edit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">🎙️ Regenerate</button>
+                                <button id="save-audio-edit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">🎙️ Generate Audio</button>
                             </div>
                         </div>
                         ` : ''}
