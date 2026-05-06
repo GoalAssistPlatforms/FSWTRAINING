@@ -132,12 +132,6 @@ export function renderDebate(containerId, config) {
             ${isUser ? 'align-self: flex-end; background: linear-gradient(135deg, #333, #111); border: 1px solid #444; border-bottom-right-radius: 2px;' : 'align-self: flex-start; background: rgba(255,255,255,0.03); border-left: 4px solid #f59e0b; border-bottom-left-radius: 2px; color: #e5e7eb;'}
         `;
 
-        // Label
-        const label = document.createElement('div');
-        label.style.cssText = 'font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; margin-bottom: 8px; font-weight: 800;';
-        label.textContent = isUser ? 'Your Argument' : `Pressure Test ${pointsDiscussed > 0 ? '#' + pointsDiscussed : ''}`;
-        bubble.appendChild(label);
-
         const content = document.createElement('div');
         content.textContent = text;
         bubble.appendChild(content);

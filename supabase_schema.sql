@@ -55,6 +55,10 @@ create table if not exists public.user_progress (
   completed_at timestamptz,
   certificate_id uuid default uuid_generate_v4(), -- Auto-generate unique ID for the cert
   expires_at timestamptz, -- When the completion expires (based on course expiry_months)
+  last_module_index integer default 0,
+  last_lesson_index integer default 0,
+  highest_module_index integer default 0,
+  highest_lesson_index integer default 0,
   created_at timestamptz default now(),
   unique(user_id, course_id)
 );

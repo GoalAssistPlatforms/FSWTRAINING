@@ -131,10 +131,12 @@ document.addEventListener('click', (e) => {
 });
 
 export const renderCoursePlayer = (course, user, options = {}) => {
-    let currentModuleIndex = 0
-    let currentLessonIndex = 0
-    let highestModuleIndex = 0
-    let highestLessonIndex = 0
+    const progress = options.progress || null;
+    
+    let currentModuleIndex = progress?.last_module_index || 0;
+    let currentLessonIndex = progress?.last_lesson_index || 0;
+    let highestModuleIndex = progress?.highest_module_index || currentModuleIndex;
+    let highestLessonIndex = progress?.highest_lesson_index || currentLessonIndex;
     let isSidebarCollapsed = false
 
     const isCourseComplete = options.isCourseComplete || false;
@@ -184,8 +186,16 @@ export const renderCoursePlayer = (course, user, options = {}) => {
         //    rawContent = rawContent.replace(/\\n/g, '\n');
         // }
 
-        let htmlContent = rawContent
-            ? marked.parse(rawContent)
+        let processedContent = rawContent;
+        if (typeof processedContent === 'string') {
+            processedContent = processedContent.replace(
+                /### Interactive Activity/g,
+                '<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;"><h3 style="color: white; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: var(--primary);">Interactive Activity</h3></div>'
+            );
+        }
+
+        let htmlContent = processedContent
+            ? marked.parse(processedContent)
             : '<div style="padding: 2rem; color: #ef4444; border: 1px solid #ef4444; border-radius: 8px; background: rgba(239, 68, 68, 0.1);">Lesson content generation failed or is missing. Please regenerate this course.</div>';
 
         // Fallback for video if missing
@@ -630,6 +640,13 @@ export const renderCoursePlayer = (course, user, options = {}) => {
 
         attachEvents()
         updateNextButtonState()
+        
+        // Save progress to DB automatically when mounting a new lesson
+        if (!isCourseComplete) {
+            import('../api/courses.js').then(({ saveLessonProgress }) => {
+                saveLessonProgress(user.id, course.id, currentModuleIndex, currentLessonIndex, highestModuleIndex, highestLessonIndex);
+            }).catch(e => console.error('Error importing courses API:', e));
+        }
     }
 
     const updateNextButtonState = () => {

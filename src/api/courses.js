@@ -121,3 +121,39 @@ export const deleteCourse = async (id, role) => {
 
     return { success: true }
 }
+
+export const saveLessonProgress = async (userId, courseId, moduleIndex, lessonIndex, highestModule, highestLesson) => {
+    try {
+        const { data: existing } = await supabase
+            .from('user_progress')
+            .select('id, status')
+            .eq('user_id', userId)
+            .eq('course_id', courseId)
+            .maybeSingle();
+
+        if (existing) {
+            let status = existing.status;
+            if (status === 'assigned') status = 'in-progress';
+            
+            await supabase.from('user_progress').update({
+                status,
+                last_module_index: moduleIndex,
+                last_lesson_index: lessonIndex,
+                highest_module_index: highestModule,
+                highest_lesson_index: highestLesson
+            }).eq('id', existing.id);
+        } else {
+            await supabase.from('user_progress').insert({
+                user_id: userId,
+                course_id: courseId,
+                status: 'in-progress',
+                last_module_index: moduleIndex,
+                last_lesson_index: lessonIndex,
+                highest_module_index: highestModule,
+                highest_lesson_index: highestLesson
+            });
+        }
+    } catch (e) {
+        console.error('Error saving lesson progress:', e);
+    }
+}

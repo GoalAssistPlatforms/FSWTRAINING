@@ -177,7 +177,7 @@ export const initUserEvents = async () => {
                     }
                 }
                 const isCourseComplete = isCompleted && !isExpired;
-                renderCoursePlayer(course, user, { isCourseComplete })
+                renderCoursePlayer(course, user, { isCourseComplete, progress })
             })
 
             if (dlBtn) {
