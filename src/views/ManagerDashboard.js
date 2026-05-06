@@ -1,6 +1,6 @@
 import { generateCourseContent } from '../api/ai'
 import { createCourse, getCourses, deleteCourse, getCourseUsageStats } from '../api/courses'
-import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment, deleteUser } from '../api/manager'
+import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment, archiveUser } from '../api/manager'
 import { getTeamCompletionRates, exportTeamDataCSV } from '../api/analytics'
 import { getPlatformSettings } from '../api/admin'
 import { renderCourseEditor } from './CourseEditor'
@@ -324,22 +324,22 @@ export const initManagerEvents = async (effectiveUser) => {
         }
     }
 
-    // 7. Delete User
-    const deleteBtn = e.target.closest('.delete-user-btn')
-    if (deleteBtn) {
-      const userId = deleteBtn.dataset.userid
-      if (await fswConfirm('Are you absolutely sure you want to permanently delete this user? This action cannot be undone and will remove all their data.')) {
+    // 7. Archive User
+    const archiveBtn = e.target.closest('.delete-user-btn')
+    if (archiveBtn) {
+      const userId = archiveBtn.dataset.userid
+      if (await fswConfirm('Are you sure you want to archive this user? They will lose access to the platform and be removed from this view, but their historical data will be retained for CSV exports.')) {
         try {
-          deleteBtn.innerText = 'Deleting...'
-          deleteBtn.disabled = true
-          await deleteUser(userId)
-          await fswAlert('User deleted successfully.')
+          archiveBtn.innerText = 'Archiving...'
+          archiveBtn.disabled = true
+          await archiveUser(userId)
+          await fswAlert('User archived successfully.')
           loadTeamStats() // refresh ui
         } catch (error) {
-          console.error('Delete error details:', error)
-          await fswAlert('Failed to delete user: ' + (error.message || JSON.stringify(error)))
-          deleteBtn.innerText = 'Delete'
-          deleteBtn.disabled = false
+          console.error('Archive error details:', error)
+          await fswAlert('Failed to archive user: ' + (error.message || JSON.stringify(error)))
+          archiveBtn.innerText = 'Archive'
+          archiveBtn.disabled = false
         }
       }
     }
@@ -716,9 +716,9 @@ export const initManagerEvents = async (effectiveUser) => {
                 </button>
               </div>
               <div style="margin-top: 0.5rem;">
-                <button class="btn-ghost delete-user-btn" data-userid="${member.id}" style="display: inline-flex; align-items: center; gap: 0.25rem; color: #ef4444; font-size: 0.75rem; padding: 0;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                  Delete User
+                <button class="btn-ghost delete-user-btn" data-userid="${member.id}" style="display: inline-flex; align-items: center; gap: 0.25rem; color: #f59e0b; font-size: 0.75rem; padding: 0;" title="Archive this user">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"></path><polyline points="1 3 23 3 23 8 1 8 1 3"></polyline><path d="M10 12h4"></path></svg>
+                  Archive User
                 </button>
               </div>
               

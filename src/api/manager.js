@@ -1,11 +1,16 @@
 import { supabase } from './supabase'
 
-export const getTeamMembers = async () => {
+export const getTeamMembers = async (includeArchived = false) => {
     // 1. Fetch all normal users
-    const { data: members, error: membersError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'user')
+    let query = supabase.from('profiles').select('*');
+    
+    if (includeArchived) {
+        query = query.in('role', ['user', 'archived']);
+    } else {
+        query = query.eq('role', 'user');
+    }
+
+    const { data: members, error: membersError } = await query;
 
     if (membersError) {
         console.error('Error fetching users:', membersError)
@@ -22,7 +27,7 @@ export const getTotalActiveUsersCount = async () => {
     const { count, error } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .neq('role', 'admin')
+        .in('role', ['user', 'manager'])
 
     if (error) {
         console.error('Error fetching total user count:', error)
@@ -64,8 +69,8 @@ export const getTeamProgress = async () => {
 /**
  * Helper to aggregate member stats
  */
-export const getTeamStats = async () => {
-    const { team, members } = await getTeamMembers()
+export const getTeamStats = async (includeArchived = false) => {
+    const { team, members } = await getTeamMembers(includeArchived)
     const progressData = await getTeamProgress()
 
     // Aggregate stats per user
@@ -199,16 +204,16 @@ export const updateUserDepartment = async (userId, department) => {
 }
 
 /**
- * Delete a user and all their associated data.
+ * Archive a user.
  * Requires the calling user to be a manager.
  */
-export const deleteUser = async (userId) => {
-    const { data, error } = await supabase.rpc('delete_user_by_manager', {
+export const archiveUser = async (userId) => {
+    const { data, error } = await supabase.rpc('archive_user_by_manager', {
         target_user_id: userId
     });
 
     if (error) {
-        console.error('Error deleting user:', error)
+        console.error('Error archiving user:', error)
         throw error
     }
 

@@ -16,7 +16,7 @@ export const renderLogin = () => {
       btnText = 'Send Reset Link'
     } else if (isSignUp) {
       title = 'Create Account'
-      subtitle = 'Join the FSW Training Platform'
+      subtitle = 'Join the FSW Aspire Training platform'
       btnText = 'Sign Up'
     }
 

@@ -36,6 +36,14 @@ const initApp = async () => {
 
     if (!user) {
       renderLogin()
+    } else if (user.role === 'archived') {
+      await signOut()
+      if (typeof fswAlert === 'function') {
+          await fswAlert('Your account has been archived by your administrator and can no longer be accessed.')
+      } else {
+          alert('Your account has been archived by your administrator and can no longer be accessed.')
+      }
+      renderLogin()
     } else {
       await renderMainLayout(user)
     }
@@ -90,7 +98,7 @@ export const renderMainLayout = async (user) => {
         </div>
         <div style="display: flex; flex-direction: column;">
           <h2 style="margin: 0; font-size: 1.5rem; line-height: 1;">FSW</h2>
-          <span style="font-size: 0.8rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">Training Platform</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">Aspire Training</span>
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 1rem;">

@@ -52,7 +52,7 @@ export const getTeamCompletionRates = async () => {
  * Generate and download a CSV file of the team's entire progress report.
  */
 export const exportTeamDataCSV = async () => {
-    const { stats } = await getTeamStats()
+    const { stats } = await getTeamStats(true)
     if (!stats || stats.length === 0) return false
 
     // Prepare CSV header

@@ -144,11 +144,17 @@ export const initUserEvents = async () => {
                     badgeHtml = `<div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: rgba(0,0,0,0.6); color: white; border: 1px solid var(--glass-border); z-index: 10;">ASSIGNED</div>`
                 }
             }
+            
+            const isLocked = !progress;
+            if (isLocked) {
+                 badgeHtml = `<div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: rgba(0,0,0,0.8); color: var(--text-muted); border: 1px solid var(--glass-border); z-index: 10; display: flex; align-items: center; gap: 4px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> LOCKED</div>`
+            }
 
             return `
-            <div id="course-card-${index}" class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); cursor: pointer; display: flex; flex-direction: column;">
+            <div id="course-card-${index}" class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); cursor: ${isLocked ? 'not-allowed' : 'pointer'}; display: flex; flex-direction: column; opacity: ${isLocked ? '0.7' : '1'}; filter: ${isLocked ? 'grayscale(0.5)' : 'none'};">
                 <div style="height: 160px; position: relative; border-bottom: ${isExpired ? '4px solid #ef4444' : 'none'};">
                     ${badgeHtml}
+                    ${isLocked ? `<div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 5; display: flex; align-items: center; justify-content: center;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>` : ''}
                     ${course.thumbnail_url
                         ? `<img src="${course.thumbnail_url}" onerror="this.onerror=null; this.src='https://placehold.co/800x600/128ecd/ffffff?text=Course+Image';" style="width: 100%; height: 100%; object-fit: cover;">`
                         : `<div style="width: 100%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--aurora-1));"></div>`
@@ -165,7 +171,7 @@ export const initUserEvents = async () => {
                     ` : ''}
                     
                     <div style="display: flex; gap: 0.5rem; margin-top: auto;">
-                        <button class="${isExpired ? 'btn-secondary' : 'btn-primary'}" style="flex: 1;" ${isExpired ? 'title="You must resit this course."' : ''}>${isExpired ? 'Resit Course' : (isCompleted ? 'Review Course' : 'Start Course')}</button>
+                        <button class="${isLocked ? 'btn-ghost' : (isExpired ? 'btn-secondary' : 'btn-primary')}" style="flex: 1; ${isLocked ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isExpired ? 'title="You must resit this course."' : ''}>${isLocked ? 'Locked' : (isExpired ? 'Resit Course' : (isCompleted ? 'Review Course' : 'Start Course'))}</button>
                         ${isCompleted && progress.certificate_id && !isExpired ? `
                             <button id="dl-cert-${index}" class="btn-secondary" style="padding: 0 1rem; color: #0ea5e9; border-color: rgba(14, 165, 233, 0.3);" title="Download Certificate">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -187,6 +193,17 @@ export const initUserEvents = async () => {
                 if (e.target.classList.contains('extension-btn')) return;
                 
                 const progress = progressMap[course.id]
+                const isLocked = !progress;
+                
+                if (isLocked) {
+                    if (typeof fswAlert === 'function') {
+                        await fswAlert('This course is locked. Please contact your manager to get it assigned to you.');
+                    } else {
+                        alert('This course is locked. Please contact your manager to get it assigned to you.');
+                    }
+                    return;
+                }
+
                 const isExpired = progress && progress.expires_at && new Date(progress.expires_at) < new Date()
                 const isCompleted = progress && progress.status === 'completed'
                 
