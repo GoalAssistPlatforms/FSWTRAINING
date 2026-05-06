@@ -1,4 +1,5 @@
 import { updateCourse } from '../api/courses'
+import { supabase } from '../api/supabase'
 import EasyMDE from 'easymde'
 import 'easymde/dist/easymde.min.css'
 import { fswAlert, fswConfirm } from '../utils/dialog'
@@ -96,11 +97,12 @@ export const renderCourseEditor = (course, user) => {
                <div id="thumb-container" class="glass" style="padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                        <label style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Course Image</label>
-                       <button id="toggle-thumb-url" style="background: none; border: none; color: var(--primary); font-size: 0.7rem; cursor: pointer; padding: 0;">Edit URL</button>
+                       <button id="upload-thumb-btn" style="background: none; border: none; color: var(--primary); font-size: 0.7rem; cursor: pointer; padding: 0;">Upload Image</button>
                    </div>
                    
-                   <div id="thumb-url-wrapper" style="display: none; margin-bottom: 1rem;">
-                       <input type="text" id="edit-thumb" value="${course.thumbnail_url || ''}" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; font-size: 0.8rem;">
+                   <div style="display: none;">
+                       <input type="file" id="thumb-file-input" accept="image/*">
+                       <input type="hidden" id="edit-thumb" value="${course.thumbnail_url || ''}">
                    </div>
 
                    <div id="thumb-preview" style="height: 160px; background: #111; border-radius: var(--radius-sm); overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.05);">
@@ -178,12 +180,48 @@ export const renderCourseEditor = (course, user) => {
             }
         })
 
-        // Thumbnail URL Toggle
-        const thumbUrlWrapper = document.getElementById('thumb-url-wrapper');
-        document.getElementById('toggle-thumb-url').addEventListener('click', () => {
-            const isHidden = thumbUrlWrapper.style.display === 'none';
-            thumbUrlWrapper.style.display = isHidden ? 'block' : 'none';
-            document.getElementById('toggle-thumb-url').innerText = isHidden ? 'Hide URL' : 'Edit URL';
+        // Image Upload Logic
+        const uploadBtn = document.getElementById('upload-thumb-btn');
+        const fileInput = document.getElementById('thumb-file-input');
+        
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                uploadBtn.innerText = 'Uploading...';
+                const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                
+                const { data, error } = await supabase.storage
+                    .from('course_assets')
+                    .upload(fileName, file);
+
+                if (error) throw error;
+
+                const { data: publicUrlData } = supabase.storage
+                    .from('course_assets')
+                    .getPublicUrl(fileName);
+
+                const newUrl = publicUrlData.publicUrl;
+                
+                document.getElementById('edit-thumb').value = newUrl;
+                const img = document.querySelector('#thumb-preview img');
+                if (img) {
+                    img.src = newUrl;
+                } else {
+                    document.getElementById('thumb-preview').innerHTML = `<img src="${newUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                }
+            } catch (err) {
+                console.error('Upload Error:', err);
+                await fswAlert('Failed to upload image. Please try again.');
+            } finally {
+                uploadBtn.innerText = 'Upload Image';
+                fileInput.value = ''; // Reset input
+            }
         });
 
         // Thumbnail Regeneration (Placeholder logic for now as it requires api/images)

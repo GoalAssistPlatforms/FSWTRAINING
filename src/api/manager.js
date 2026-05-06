@@ -16,6 +16,23 @@ export const getTeamMembers = async () => {
 }
 
 /**
+ * Fetch the total count of active users (excluding admins) for quota calculation
+ */
+export const getTotalActiveUsersCount = async () => {
+    const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .neq('role', 'admin')
+
+    if (error) {
+        console.error('Error fetching total user count:', error)
+        return 0
+    }
+
+    return count
+}
+
+/**
  * Fetch the course progress for all members of the manager's team.
  * The RLS policy on user_progress restricts this to only progress records
  * belonging to users in the manager's team.

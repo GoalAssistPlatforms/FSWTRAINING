@@ -394,7 +394,7 @@ export const initManagerEvents = async (effectiveUser) => {
           ? Math.round((totalCompleted / totalAssigned) * 100) 
           : 0;
 
-      const totalMembers = statsList.length;
+      const totalMembers = window.globalTotalActiveUsersCount || statsList.length;
       const maxUsers = currentPlatformSettings ? currentPlatformSettings.max_users : 10;
       const isAtCapacity = totalMembers >= maxUsers;
       const percentUsed = Math.min(100, Math.round((totalMembers / maxUsers) * 100));
@@ -548,13 +548,16 @@ export const initManagerEvents = async (effectiveUser) => {
     if (teamList) teamList.innerHTML = ''
 
     try {
+      const { getTotalActiveUsersCount } = await import('../api/manager.js')
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const [rates, pendingExtensions, platformSettings] = await Promise.all([
+      const [rates, pendingExtensions, platformSettings, totalActive] = await Promise.all([
          getTeamCompletionRates(),
          fetchPendingExtensions(),
-         getPlatformSettings()
+         getPlatformSettings(),
+         getTotalActiveUsersCount()
       ]);
       
+      window.globalTotalActiveUsersCount = totalActive;
       currentPlatformSettings = platformSettings;
       loadingTeam.style.display = 'none'
 

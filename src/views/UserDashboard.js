@@ -115,12 +115,31 @@ export const initUserEvents = async () => {
                 badgeHtml = `<div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: #f59e0b; color: black;">IN PROGRESS</div>`
             } else if (progress && progress.status === 'assigned') {
                 if (progress.due_date) {
-                    const isOverdue = new Date(progress.due_date) < new Date()
-                    const dateStr = new Date(progress.due_date).toLocaleDateString()
-                    const bgColor = isOverdue ? '#ef4444' : 'rgba(0,0,0,0.7)'
-                    const textColor = isOverdue ? 'white' : '#ef4444'
+                    const now = new Date()
+                    const dueDate = new Date(progress.due_date)
+                    
+                    // Reset times to compare just the dates accurately
+                    now.setHours(0,0,0,0)
+                    const compareDate = new Date(dueDate)
+                    compareDate.setHours(0,0,0,0)
+                    
+                    const timeDiff = compareDate.getTime() - now.getTime()
+                    const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24))
+                    
+                    let color = '#10b981' // Green (more than 3 days)
+                    if (daysRemaining <= 0) {
+                        color = '#ef4444' // Red (today or overdue)
+                    } else if (daysRemaining <= 3) {
+                        color = '#f59e0b' // Yellow (1-3 days)
+                    }
+                    
+                    const isOverdue = daysRemaining < 0
+                    const dateStr = dueDate.toLocaleDateString()
+                    const bgColor = isOverdue ? color : 'rgba(0,0,0,0.7)'
+                    const textColor = isOverdue ? 'white' : color
                     const text = isOverdue ? `OVERDUE: ${dateStr}` : `DUE: ${dateStr}`
-                    badgeHtml = `<div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: ${bgColor}; color: ${textColor}; border: 1px solid #ef4444; z-index: 10;">${text}</div>`
+                    
+                    badgeHtml = `<div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: ${bgColor}; color: ${textColor}; border: 1px solid ${color}; z-index: 10;">${text}</div>`
                 } else {
                     badgeHtml = `<div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: rgba(0,0,0,0.6); color: white; border: 1px solid var(--glass-border); z-index: 10;">ASSIGNED</div>`
                 }
