@@ -13,6 +13,17 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true // Allowed for this prototype architecture
 });
 
+// Initialize OpenRouter client for text completions
+const openrouter = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: import.meta.env.VITE_OPENROUTER_API_KEY,
+    dangerouslyAllowBrowser: true,
+    defaultHeaders: {
+        "HTTP-Referer": window.location?.href || "http://localhost:5173",
+        "X-Title": "FSW Training Platform",
+    }
+});
+
 /**
  * Parses text from a PDF file
  */
@@ -433,8 +444,8 @@ INSTRUCTIONS:
     
     messages.push({ role: 'user', content: userQuestion });
 
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Very fast for reading context
+    const completion = await openrouter.chat.completions.create({
+        model: "openai/gpt-4o-mini", // Very fast for reading context
         messages,
         temperature: 0.2
     });

@@ -1,0 +1,129 @@
+.builder-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 350px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    background: #0f172a;
+    color: white;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    z-index: 9999;
+}
+
+.builder-column {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    height: 100%;
+}
+
+.builder-column.canvas {
+    background: #000; /* Deep black to contrast the slides */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.builder-column.inspector {
+    border-right: none;
+    border-left: 1px solid rgba(255,255,255,0.05);
+    background: #1e293b;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.builder-column.navigator {
+    background: #1e293b;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+/* Form Styles */
+.builder-form-group {
+    margin-bottom: 1.5rem;
+}
+.builder-form-group label {
+    display: block;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+.builder-form-group input,
+.builder-form-group select,
+.builder-form-group textarea {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+.builder-form-group input:focus,
+.builder-form-group select:focus,
+.builder-form-group textarea:focus {
+    border-color: #38bdf8;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+/* Nav Item Styles */
+.nav-slide-item {
+    padding: 1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+.nav-slide-item:hover {
+    background: rgba(255,255,255,0.08);
+}
+.nav-slide-item.active {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: #38bdf8;
+}
+.nav-slide-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-slide-meta {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+/* Absolute scaling wrapper for the player inside the canvas column */
+.canvas-scale-wrapper {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Force the player to stay inside the builder column */
+.canvas-scale-wrapper .bespoke-player-container {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 1 !important;
+}

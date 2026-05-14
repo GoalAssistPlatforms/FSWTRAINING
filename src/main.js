@@ -24,6 +24,18 @@ const initApp = async () => {
   try {
     const user = await getCurrentUser()
 
+    if (window.location.pathname === '/test-builder') {
+      const { renderBespokeBuilderDemo } = await import('./views/BespokeBuilderDemo')
+      renderBespokeBuilderDemo()
+      return
+    }
+
+    if (window.location.pathname === '/test-player') {
+      const { renderBespokePlayerDemo } = await import('./views/BespokePlayerDemo')
+      renderBespokePlayerDemo()
+      return
+    }
+
     if (window.location.pathname === '/reset-password') {
       // We need to handle the case where the user lands here via email link
       // Supabase handles the session exchange, so we just show the reset form

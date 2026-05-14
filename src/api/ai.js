@@ -10,8 +10,18 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true // Allowed for this client-side demo
 });
 
-if (!openai.apiKey) {
-    console.error("CRITICAL: OpenAI API Key is missing in client environment!");
+const openrouter = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENROUTER_API_KEY),
+    dangerouslyAllowBrowser: true,
+    defaultHeaders: {
+        "HTTP-Referer": window.location?.href || "http://localhost:5173",
+        "X-Title": "FSW Training Platform",
+    }
+});
+
+if (!openrouter.apiKey) {
+    console.error("CRITICAL: OpenRouter API Key is missing in client environment!");
 }
 
 
@@ -112,8 +122,8 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
         systemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nCRITICAL INSTRUCTION: You MUST use the information provided in the documents above. The course outline MUST be directly based on these documents. Prioritize this content over general knowledge.`;
     }
 
-    const outlineCompletion = await openai.chat.completions.create({
-        model: "gpt-4o",
+    const outlineCompletion = await openrouter.chat.completions.create({
+        model: "google/gemini-1.5-pro",
         messages: [
             {
                 role: "system",
@@ -280,8 +290,8 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                         lessonSystemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nCRITICAL INSTRUCTION: You MUST use the information provided in the documents above to write the lesson content, audio script, and presentation input. The content MUST be factually aligned with these documents. Do not hallucinate or contradict the provided text.`;
                     }
 
-                    const contentCompletion = await openai.chat.completions.create({
-                        model: "gpt-4o",
+                    const contentCompletion = await openrouter.chat.completions.create({
+                        model: "google/gemini-1.5-pro",
                         messages: [
                             {
                                 role: "system",
@@ -411,8 +421,8 @@ export const chatWithDojo = async (messages, scenario) => {
                 `;
             }
 
-            const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+            const completion = await openrouter.chat.completions.create({
+                model: "openai/gpt-4o-mini",
                 messages: [
                     {
                         role: "system",
@@ -513,8 +523,8 @@ export const chatWithDebater = async (messages, topic, persona, pointNumber = 1,
         }
     `;
 
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+    const completion = await openrouter.chat.completions.create({
+        model: "openai/gpt-4o",
         response_format: { type: "json_object" },
         messages: [
             {
@@ -531,8 +541,8 @@ export const chatWithDebater = async (messages, topic, persona, pointNumber = 1,
  * Analyzes tone of user draft against a specific email context
  */
 export const analyzeTone = async (userText, context, incomingEmail) => {
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+    const completion = await openrouter.chat.completions.create({
+        model: "openai/gpt-4o-mini",
         messages: [
             {
                 role: "system",

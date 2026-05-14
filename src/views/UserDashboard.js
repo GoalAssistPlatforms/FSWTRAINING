@@ -8,7 +8,7 @@ import { fswAlert, fswConfirm } from '../utils/dialog'
 export const renderUserDashboard = (user) => {
     return `
     <div style="min-height: 80vh;">
-        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; align-items: center;">
             <button id="tab-user-courses" class="btn-primary">My Courses</button>
             <button id="tab-user-guides" class="btn-ghost" style="border: 1px solid var(--glass-border);">Guides & Policies</button>
         </div>

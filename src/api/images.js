@@ -6,13 +6,24 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true // Allowed for this client-side demo
 });
 
+// Initialize OpenRouter client for text completions
+const openrouter = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENROUTER_API_KEY),
+    dangerouslyAllowBrowser: true,
+    defaultHeaders: {
+        "HTTP-Referer": window.location?.href || "http://localhost:5173",
+        "X-Title": "FSW Training Platform",
+    }
+});
+
 /**
  * Uploads an image URL to Cloudinary and returns the secure URL.
  * Throws an error if upload fails.
  * @param {string} imageUrl - Temporary URL from OpenAI
  * @param {string} topic - Topic for filename generation (optional, for tagging/naming if needed)
  */
-async function uploadToCloudinary(imageUrl, topic) {
+export async function uploadToCloudinary(imageUrl, topic) {
     const cloudName = (import.meta.env && import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) || (typeof process !== 'undefined' && process.env.VITE_CLOUDINARY_CLOUD_NAME);
     const uploadPreset = (import.meta.env && import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET) || (typeof process !== 'undefined' && process.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
@@ -68,8 +79,8 @@ async function uploadToCloudinary(imageUrl, topic) {
  */
 async function getVisualDescription(topic) {
     try {
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+        const completion = await openrouter.chat.completions.create({
+            model: "openai/gpt-4o-mini",
             messages: [
                 {
                     role: "system",
