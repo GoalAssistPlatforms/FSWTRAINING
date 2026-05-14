@@ -59,7 +59,7 @@ Block Objects Reference:
 *   \`pyramid\`: { "type": "pyramid", "items": [ { "title": "Top", "content": "..." }, { "title": "Base", "content": "..." } ] }
 
 Output format: You must output ONLY valid JSON matching the provided schema. Do not wrap in markdown tags or provide conversational text.
-\`;
+`;
 
 export async function generateBespokeSlides(topic, onProgress) {
     if (!openrouter.apiKey) {
