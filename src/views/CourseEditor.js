@@ -1,7 +1,6 @@
 import { updateCourse } from '../api/courses'
 import { supabase } from '../api/supabase'
-import EasyMDE from 'easymde'
-import 'easymde/dist/easymde.min.css'
+
 import { fswAlert, fswConfirm } from '../utils/dialog'
 
 export const renderCourseEditor = (course, user) => {
@@ -58,38 +57,7 @@ export const renderCourseEditor = (course, user) => {
                     </select>
                 </div>
 
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <label style="color: var(--text-muted); margin: 0;">Course Modules</label>
-                        <button id="add-module" class="btn-secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">+ Add Module</button>
-                    </div>
-                    
-                    <div id="modules-container" style="display: flex; flex-direction: column; gap: 1rem;">
-                        ${modules.map((mod, mIdx) => `
-                            <div class="glass" style="padding: 1rem; border: 1px solid var(--glass-border); border-radius: var(--radius-md);">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; align-items: center;">
-                                    <input type="text" class="mod-title" data-idx="${mIdx}" value="${mod.title}" placeholder="Module Title" style="background: transparent; border: none; color: white; font-weight: bold; width: 60%;">
-                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                      ${mod.slides_url ? '<span style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 2px 6px; border-radius: 4px;">Slides Ready</span>' : ''}
-                                      <button class="remove-mod btn-danger" data-idx="${mIdx}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Remove</button>
-                                    </div>
-                                </div>
-                                <div style="padding-left: 1rem; border-left: 2px solid var(--glass-border); display: flex; flex-direction: column; gap: 0.5rem;">
-                                    ${mod.lessons.map((lesson, lIdx) => `
-                                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                            <input type="text" class="lesson-title" data-midx="${mIdx}" data-lidx="${lIdx}" value="${lesson.title}" style="flex: 1; background: rgba(0,0,0,0.2); border: none; padding: 0.25rem 0.5rem; border-radius: 4px; color: white;">
-                                            ${lesson.audio_url ? '<span style="font-size: 1.2rem;" title="Audio Ready">🎵</span>' : ''}
-                                            ${lesson.quiz ? '<span style="font-size: 1.2rem;" title="Quiz Ready">📝</span>' : ''}
-                                            <button class="edit-content-btn btn-ghost" data-midx="${mIdx}" data-lidx="${lIdx}" style="font-size: 0.8rem; border: 1px solid var(--glass-border);">Edit</button>
-                                            <button class="remove-lesson btn-danger" data-midx="${mIdx}" data-lidx="${lIdx}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">×</button>
-                                        </div>
-                                    `).join('')}
-                                    <button class="add-lesson btn-ghost" data-midx="${mIdx}" style="text-align: left; font-size: 0.8rem; padding: 0.25rem 0;">+ Add Lesson</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
+
             </div>
 
             <!-- Right: Metadata & Actions -->
@@ -121,44 +89,7 @@ export const renderCourseEditor = (course, user) => {
         </div>
       </div>
 
-       <!-- Content Editor Modal -->
-       <div id="editor-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 90vw; max-width: 1200px; height: 85vh; display: flex; flex-direction: column; box-shadow: 0 50px 100px rgba(0,0,0,0.7);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin: 0;">Edit Lesson Details</h3>
-                <div style="display: flex; gap: 1rem;">
-                    <button id="cancel-edit-content" class="btn-ghost">Cancel</button>
-                    <button id="save-content-btn" class="btn-primary">Done</button>
-                </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; flex: 1; overflow: hidden;">
-                <!-- Content Area -->
-                <div style="display: flex; flex-direction: column; overflow: hidden;">
-                    <label style="color: var(--text-muted); margin-bottom: 0.5rem;">Markdown Content</label>
-                    <textarea id="lesson-content-area"></textarea>
-                </div>
-
-                <!-- Resources Area -->
-                <div style="display: flex; flex-direction: column; border-left: 1px solid var(--glass-border); padding-left: 2rem; overflow: hidden;">
-                    <label style="color: var(--text-muted); margin-bottom: 0.5rem;">Lesson Resources</label>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0; margin-bottom: 1rem;">Add links to documents, external sites, or reference materials.</p>
-                    
-                    <div id="resources-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
-                        <!-- Resources rendered here -->
-                    </div>
-
-                    <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: var(--radius-md);">
-                        <label style="font-size: 0.8rem; color: var(--text-muted);">Add New Resource</label>
-                        <input type="text" id="res-title" placeholder="Title (e.g. Employee Handbook)" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; border-radius: 4px;">
-                        <input type="text" id="res-url" placeholder="URL (https://...)" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; border-radius: 4px;">
-                        <button id="add-resource-btn" class="btn-secondary" style="width: 100%; font-size: 0.8rem;">+ Add Resource</button>
-                    </div>
-                </div>
-            </div>
-       </div>
-       <div id="editor-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; backdrop-filter: blur(5px);"></div>
     `
-        document.getElementById('editor-modal').style.display = 'none'
         attachEvents()
     }
 
@@ -307,116 +238,7 @@ export const renderCourseEditor = (course, user) => {
             }
         })
 
-        // Editing Inputs
-        document.querySelectorAll('.mod-title').forEach(input => {
-            input.addEventListener('input', (e) => {
-                modules[e.target.dataset.idx].title = e.target.value
-            })
-        })
 
-        document.querySelectorAll('.lesson-title').forEach(input => {
-            input.addEventListener('input', (e) => {
-                modules[e.target.dataset.midx].lessons[e.target.dataset.lidx].title = e.target.value
-            })
-        })
-
-        // Modal Handling
-        const modal = document.getElementById('editor-modal')
-        const overlay = document.getElementById('editor-overlay')
-        const textArea = document.getElementById('lesson-content-area')
-        const resourcesList = document.getElementById('resources-list')
-        const resTitleInput = document.getElementById('res-title')
-        const resUrlInput = document.getElementById('res-url')
-
-        let editingLesson = null
-        let currentResources = []
-        let easyMDE = null;
-
-        const renderResources = () => {
-            resourcesList.innerHTML = currentResources.map((res, i) => `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 4px;">
-                    <div style="overflow: hidden; text-overflow: ellipsis;">
-                        <div style="font-weight: bold; font-size: 0.9rem;">${res.title}</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">${res.url}</div>
-                    </div>
-                    <button class="btn-danger remove-res" data-idx="${i}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">×</button>
-                </div>
-            `).join('') || '<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No resources added yet.</div>'
-
-            // Re-attach delete listeners
-            document.querySelectorAll('.remove-res').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idx = parseInt(e.target.dataset.idx)
-                    currentResources.splice(idx, 1)
-                    renderResources()
-                })
-            })
-        }
-
-        document.getElementById('add-resource-btn').addEventListener('click', async () => {
-            const title = resTitleInput.value.trim()
-            const url = resUrlInput.value.trim()
-
-            if (!title || !url) {
-                await fswAlert('Please enter both a title and a URL')
-                return
-            }
-
-            currentResources.push({ title, url })
-            resTitleInput.value = ''
-            resUrlInput.value = ''
-            renderResources()
-        })
-
-        document.querySelectorAll('.edit-content-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const mIdx = e.target.dataset.midx
-                const lIdx = e.target.dataset.lidx
-                editingLesson = modules[mIdx].lessons[lIdx]
-
-                // Initialize EasyMDE if not already done, or set value
-                if (!easyMDE) {
-                    easyMDE = new EasyMDE({
-                        element: textArea,
-                        spellChecker: false,
-                        autosave: { enabled: false },
-                        toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen'],
-                        status: false,
-                        maxHeight: "500px" // Reasonable height constraint
-                    });
-                }
-
-                easyMDE.value((editingLesson.content || '').replace(/\\n/g, '\n'));
-                currentResources = [...(editingLesson.resources || [])];
-
-                renderResources();
-                modal.style.display = 'flex';
-                overlay.style.display = 'block';
-
-                // Refresh EasyMDE to ensure it renders correctly after modal display
-                setTimeout(() => {
-                    easyMDE.codemirror.refresh();
-                }, 100);
-            })
-        })
-
-        document.getElementById('cancel-edit-content').addEventListener('click', () => {
-            modal.style.display = 'none'
-            overlay.style.display = 'none'
-        })
-
-        document.getElementById('save-content-btn').addEventListener('click', () => {
-            if (editingLesson) {
-                if (easyMDE) {
-                    editingLesson.content = easyMDE.value();
-                } else {
-                    editingLesson.content = textArea.value;
-                }
-                editingLesson.resources = currentResources
-            }
-            modal.style.display = 'none'
-            overlay.style.display = 'none'
-        })
     }
 
     render()

@@ -123,7 +123,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
     }
 
     const outlineCompletion = await openrouter.chat.completions.create({
-        model: "google/gemini-1.5-pro",
+        model: "openai/gpt-4o",
         messages: [
             {
                 role: "system",
@@ -237,7 +237,10 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 Output JSON format:
                                 {
                                     "presentation_input": "Detailed script content for the 10 slides, including bullet points and headers. This will be sent to Gamma AI.",
-                                    "audio_summary": "A comprehensive 3-4 minute (approx 600-800 words) audio script that strictly follows the structural narrative and key points of your 'presentation_input'. Deliver this as a continuous, engaging expert masterclass. It must sound professional but slightly informal, using simple, clear, everyday language so it is easy to understand. CRITICAL CONSTRAINTS: 1. Do NOT explicitly mention 'slides', 'bullet points', or say 'on the next slide'. 2. USE rhetorical questions and smooth transitions between core concepts to maintain pacing. 3. Do NOT read lists verbatim; summarize them conversationally. The delivery must sound like a natural, friendly, and flowing conversation with a colleague.",
+                                    "audio_tracks": [
+                                        { "title": "Slide 1: Introduction", "script": "A 30-45 second audio script covering the first slide. Do NOT explicitly mention 'slides' or 'bullet points'. Keep it conversational." },
+                                        { "title": "Slide 2: ...", "script": "..." }
+                                    ],
                                     "markdown_content": "Detailed markdown content (Min 800 words) for the reading mode...",
                                     "quiz": [
                                         { "question": "...", "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "Brief context." }
@@ -250,7 +253,11 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
 
                                 CRITICAL CONSTRAINTS:
                                 1. **presentation_input**: Needs to be structured for a slide deck.
-                                2. **audio_summary**: This is crucial. It must be LONG and comprehensive.
+                                2. **audio_tracks**: This is crucial. Generate an array of tracks corresponding to your presentation slides.
+                                   - CRITICAL: Do NOT just read the text on the slide. You MUST expand on the slide content by adding deeper insights, practical examples, or real-world FSW context that the learner wouldn't get just by reading the screen.
+                                   - PERSONA: The audio script MUST be written from the perspective of 'Lindsay' from the FSW People & Development department. Lindsay is light, friendly, and approachable. She keeps things simple and easy to understand, avoiding overly technical language unless absolutely necessary.
+                                   - LENGTH: Each script MUST be substantial (aim for 150-200 words) to ensure the audio lasts 45-60 seconds.
+                                   - TONE: The delivery must sound like a natural, flowing conversation with a colleague, offering valuable "behind-the-scenes" knowledge.
                                 3. **markdown_content**: Must be UK English. DO NOT put the Interactive Activity or Quiz inside this string. Introduce them naturally, but let our system render them from the separate JSON keys.
                                 4. **quiz**: Must contain exactly 3 questions. MUST be a separate top-level key in the JSON output.
                                 5. **ai_component**: YOU MUST GENERATE A COMPONENT OF TYPE "${lesson.targetActivity}". CREATE A SENSIBLE ACTIVITY OF THIS TYPE THAT RELATES TO THE LESSON CONTENT. MUST be a separate top-level key in the JSON output, NOT embedded in markdown_content.
@@ -291,7 +298,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                     }
 
                     const contentCompletion = await openrouter.chat.completions.create({
-                        model: "google/gemini-1.5-pro",
+                        model: "openai/gpt-4o",
                         messages: [
                             {
                                 role: "system",
@@ -317,23 +324,39 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                     if (contentData.markdown_content) {
                         contentData.markdown_content = contentData.markdown_content.replace(/\\n/g, '\n');
                     }
-                    if (contentData.audio_summary) {
-                        contentData.audio_summary = contentData.audio_summary.replace(/\\n/g, '\n');
+                    if (contentData.audio_tracks && Array.isArray(contentData.audio_tracks)) {
+                        contentData.audio_tracks.forEach(track => {
+                            if (track.script) track.script = track.script.replace(/\\n/g, '\n');
+                        });
                     }
 
                     onProgress(`${progressPrefix} Generating audio & slides for "${lesson.title}"...`);
 
-                    // Parallel Execution
-                    const [gammaUrl, audioUrl] = await Promise.all([
-                        createPresentation(lesson.title, contentData.presentation_input).catch(err => {
-                            console.error("[AI] Gamma failed:", err);
-                            return null;
-                        }),
-                        createAudio(contentData.audio_summary).catch(err => {
-                            console.error("[AI] Audio failed:", err);
-                            return null;
-                        })
-                    ]);
+                    // Generate Gamma Presentation
+                    let gammaUrl = null;
+                    try {
+                        gammaUrl = await createPresentation(lesson.title, contentData.presentation_input);
+                    } catch (err) {
+                        console.error("[AI] Gamma failed:", err);
+                    }
+
+                    // Sequential Execution for Audio to prevent rate limits
+                    const generatedTracks = [];
+                    if (contentData.audio_tracks && Array.isArray(contentData.audio_tracks)) {
+                        for (let i = 0; i < contentData.audio_tracks.length; i++) {
+                            const track = contentData.audio_tracks[i];
+                            onProgress(`${progressPrefix} Generating audio track ${i + 1}/${contentData.audio_tracks.length}...`);
+                            try {
+                                const audioUrl = await createAudio(track.script);
+                                generatedTracks.push({ title: track.title, script: track.script, url: audioUrl });
+                            } catch (err) {
+                                console.error(`[AI] Audio failed for track ${i}:`, err);
+                                generatedTracks.push({ title: track.title, script: track.script, url: null }); // Keep track even if generation failed
+                            }
+                            // Small delay between calls to be safe
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                    }
 
                     // Append AI interactive component
                     let finalContent = contentData.markdown_content || "";
@@ -350,8 +373,8 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                     lesson.content = finalContent;
                     lesson.quiz = contentData.quiz;
                     lesson.gamma_url = gammaUrl;
-                    lesson.audio_url = audioUrl;
-                    lesson.audio_script = contentData.audio_summary; // Save script for future editing
+                    lesson.audio_tracks = generatedTracks;
+                    lesson.audio_url = generatedTracks.length > 0 ? generatedTracks[0].url : null; // Fallback for backward compatibility
                     lesson.presentation_input = contentData.presentation_input;
                     lesson.ai_component = contentData.ai_component;
 

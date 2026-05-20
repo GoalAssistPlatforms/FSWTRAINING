@@ -982,7 +982,7 @@ export const initManagerEvents = async (effectiveUser) => {
     const displayCourses = courses.filter(c => !c.content_json?.is_system_simulation)
 
     const courseCardsHTML = displayCourses.map((course, index) => `
-      <div class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 300px;">
+      <div id="course-tile-${index}" class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 300px; cursor: pointer;">
         <div style="height: 160px; background: #2a2a35; position: relative;">
           ${course.thumbnail_url
         ? `<img src="${course.thumbnail_url}" onerror="this.onerror=null; this.src='https://placehold.co/800x600/128ecd/ffffff?text=Course+Image'; console.warn('Thumbnail failed to load, falling back for:', '${course.title}');" style="width: 100%; height: 100%; object-fit: cover;">`
@@ -1014,18 +1014,25 @@ export const initManagerEvents = async (effectiveUser) => {
     // Bind Create Card Event
     document.getElementById('create-course-card').addEventListener('click', () => toggleModal(true))
 
-    // Bind View and Edit Buttons
+    // Bind Tile, View, Edit, and Delete events
     displayCourses.forEach((course, index) => {
-      document.getElementById(`view-btn-${index}`).addEventListener('click', () => {
-        renderCoursePlayer(course, user)
-      })
-
-      document.getElementById(`edit-btn-${index}`).addEventListener('click', () => {
+      document.getElementById(`course-tile-${index}`).addEventListener('click', () => {
         renderCourseEditor(course, user)
       })
 
+      document.getElementById(`view-btn-${index}`).addEventListener('click', (e) => {
+        e.stopPropagation()
+        renderCoursePlayer(course, { ...user, role: 'user' }) // Preview as normal user
+      })
+
+      document.getElementById(`edit-btn-${index}`).addEventListener('click', (e) => {
+        e.stopPropagation()
+        renderCoursePlayer(course, user) // Open with manager edit features
+      })
+
       const deleteBtn = document.getElementById(`delete-btn-${index}`)
-      deleteBtn.addEventListener('click', async () => {
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation()
         if (await fswConfirm(`Are you sure you want to delete "${course.title}"? This cannot be undone.`)) {
           try {
             console.log(`[Manager] Deleting course ${course.id} with role ${user.role}`)
@@ -1044,9 +1051,9 @@ export const initManagerEvents = async (effectiveUser) => {
             console.log('[Manager] Reloading courses...')
             await loadCourses()
 
-          } catch (e) {
-            console.error('[Manager] Delete Error:', e)
-            await fswAlert(`Failed to delete course:\n${e.message}`)
+          } catch (err) {
+            console.error('[Manager] Delete Error:', err)
+            await fswAlert(`Failed to delete course:\n${err.message}`)
 
             // Reset button if failed
             deleteBtn.innerText = 'Delete'

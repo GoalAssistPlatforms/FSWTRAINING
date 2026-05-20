@@ -12,7 +12,7 @@ const openrouter = new OpenAI({
     apiKey: (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENROUTER_API_KEY),
     dangerouslyAllowBrowser: true,
     defaultHeaders: {
-        "HTTP-Referer": window.location?.href || "http://localhost:5173",
+        "HTTP-Referer": (typeof window !== 'undefined' ? window.location?.href : "http://localhost:5173") || "http://localhost:5173",
         "X-Title": "FSW Training Platform",
     }
 });
@@ -133,23 +133,9 @@ export const generateThumbnail = async (topic) => {
             const styleSuffix = ". The aesthetic is sleek, industrial, and minimalist, featuring dramatic chiaroscuro lighting and deep shadows. CRITICAL: This is a direct view of the object. Do NOT show any production equipment, cameras, tripods, lights, studios, or film sets. The image must look like a high-end product shot, not a behind-the-scenes shot. No text. 8k resolution, photorealistic.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
-            // 2. Generate Image via DALL-E 3
-            // Note: DALL-E generation itself is usually stable, but if it fails we catch it in the outer block.
-            // Use 'b64_json' to avoid CORS issues when fetching the image on the client side.
-            const response = await openai.images.generate({
-                model: "dall-e-3",
-                prompt: fullPrompt,
-                n: 1,
-                size: "1024x1024",
-                quality: "hd",
-                style: "vivid",
-                response_format: "b64_json"
-            });
-
-            // Handle Base64 Data URI
-            const b64Json = response.data[0].b64_json;
-            const tempImageUrl = `data:image/png;base64,${b64Json}`;
-            console.log('[Thumbnail] Image generated (Base64 Bypassing CORS)');
+            // 2. Generate Image via Pollinations.ai (Free, reliable, no API key required)
+            const tempImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&nologo=true`;
+            console.log(`[Thumbnail] Using Pollinations API URL...`);
 
             // 3. Retry Loop for Uploading THIS specific image
             for (let uploadAttempt = 1; uploadAttempt <= MAX_UPLOAD_ATTEMPTS; uploadAttempt++) {

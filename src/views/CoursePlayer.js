@@ -247,11 +247,11 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                 <div id="visuals-overlay" style="position: absolute; inset: 0; z-index: 40; display: none; cursor: pointer;" title="Click to expand"></div>
 
                 ${currentLesson.gamma_url ? `
-                     <div id="gamma-scroller" style="width: 100%; height: 100%; position: relative;">
+                     <div id="gamma-scroller" style="width: 100%; height: 100%; position: relative; padding-right: ${(currentLesson.audio_tracks || currentLesson.audio_url || user.role === 'manager') ? '360px' : '0'}; padding-left: 2rem; padding-top: 2rem; padding-bottom: 2rem; box-sizing: border-box;">
                         <iframe 
                             id="gamma-iframe"
-                            src="${(currentLesson.gamma_url.includes('/docs/') ? currentLesson.gamma_url.replace('/docs/', '/embed/') : currentLesson.gamma_url) + '?mode=doc'}" 
-                            style="width: 100%; height: 100%; border: none;"
+                            src="${(currentLesson.gamma_url.includes('/docs/') ? currentLesson.gamma_url.replace('/docs/', '/embed/') : currentLesson.gamma_url) + '?mode=present'}" 
+                            style="width: 100%; height: 100%; border: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"
                             allow="fullscreen; autoplay"
                             allowfullscreen>
                         </iframe>
@@ -285,32 +285,49 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                     ` : ''}
                 ` : ''}
                 
-                <!-- Audio Player (Repositioned to bottom right) -->
-                ${(currentLesson.audio_url || user.role === 'manager') ? `
-                    <div class="audio-player-wrapper fade-in" style="position: absolute; bottom: 2rem; right: 2rem; z-index: 60;">
-                        <div class="glass" style="padding: 0.75rem 1.25rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.6);">
-                            <div style="display: flex; flex-direction: column;">
-                                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; gap: 1rem;">
-                                    <span style="font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: ${currentLesson.audio_url ? 'var(--primary)' : 'var(--text-muted)'};">${currentLesson.audio_url ? 'Audio Briefing' : 'No Audio'}</span>
-                                    ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" style="background:none; border:none; color: var(--primary); font-size: 0.65rem; cursor: pointer; padding: 0; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">✏️ ${currentLesson.audio_url ? 'Edit Audio' : 'Generate Audio'}</button>` : ''}
-                                </div>
-                                ${currentLesson.audio_url ? `
-                                <audio id="lesson-audio" controls src="${currentLesson.audio_url}" style="height: 30px; outline: none; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.8;"></audio>
-                                ` : `
-                                <div style="height: 30px; display: flex; align-items: center; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Audio generation failed or pending</div>
-                                `}
+                <!-- Interactive Sidebar Curriculum (Right) -->
+                ${(currentLesson.audio_tracks || currentLesson.audio_url || user.role === 'manager') ? `
+                    <div class="interactive-sidebar fade-in" style="position: absolute; top: 6rem; bottom: 2rem; right: 2rem; width: 320px; z-index: 60; display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.1); background: rgba(10,10,10,0.75); backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                <h4 style="margin: 0; font-size: 1rem; color: white; display: flex; align-items: center; gap: 0.5rem;"><span style="color: var(--primary);">🔊</span> Course Audio</h4>
+                                ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" class="hover-glow" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">✏️ Edit</button>` : ''}
+                            </div>
+                            
+                            <div class="audio-tracks-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.5rem;">
+                                ${(() => {
+                                    const tracks = (currentLesson.audio_tracks && currentLesson.audio_tracks.length > 0) ? currentLesson.audio_tracks : (currentLesson.audio_url ? [{ title: 'Full Lesson Audio', url: currentLesson.audio_url }] : []);
+                                    if (tracks.length === 0) {
+                                        return `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; font-style: italic; margin-top: 2rem;">No audio available</div>`;
+                                    }
+                                    return tracks.map((track, idx) => `
+                                        <div class="audio-track-item ${idx === 0 ? 'active' : ''}" data-track-idx="${idx}" style="padding: 1rem; border-radius: var(--radius-md); background: ${idx === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${idx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: all 0.2s; position: relative;">
+                                            <div style="font-size: 0.85rem; font-weight: 600; color: ${idx === 0 ? 'white' : 'var(--text-muted)'}; margin-bottom: 0.5rem;">${track.title || `Slide ${idx + 1}`}</div>
+                                            <audio class="track-audio" controls src="${track.url}" preload="metadata" style="width: 100%; height: 28px; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.9; outline: none;"></audio>
+                                            <div class="next-prompt fade-in" style="display: none; margin-top: 0.75rem; font-size: 0.75rem; color: var(--primary); font-weight: bold; text-align: center;">
+                                                Advance slide, then play next →
+                                            </div>
+                                        </div>
+                                    `).join('');
+                                })()}
                             </div>
                         </div>
-                        
+
                         <!-- Hidden Audio Editor -->
                         ${user.role === 'manager' ? `
-                        <div id="audio-edit-mode" style="display: none; position: absolute; bottom: 110%; right: 0; width: 400px; max-width: 90vw; background: rgba(10, 10, 10, 0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-lg); padding: 1.5rem; backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
-                            <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: white;">${currentLesson.audio_url ? 'Edit Audio Script' : 'Generate Audio Script'}</h4>
-                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Changes made here will be re-synthesized into a new voiceover track.</p>
-                            <textarea id="edit-audio-script" style="width: 100%; height: 200px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 0.75rem; font-family: inherit; font-size: 0.85rem; outline: none; resize: vertical; box-sizing: border-box; line-height: 1.5;"></textarea>
-                            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
-                                <button id="cancel-audio-edit" class="btn-ghost" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Cancel</button>
-                                <button id="save-audio-edit" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem;">🎙️ Generate Audio</button>
+                        <div id="audio-edit-mode" style="display: none; position: absolute; top: 0; right: 105%; width: 650px; max-height: 100%; overflow-y: auto; background: rgba(10, 10, 10, 0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-lg); padding: 2rem; backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+                            <h4 style="margin: 0 0 1rem 0; font-size: 1.25rem; color: white;">Manage Audio Tracks</h4>
+                            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem;">Add multiple tracks to correspond to slides.</p>
+                            
+                            <div id="audio-tracks-editor" style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem;">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <button id="add-audio-track-btn" class="btn-secondary" style="width: 100%; margin-bottom: 1.5rem; font-size: 1rem; padding: 0.8rem;">+ Add Track</button>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem;">
+                                <button id="cancel-audio-edit" class="btn-ghost" style="padding: 0.6rem 1.2rem; font-size: 0.95rem;">Cancel</button>
+                                <button id="save-audio-edit" class="btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">💾 Save Changes</button>
                             </div>
                         </div>
                         ` : ''}
@@ -833,25 +850,81 @@ export const renderCoursePlayer = (course, user, options = {}) => {
             const audioEditMode = document.getElementById('audio-edit-mode');
             const cancelAudioBtn = document.getElementById('cancel-audio-edit');
             const saveAudioBtn = document.getElementById('save-audio-edit');
-            const audioScriptArea = document.getElementById('edit-audio-script');
+            const addTrackBtn = document.getElementById('add-audio-track-btn');
+            const editorContainer = document.getElementById('audio-tracks-editor');
             const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
 
+            // Local state for editing
+            let editingTracks = [];
+
+            const renderTracksEditor = () => {
+                editorContainer.innerHTML = '';
+                editingTracks.forEach((track, idx) => {
+                    const el = document.createElement('div');
+                    el.style.cssText = 'background: rgba(255,255,255,0.05); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 0.75rem; position: relative;';
+                    el.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <input type="text" class="edit-track-title" value="${track.title || `Slide ${idx + 1}`}" style="background: transparent; border: none; color: white; font-size: 1.05rem; font-weight: bold; outline: none; width: 70%;">
+                            <div>
+                                <button class="btn-ghost remove-track-btn" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; color: #ef4444;">Remove</button>
+                            </div>
+                        </div>
+                        <textarea class="edit-track-script" style="width: 100%; height: 120px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.75rem; font-family: inherit; font-size: 1rem; outline: none; resize: vertical; line-height: 1.5;">${track.script || ''}</textarea>
+                        ${track.url ? `<audio controls src="${track.url}" style="width: 100%; height: 32px; filter: invert(1); margin-top: 0.5rem;"></audio>` : ''}
+                        <button class="btn-secondary generate-single-track-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-top: 0.5rem;">🎙️ Synthesize This Track</button>
+                    `;
+
+                    // Remove track
+                    el.querySelector('.remove-track-btn').addEventListener('click', () => {
+                        editingTracks.splice(idx, 1);
+                        renderTracksEditor();
+                    });
+
+                    // Update title/script on input
+                    el.querySelector('.edit-track-title').addEventListener('input', (e) => track.title = e.target.value);
+                    el.querySelector('.edit-track-script').addEventListener('input', (e) => track.script = e.target.value);
+
+                    // Generate single track
+                    const generateBtn = el.querySelector('.generate-single-track-btn');
+                    generateBtn.addEventListener('click', async () => {
+                        if (!track.script) return;
+                        const origHtml = generateBtn.innerHTML;
+                        generateBtn.innerHTML = 'Generating...';
+                        generateBtn.disabled = true;
+                        try {
+                            const { createAudio } = await import('../api/elevenlabs.js');
+                            const url = await createAudio(track.script);
+                            track.url = url;
+                            renderTracksEditor(); // Re-render to show new audio player
+                        } catch(e) {
+                            console.error('Audio error', e);
+                            alert('Failed to generate audio for this track.');
+                        } finally {
+                            if (generateBtn) { generateBtn.innerHTML = origHtml; generateBtn.disabled = false; }
+                        }
+                    });
+
+                    editorContainer.appendChild(el);
+                });
+            };
+
             editAudioBtn.addEventListener('click', () => {
-                // Pre-fill script
-                if (currentLesson.audio_script) {
-                    audioScriptArea.value = currentLesson.audio_script;
+                // Initialize local state
+                if (currentLesson.audio_tracks && currentLesson.audio_tracks.length > 0) {
+                    editingTracks = JSON.parse(JSON.stringify(currentLesson.audio_tracks)); // deep clone
+                } else if (currentLesson.audio_url || currentLesson.audio_script) {
+                    editingTracks = [{ title: 'Full Audio', script: currentLesson.audio_script || '', url: currentLesson.audio_url }];
                 } else {
-                    // Fallback for legacy courses: parse from markdown content
-                    const rawContent = currentLesson.content || '';
-                    // Strip basic markdown (headers, bold, italics) for text-to-speech readability
-                    let stripped = rawContent
-                        .replace(/[#*`_]+/g, '')
-                        .replace(/\\n/g, '\n')
-                        .split('### Interactive Activity')[0] // remove interactives
-                        .trim();
-                    audioScriptArea.value = "Welcome to the lesson. " + stripped; 
+                    editingTracks = [{ title: 'Slide 1', script: '', url: null }];
                 }
+                
+                renderTracksEditor();
                 audioEditMode.style.display = 'block';
+            });
+
+            addTrackBtn.addEventListener('click', () => {
+                editingTracks.push({ title: `Slide ${editingTracks.length + 1}`, script: '', url: null });
+                renderTracksEditor();
             });
 
             cancelAudioBtn.addEventListener('click', () => {
@@ -859,23 +932,16 @@ export const renderCoursePlayer = (course, user, options = {}) => {
             });
 
             saveAudioBtn.addEventListener('click', async () => {
-                if (!audioScriptArea.value.trim()) return;
-                
                 const originalText = saveAudioBtn.innerHTML;
-                saveAudioBtn.innerHTML = '🎙️ Regenerating...';
+                saveAudioBtn.innerHTML = '💾 Saving...';
                 saveAudioBtn.disabled = true;
 
                 try {
-                    const newScript = audioScriptArea.value.trim();
-                    const { createAudio } = await import('../api/elevenlabs');
-                    
-                    // Generate new audio
-                    const newAudioUrl = await createAudio(newScript);
-                    if (!newAudioUrl) throw new Error("Audio generation failed");
-
-                    // Save to lesson
-                    currentLesson.audio_url = newAudioUrl;
-                    currentLesson.audio_script = newScript;
+                    // Update lesson data
+                    currentLesson.audio_tracks = editingTracks;
+                    if (editingTracks.length > 0) {
+                        currentLesson.audio_url = editingTracks[0].url; // backwards compat
+                    }
 
                     // Update DB
                     const { updateCourse } = await import('../api/courses');
@@ -884,10 +950,11 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                         updated_at: new Date()
                     });
                     
-                    mount(); // Re-render to load new audio
+                    mount(); // Re-render
                 } catch(e) {
-                    console.error('Failed to regenerate audio:', e);
-                    await fswAlert("Failed to regenerate audio. Check your connections or credits.");
+                    console.error('Failed to save audio:', e);
+                    const { fswAlert } = await import('../utils/dialog.js');
+                    await fswAlert("Failed to save changes.");
                     saveAudioBtn.innerHTML = originalText;
                     saveAudioBtn.disabled = false;
                 }
@@ -1101,23 +1168,65 @@ export const renderCoursePlayer = (course, user, options = {}) => {
             })
         }
 
-        const audioEl = document.getElementById('lesson-audio')
-        if (audioEl) {
-            audioEl.addEventListener('ended', () => {
-                const grid = document.querySelector('.cp-grid')
-                if (grid) {
-                    grid.classList.remove('cinema-mode')
-                    grid.classList.add('reading-mode')
-
-                    // Show overlay to allow restoring
-                    const overlay = document.getElementById('visuals-overlay')
-                    if (overlay) overlay.style.display = 'block'
-
-                    // Optional: Start auto-scrolling when reading mode activates?
-                    // Let's keep it manual trigger for now to avoid annoyance.
+        // Sequential Audio Track Logic
+        const trackItems = document.querySelectorAll('.audio-track-item');
+        trackItems.forEach((item, index) => {
+            const audioEl = item.querySelector('.track-audio');
+            
+            // Handle clicking a track card
+            item.addEventListener('click', (e) => {
+                // If they clicked the audio controls directly, let the browser handle it
+                if (e.target.tagName === 'AUDIO') return;
+                
+                // Pause all other tracks
+                document.querySelectorAll('.track-audio').forEach(a => { if (a !== audioEl) a.pause() });
+                
+                // Toggle play/pause
+                if (audioEl.paused) {
+                    audioEl.play();
+                } else {
+                    audioEl.pause();
                 }
-            })
-        }
+            });
+
+            audioEl.addEventListener('play', () => {
+                // Make active
+                trackItems.forEach(t => {
+                    t.classList.remove('active');
+                    t.style.background = 'rgba(255,255,255,0.03)';
+                    t.style.borderColor = 'rgba(255,255,255,0.05)';
+                    t.querySelector('div').style.color = 'var(--text-muted)';
+                    const prompt = t.querySelector('.next-prompt');
+                    if (prompt) prompt.style.display = 'none';
+                });
+                item.classList.add('active');
+                item.style.background = 'rgba(255,255,255,0.1)';
+                item.style.borderColor = 'rgba(255,255,255,0.2)';
+                item.querySelector('div').style.color = 'white';
+            });
+
+            audioEl.addEventListener('ended', () => {
+                // Highlight next track if it exists
+                if (index + 1 < trackItems.length) {
+                    const nextItem = trackItems[index + 1];
+                    const nextPrompt = nextItem.querySelector('.next-prompt');
+                    if (nextPrompt) nextPrompt.style.display = 'block';
+                    
+                    nextItem.style.background = 'rgba(16, 185, 129, 0.1)'; // subtle green highlight
+                    nextItem.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                    nextItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    // All audio finished, switch to reading mode
+                    const grid = document.querySelector('.cp-grid');
+                    if (grid) {
+                        grid.classList.remove('cinema-mode');
+                        grid.classList.add('reading-mode');
+                        const overlay = document.getElementById('visuals-overlay');
+                        if (overlay) overlay.style.display = 'block';
+                    }
+                }
+            });
+        });
 
 
     }

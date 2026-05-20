@@ -156,55 +156,94 @@ export function renderDojoChat(containerId, config = {}) {
     const renderIncomingCall = () => {
         playRingtone();
         container.innerHTML = `
-            <div class="glass fade-in" style="display: flex; flex-direction: column; height: 600px; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--glass-border); background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); position: relative;">
-                <!-- Background Pulse Animation -->
-                <div style="position: absolute; top:0; left:0; right:0; bottom:0; overflow:hidden; z-index:0; pointer-events: none;">
-                    <div style="position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; background: rgba(18, 142, 205, 0.2); border-radius: 50%; animation: pulse-ring 2s infinite;"></div>
-                </div>
-
-                <!-- Main Content Area - Scrollable for long text -->
-                <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; z-index: 1; padding: 2rem 1.5rem 0 1.5rem; overflow-y: auto; overflow-x: hidden;">
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 1rem 0;">
+                <!-- Phone Frame -->
+                <div class="glass fade-in phone-frame" style="width: 320px; height: 650px; max-height: 90vh; border-radius: 36px; border: 10px solid #000; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5), inset 0 0 0 2px #333; position: relative; overflow: hidden; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; flex-shrink: 0;">
                     
-                    <div style="flex-shrink: 0; width: 100px; height: 100px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; border: 4px solid var(--glass-border); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-                        <svg width="50" height="50" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <!-- Hardware Notch -->
+                    <div style="position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 130px; height: 26px; background: #000; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; z-index: 50; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <div style="width: 34px; height: 5px; border-radius: 3px; background: #222;"></div>
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #2a2a2a; border: 1px solid #111;"></div>
                     </div>
                     
-                    <h2 style="margin: 0; font-size: 1.8rem; letter-spacing: -0.5px; text-align: center;">Incoming Call...</h2>
-                    <p style="color: var(--primary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 500; text-align: center;">${scenario.role}</p>
-                    
-                    <div style="margin-top: 1.5rem; margin-bottom: 2rem; background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: var(--radius-md); border-left: 4px solid var(--accent); width: 100%; max-width: 90%; box-sizing: border-box;">
-                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; justify-content: center;">
-                            ${scenario.skills.map(s => `<span style="font-size: 0.7rem; background: rgba(18, 142, 205, 0.2); color: var(--primary); padding: 4px 8px; border-radius: 12px; border: 1px solid rgba(18, 142, 205, 0.3);">${s}</span>`).join('')}
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <strong style="color: #e2e8f0; display: block; margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">SITUATION BRIEF</strong>
-                            <p style="color: #94a3b8; font-size: 0.95rem; margin: 0; line-height: 1.4;">${scenario.intro}</p>
-                        </div>
-                         <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5rem 0 1rem 0;">
-                         <div>
-                            <strong style="color: #e2e8f0; display: block; margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">YOUR GOAL</strong>
-                            <p style="color: #94a3b8; font-size: 0.95rem; margin: 0; line-height: 1.4;">${scenario.objective}</p>
+                    <!-- Top Status Bar (fake) -->
+                    <div style="display: flex; justify-content: space-between; padding: 10px 18px; font-size: 12px; color: white; font-weight: 600; z-index: 40; opacity: 0.9;">
+                        <span>12:36</span>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <!-- Signal Bars -->
+                            <div style="display: flex; gap: 2px; align-items: flex-end; height: 9px;">
+                                <div style="width: 3px; height: 3px; background: white; border-radius: 1px;"></div>
+                                <div style="width: 3px; height: 5px; background: white; border-radius: 1px;"></div>
+                                <div style="width: 3px; height: 7px; background: white; border-radius: 1px;"></div>
+                                <div style="width: 3px; height: 9px; background: white; border-radius: 1px;"></div>
+                            </div>
+                            <!-- WiFi -->
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 3C7.95 3 4.21 4.34 1.2 6.6L3 9C5.5 7.12 8.62 6 12 6s6.5 1.12 9 3l1.8-2.4C19.79 4.34 16.05 3 12 3zm0 5C9.36 8 6.98 8.87 5.04 10.36L6.84 12.8C8.35 11.64 10.11 11 12 11s3.65.64 5.16 1.8l1.8-2.44C17.02 8.87 14.64 8 12 8zm0 5c-1.4 0-2.69.45-3.75 1.21L10 16.5C10.58 16.18 11.26 16 12 16s1.42.18 2 .5l1.75-2.29C14.69 13.45 13.4 13 12 13zM12 18c-.83 0-1.5.67-1.5 1.5S11.17 21 12 21s1.5-.67 1.5-1.5S12.83 18 12 18z"/></svg>
+                            <!-- Battery -->
+                            <div style="width: 18px; height: 8px; border: 1px solid white; border-radius: 2px; padding: 1px; position: relative;">
+                                <div style="width: 11px; height: 100%; background: white; border-radius: 1px;"></div>
+                                <div style="position: absolute; right: -3px; top: 1px; width: 2px; height: 4px; background: white; border-radius: 0 2px 2px 0;"></div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Footer / Actions - Pinned to bottom -->
-                <div style="flex-shrink: 0; display: flex; justify-content: center; gap: 3rem; padding: 1.5rem 0 2.5rem 0; z-index: 10; background: linear-gradient(to top, #0f172a 0%, transparent 100%);">
-                    <!-- Decline Button (Reset) -->
-                    <button id="decline-btn" style="width: 70px; height: 70px; border-radius: 50%; background: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
-                    </button>
+                    <!-- Background Pulse Animation -->
+                    <div style="position: absolute; top:0; left:0; right:0; bottom:0; overflow:hidden; z-index:0; pointer-events: none;">
+                        <div style="position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); width: 70%; aspect-ratio: 1; background: rgba(18, 142, 205, 0.15); border-radius: 50%; animation: pulse-ring 2.5s infinite;"></div>
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; z-index: 1; padding: 1.5rem 1.25rem 0 1.25rem; overflow: hidden;">
+                        
+                        <div style="flex-shrink: 0; width: 70px; height: 70px; background: linear-gradient(135deg, #475569, #334155); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.1);">
+                            <svg width="35" height="35" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        
+                        <h2 style="margin: 0; font-size: 1.4rem; font-weight: 300; color: #f8fafc; letter-spacing: 0.5px; text-align: center;">Incoming Call...</h2>
+                        <p style="color: #94a3b8; font-size: 1rem; margin-top: 0.3rem; font-weight: 400; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${scenario.role}</p>
+                        
+                        <div style="margin-top: 1.2rem; width: 100%;">
+                            <!-- Situation Brief -->
+                            <div style="background: rgba(0,0,0,0.25); padding: 0.8rem; border-radius: 12px; margin-bottom: 0.6rem; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08);">
+                                <strong style="color: #cbd5e1; display: block; margin-bottom: 0.3rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;">Situation</strong>
+                                <p style="color: #94a3b8; font-size: 0.85rem; margin: 0; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${scenario.intro}</p>
+                            </div>
+                            
+                            <!-- Goal -->
+                            <div style="background: rgba(0,0,0,0.25); padding: 0.8rem; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08);">
+                                <strong style="color: #cbd5e1; display: block; margin-bottom: 0.3rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;">Goal</strong>
+                                <p style="color: #94a3b8; font-size: 0.85rem; margin: 0; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${scenario.objective}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer / Actions - iOS Style -->
+                    <div style="flex-shrink: 0; display: flex; justify-content: space-between; padding: 1.2rem 2.5rem 1.5rem 2.5rem; z-index: 10; background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, transparent 100%);">
+                        <!-- Decline -->
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                            <button id="decline-btn" style="width: 60px; height: 60px; border-radius: 50%; background: #ff3b30; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="white" style="transform: rotate(135deg);"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                            </button>
+                            <span style="color: #fff; font-size: 0.8rem; font-weight: 500;">Decline</span>
+                        </div>
+                        
+                        <!-- Accept -->
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                            <button id="accept-btn" style="width: 60px; height: 60px; border-radius: 50%; background: #34c759; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; animation: pulse-green 2s infinite; box-shadow: 0 4px 15px rgba(52, 199, 89, 0.4);">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                            </button>
+                            <span style="color: #fff; font-size: 0.8rem; font-weight: 500;">Accept</span>
+                        </div>
+                    </div>
                     
-                    <!-- Accept Button -->
-                    <button id="accept-btn" style="width: 70px; height: 70px; border-radius: 50%; background: #22c55e; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; animation: pulse-green 1.5s infinite; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.44-5.15-3.75-6.59-6.59l1.97-1.57c.26-.27.36-.66.25-1.01-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3.28 3 3.93 3 4.96c0 10.96 7.6 18.04 18.04 18.04.81 0 1.25-.56 1.25-1.25v-3.79c-.01-.54-.46-.99-1.28-.58z"/></svg>
-                    </button>
+                    <!-- Home indicator -->
+                    <div style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 110px; height: 4px; background: white; border-radius: 2px; opacity: 0.5; z-index: 50;"></div>
+                    
+                    <style>
+                        @keyframes pulse-ring { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; } 50% { opacity: 0.5; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+                        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(52, 199, 89, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); } }
+                    </style>
                 </div>
-                
-                <style>
-                    @keyframes pulse-ring { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; } 50% { opacity: 0.5; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
-                    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
-                </style>
             </div>
         `;
 
