@@ -151,16 +151,16 @@ export function initSettingsEvents(user) {
                     saveBtn.textContent = 'Uploading image...';
                     const { supabase } = await import('../../api/supabase');
                     const fileExt = avatarFile.name.split('.').pop();
-                    const filename = `avatars/${user.id}_${Date.now()}.${fileExt}`;
+                    const filename = `${user.id}_${Date.now()}.${fileExt}`;
                     
                     const { data, error } = await supabase.storage
-                        .from('course_assets')
+                        .from('avatars')
                         .upload(filename, avatarFile, { upsert: true });
                         
                     if (error) throw new Error("Failed to upload avatar: " + error.message);
                     
                     const { data: publicData } = supabase.storage
-                        .from('course_assets')
+                        .from('avatars')
                         .getPublicUrl(filename);
                         
                     avatarUrl = publicData.publicUrl;
