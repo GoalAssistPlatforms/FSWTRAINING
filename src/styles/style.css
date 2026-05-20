@@ -1247,22 +1247,59 @@ button {
   }
 }
 
+/* Document / Contract Look */
+.redline-document-wrapper {
+  background-color: #fdfdfc;
+  color: #1e293b;
+  padding: 4rem 4rem 4rem 5rem;
+  border-radius: 4px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+  max-width: 850px;
+  margin: 0 auto;
+  font-family: 'Times New Roman', Times, serif;
+  position: relative;
+}
+
+/* Legal paper margin line */
+.redline-document-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3.5rem;
+  width: 2px;
+  background-color: rgba(220, 38, 38, 0.2);
+}
+
+.redline-context-text {
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: #334155;
+  margin-bottom: 2rem;
+  font-style: italic;
+  position: relative;
+  z-index: 1;
+}
+
+.redline-context-text.outro {
+  margin-top: 2rem;
+  margin-bottom: 0;
+}
+
 /* Redline List Mode */
 .redline-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  max-width: 800px;
-  margin: 0 auto;
+  gap: 0.5rem;
   position: relative;
   z-index: 2;
 }
 
 .redline-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 1.25rem;
-  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
   display: flex;
   gap: 1.25rem;
   align-items: flex-start;
@@ -1271,15 +1308,15 @@ button {
 }
 
 .redline-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateX(5px);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.05);
+  transform: translateX(3px);
 }
 
 .redline-bullet {
-  width: 8px;
-  height: 8px;
-  background: var(--text-muted);
+  width: 6px;
+  height: 6px;
+  background: #64748b;
   border-radius: 50%;
   margin-top: 10px;
   flex-shrink: 0;
@@ -1287,47 +1324,44 @@ button {
 }
 
 .redline-content {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: #0f172a;
   flex: 1;
   transition: color 0.3s;
 }
 
 /* FOUND RISK */
 .redline-item.is-risk.found {
-  background: rgba(237, 28, 36, 0.15);
-  border-color: var(--color-error);
-  position: relative;
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .redline-item.is-risk.found .redline-content {
   text-decoration: line-through;
-  text-decoration-color: var(--color-error);
-  text-decoration-thickness: 2px;
-  color: #fea;
-  /* Slight highlight for readability under strikethrough? Or just dim it */
-  color: #999;
+  text-decoration-color: #10b981;
+  text-decoration-thickness: 3px;
+  color: #065f46;
 }
 
 .redline-item.is-risk.found .redline-bullet {
-  background: var(--color-error);
-  box-shadow: 0 0 10px var(--color-error);
-}
-
-/* CHECKED SAFE */
-.redline-item.checked-safe {
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.redline-item.checked-safe .redline-bullet {
   background: #10b981;
   box-shadow: 0 0 5px #10b981;
 }
 
+/* CHECKED SAFE */
+.redline-item.checked-safe {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.redline-item.checked-safe .redline-bullet {
+  background: #ef4444;
+  box-shadow: 0 0 5px #ef4444;
+}
+
 .redline-item.checked-safe .redline-content {
-  color: #10b981;
+  color: #ef4444;
 }
 
 
@@ -2091,4 +2125,99 @@ button {
 
 .CodeMirror-cursor {
     border-left: 1px solid white !important;
+}
+/* Email View CSS */
+.redline-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.redline-email-view {
+  background: #ffffff;
+  color: #1e293b;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: opacity 0.3s ease;
+}
+
+.email-header-area {
+  background: #f8fafc;
+  padding: 1.5rem 2.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.email-meta {
+  display: flex;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  align-items: center;
+}
+
+.email-meta:last-child {
+  margin-bottom: 0;
+}
+
+.email-meta-label {
+  color: #64748b;
+  width: 100px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.email-meta-value {
+  color: #0f172a;
+  flex: 1;
+}
+
+.email-meta-value.fw-bold {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.attachments-row {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.redline-email-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.redline-email-attachment:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.email-body-area {
+  padding: 2.5rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #334155;
+  background: #ffffff;
+}
+
+.email-body-area p {
+  margin-bottom: 1rem;
+}
+
+.email-body-area p:last-child {
+  margin-bottom: 0;
 }
