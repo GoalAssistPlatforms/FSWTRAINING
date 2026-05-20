@@ -706,6 +706,7 @@ export const initManagerEvents = async (effectiveUser) => {
               <div style="padding-top: 0.2rem;">
                 <input type="checkbox" class="user-select-cb" data-userid="${member.id}" ${selectedUserIds.has(member.id) ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
               </div>
+              <img src="${member.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.full_name || member.email) + '&background=random'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
               <div style="flex: 1;">
                 <h4 style="margin: 0 0 0.25rem 0;">${escapeHTML(member.full_name || member.email)}</h4>
                 ${member.full_name ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${escapeHTML(member.email)}</div>` : ''}

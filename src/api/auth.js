@@ -10,6 +10,16 @@ export const signIn = async (email, password) => {
     return data
 }
 
+export const verifyCurrentPassword = async (email, password) => {
+    // Verify by attempting to sign in
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    })
+    if (error) throw new Error('Incorrect current password.');
+    return data
+}
+
 export const resetPassword = async (email) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: 'https://fswtraining.vercel.app/reset-password', // Open live app even if initiated locally
@@ -26,20 +36,29 @@ export const updatePassword = async (newPassword) => {
     return data
 }
 
-export const updateUserProfile = async (userId, { fullName, department }) => {
+export const updateUserProfile = async (userId, { fullName, department, jobTitle, phone, avatarUrl }) => {
     // 1. Update auth.users metadata
-    const { error: authError } = await supabase.auth.updateUser({
-        data: {
-            full_name: fullName,
-            department: department
-        }
-    })
-    if (authError) throw authError
+    const metaDataUpdate = {}
+    if (fullName !== undefined) metaDataUpdate.full_name = fullName
+    if (department !== undefined) metaDataUpdate.department = department
+    if (jobTitle !== undefined) metaDataUpdate.job_title = jobTitle
+    if (phone !== undefined) metaDataUpdate.phone = phone
+    if (avatarUrl !== undefined) metaDataUpdate.avatar_url = avatarUrl
+
+    if (Object.keys(metaDataUpdate).length > 0) {
+        const { error: authError } = await supabase.auth.updateUser({
+            data: metaDataUpdate
+        })
+        if (authError) throw authError
+    }
 
     // 2. Update profiles table
     const profileUpdate = {}
     if (fullName !== undefined) profileUpdate.full_name = fullName
     if (department !== undefined) profileUpdate.department = department
+    if (jobTitle !== undefined) profileUpdate.job_title = jobTitle
+    if (phone !== undefined) profileUpdate.phone = phone
+    if (avatarUrl !== undefined) profileUpdate.avatar_url = avatarUrl
 
     if (Object.keys(profileUpdate).length > 0) {
         const { error: profileError } = await supabase
