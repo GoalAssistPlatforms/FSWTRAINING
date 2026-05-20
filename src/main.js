@@ -102,6 +102,14 @@ export const renderMainLayout = async (user) => {
       dashboardContent = renderUserDashboard(user);
   }
 
+  const initials = user.full_name 
+      ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+      : user.email.substring(0, 2).toUpperCase();
+
+  const avatarHtml = user.avatar_url 
+      ? `<img src="${user.avatar_url}" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.2);">`
+      : `<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; border: 2px solid rgba(255,255,255,0.2); text-shadow: 0 1px 2px rgba(0,0,0,0.3);">${initials}</div>`;
+
   app.innerHTML = `
     <header class="glass" style="padding: 1rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(20, 30, 60, 0.6); position: relative; z-index: 1000;">
       <div style="display: flex; align-items: center; gap: 1rem;">
@@ -118,14 +126,12 @@ export const renderMainLayout = async (user) => {
         <div id="notification-bell-placeholder">
             ${bellHtml}
         </div>
-        <button id="settings-btn" class="glass icon-btn" style="position: relative; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 10px rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 50%; cursor: pointer; transition: all 0.2s ease; margin-left: 0.5rem; color: white;" title="Settings">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        
+        <button id="settings-btn" style="background: none; border: none; padding: 0; margin-left: 0.5rem; cursor: pointer; outline: none; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: transform 0.2s ease, box-shadow 0.2s ease;" title="Settings" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 14px rgba(0,0,0,0.3)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 10px rgba(0,0,0,0.2)';">
+            ${avatarHtml}
         </button>
-        <div style="text-align: right;">
-           <div style="font-weight: 600;">${user.email}</div>
-           <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">${user.role}</div>
-        </div>
-        <button id="logout-btn" class="btn-secondary">Logout</button>
+
+        <button id="logout-btn" class="btn-secondary" style="margin-left: 0.5rem;">Logout</button>
       </div>
     </header>
     
