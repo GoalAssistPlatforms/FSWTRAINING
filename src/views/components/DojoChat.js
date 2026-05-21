@@ -249,7 +249,7 @@ export function renderDojoChat(containerId, config = {}) {
 
         container.querySelector('#accept-btn').onclick = () => {
             stopRingtone();
-            renderActiveCall();
+            renderModeSelection();
         };
 
         container.querySelector('#decline-btn').onclick = async () => {
@@ -258,9 +258,34 @@ export function renderDojoChat(containerId, config = {}) {
         };
     };
 
-    const renderActiveCall = () => {
+    const renderModeSelection = () => {
         container.innerHTML = `
-            <div class="glass fade-in" style="display: flex; flex-direction: column; height: 600px; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--glass-border); background: #0f172a; position: relative;">
+            <div class="glass fade-in" style="height:600px; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; background: #0f172a; border-radius: var(--radius-lg); border: 1px solid var(--glass-border);">
+                <div style="font-size: 3.5rem; margin-bottom: 1.5rem;">📱</div>
+                <h2 style="color:white; margin: 0 0 1rem 0; font-weight: 300;">Choose Connection Mode</h2>
+                <p style="color: #94a3b8; margin-bottom: 3rem; max-width: 80%;">How would you like to handle this interaction?</p>
+                
+                <div style="display: flex; gap: 1.5rem; width: 100%; max-width: 400px; padding: 0 2rem; box-sizing: border-box;">
+                    <button id="mode-call-btn" style="flex: 1; background: rgba(52, 199, 89, 0.1); border: 1px solid #34c759; color: #34c759; padding: 1.5rem; border-radius: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.2s; box-shadow: 0 4px 15px rgba(52, 199, 89, 0.1);">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                        <span style="font-weight: 600; font-size: 1.1rem;">Voice Call</span>
+                    </button>
+                    
+                    <button id="mode-text-btn" style="flex: 1; background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; color: #38bdf8; padding: 1.5rem; border-radius: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.2s; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.1);">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <span style="font-weight: 600; font-size: 1.1rem;">Text Chat</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.querySelector('#mode-call-btn').onclick = () => renderActiveCall('call');
+        container.querySelector('#mode-text-btn').onclick = () => renderActiveCall('text');
+    };
+
+    const renderActiveCall = (initialMode = 'text') => {
+        container.innerHTML = `
+            <div class="glass fade-in" style="display: flex; flex-direction: column; height: 600px; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--glass-border); background: #0f172a; position: relative;" data-mode="${initialMode}">
                 
                 <!-- Mission Info Overlay (Hidden by default) -->
                 <div id="mission-overlay" style="display: none; position: absolute; top: 70px; right: 10px; left: 10px; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1.5rem; z-index: 100; backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
@@ -275,7 +300,7 @@ export function renderDojoChat(containerId, config = {}) {
                 </div>
 
                 <!-- Call Header -->
-                <div style="background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid var(--glass-border); padding: 1rem; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px);">
+                <div style="background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid var(--glass-border); padding: 1rem; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px); z-index: 50;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <div style="width: 40px; height: 40px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">?</div>
                         <div>
@@ -299,22 +324,43 @@ export function renderDojoChat(containerId, config = {}) {
                     </div>
                 </div>
 
-                <!-- Chat Area -->
-                <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; scrollbar-width: thin; background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 20px 20px;">
-                    <!-- Messages injected here -->
+                <!-- VOICE CALL UI -->
+                <div id="voice-call-ui" style="flex: 1; display: ${initialMode === 'call' ? 'flex' : 'none'}; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
+                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #475569, #334155); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 4px solid rgba(255,255,255,0.05); margin-bottom: 2rem; position: relative;">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <div id="ai-speaking-ripple" style="display: none; position: absolute; top:0; left:0; right:0; bottom:0; border-radius: 50%; border: 2px solid #22c55e; animation: pulse-ring 1.5s infinite;"></div>
+                    </div>
+                    
+                    <h3 style="color: white; margin: 0 0 0.5rem 0; font-weight: 400; font-size: 1.4rem; text-align: center;">${scenario.role}</h3>
+                    <p id="voice-status-text" style="color: #94a3b8; font-size: 1.1rem; margin: 0;">Connected</p>
+                    
+                    <div style="margin-top: 4rem;">
+                        <button id="big-dictate-btn" style="width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); color: #cbd5e1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        </button>
+                    </div>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-top: 1rem;">Tap to speak</p>
                 </div>
 
-                <!-- Input Area -->
-                <div style="display: flex; padding: 1rem; background-color: rgba(30, 41, 59, 0.95); border-top: 1px solid var(--glass-border); gap: 0.75rem; align-items: flex-end;">
-                    <div style="flex: 1; position: relative; min-width: 0;">
-                         <textarea id="chat-input" rows="1" placeholder="Type your response..." style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 20px; padding: 10px 1.25rem; outline: none; transition: all 0.2s; resize: none; font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                <!-- TEXT CHAT UI -->
+                <div id="text-chat-ui" style="flex: 1; display: ${initialMode === 'text' ? 'flex' : 'none'}; flex-direction: column; overflow: hidden;">
+                    <!-- Chat Area -->
+                    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; scrollbar-width: thin; background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 20px 20px;">
+                        <!-- Messages injected here -->
                     </div>
-                    <button id="dictate-btn" title="Hold to Speak" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; width: 42px; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                    </button>
-                    <button id="send-btn" style="background: var(--primary); color: white; border: none; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                    </button>
+
+                    <!-- Input Area -->
+                    <div style="display: flex; padding: 1rem; background-color: rgba(30, 41, 59, 0.95); border-top: 1px solid var(--glass-border); gap: 0.75rem; align-items: flex-end;">
+                        <div style="flex: 1; position: relative; min-width: 0;">
+                             <textarea id="chat-input" rows="1" placeholder="Type your response..." style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 20px; padding: 10px 1.25rem; outline: none; transition: all 0.2s; resize: none; font-family: inherit; font-size: 0.95rem; line-height: 1.5;"></textarea>
+                        </div>
+                        <button id="dictate-btn" title="Hold to Speak" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; width: 42px; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        </button>
+                        <button id="send-btn" style="background: var(--primary); color: white; border: none; border-radius: 50%; width: 42px; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                        </button>
+                    </div>
                 </div>
                 
                  <!-- End Call Modal (Hidden by default) -->
@@ -337,14 +383,18 @@ export function renderDojoChat(containerId, config = {}) {
         `;
 
         startTimer();
-        bindActiveEvents();
+        bindActiveEvents(initialMode);
         renderMessages();
     };
 
-    const bindActiveEvents = () => {
+    const bindActiveEvents = (initialMode = 'text') => {
         const input = container.querySelector('#chat-input');
         const sendBtn = container.querySelector('#send-btn');
         const endBtn = container.querySelector('#end-call-btn');
+
+        // UI Modes
+        const voiceCallUi = container.querySelector('#voice-call-ui');
+        const textChatUi = container.querySelector('#text-chat-ui');
 
         // Modal & Info elements
         const missionBtn = container.querySelector('#mission-info-btn');
@@ -355,27 +405,40 @@ export function renderDojoChat(containerId, config = {}) {
         const modalEndIncomplete = container.querySelector('#modal-end-incomplete');
 
         // Voice Mode Toggle
-        let isVoiceMode = false;
+        let isVoiceMode = initialMode === 'call';
         const voiceBtn = container.querySelector('#voice-toggle-btn');
         const voiceIconContent = voiceBtn.querySelector('svg');
         const iconVolumeX = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
         const iconVolume2 = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>`;
 
-        voiceBtn.onclick = () => {
-            isVoiceMode = !isVoiceMode;
+        const updateVoiceModeUI = () => {
             if (isVoiceMode) {
                 voiceBtn.style.color = '#22c55e';
                 voiceBtn.style.borderColor = '#22c55e';
                 voiceIconContent.innerHTML = iconVolume2;
+                if (voiceCallUi) voiceCallUi.style.display = 'flex';
+                if (textChatUi) textChatUi.style.display = 'none';
             } else {
                 voiceBtn.style.color = '#cbd5e1';
                 voiceBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                 voiceIconContent.innerHTML = iconVolumeX;
+                if (voiceCallUi) voiceCallUi.style.display = 'none';
+                if (textChatUi) textChatUi.style.display = 'flex';
+                renderMessages(); // scroll down
             }
         };
 
-        // Dictation (Speech to Text)
+        voiceBtn.onclick = () => {
+            isVoiceMode = !isVoiceMode;
+            updateVoiceModeUI();
+        };
+
+        updateVoiceModeUI(); // Initial state
+
         const dictateBtn = container.querySelector('#dictate-btn');
+        const bigDictateBtn = container.querySelector('#big-dictate-btn');
+        const voiceStatusText = container.querySelector('#voice-status-text');
+
         let recognition = null;
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -387,9 +450,18 @@ export function renderDojoChat(containerId, config = {}) {
 
             recognition.onstart = () => {
                 isRecording = true;
-                dictateBtn.style.color = '#ef4444';
-                dictateBtn.style.borderColor = '#ef4444';
-                dictateBtn.style.animation = 'pulse-recording 1.5s infinite';
+                if (dictateBtn) {
+                    dictateBtn.style.color = '#ef4444';
+                    dictateBtn.style.borderColor = '#ef4444';
+                    dictateBtn.style.animation = 'pulse-recording 1.5s infinite';
+                }
+                if (bigDictateBtn) {
+                    bigDictateBtn.style.color = '#ef4444';
+                    bigDictateBtn.style.borderColor = '#ef4444';
+                    bigDictateBtn.style.background = 'rgba(239, 68, 68, 0.1)';
+                    bigDictateBtn.style.animation = 'pulse-recording 1.5s infinite';
+                }
+                if (voiceStatusText) voiceStatusText.innerText = 'Listening...';
                 input.placeholder = "Listening...";
                 input.focus();
             };
@@ -427,15 +499,31 @@ export function renderDojoChat(containerId, config = {}) {
 
             const stopDictation = () => {
                 isRecording = false;
-                dictateBtn.style.color = '#cbd5e1';
-                dictateBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                dictateBtn.style.animation = 'none';
+                if (dictateBtn) {
+                    dictateBtn.style.color = '#cbd5e1';
+                    dictateBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    dictateBtn.style.animation = 'none';
+                }
+                if (bigDictateBtn) {
+                    bigDictateBtn.style.color = '#cbd5e1';
+                    bigDictateBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    bigDictateBtn.style.background = 'rgba(255,255,255,0.05)';
+                    bigDictateBtn.style.animation = 'none';
+                }
                 input.placeholder = "Type your response...";
+                if (voiceStatusText) voiceStatusText.innerText = 'Connected';
+
+                // Auto send in voice mode if we have text
+                if (isVoiceMode && input.value.trim()) {
+                    handleSend();
+                }
             };
 
-            dictateBtn.onclick = toggleDictation;
+            if (dictateBtn) dictateBtn.onclick = toggleDictation;
+            if (bigDictateBtn) bigDictateBtn.onclick = toggleDictation;
         } else {
-            dictateBtn.style.display = 'none';
+            if (dictateBtn) dictateBtn.style.display = 'none';
+            if (bigDictateBtn) bigDictateBtn.style.display = 'none';
         }
 
         // Toggle Mission Info
@@ -509,6 +597,7 @@ export function renderDojoChat(containerId, config = {}) {
                 chatHistory.push(loadingMsg);
                 renderMessages();
 
+                if (voiceStatusText) voiceStatusText.innerText = 'AI is thinking...';
                 const response = await chatWithDojo(chatHistory.filter(m => m.content !== '...'), scenario);
 
                 chatHistory.pop(); // remove loading
@@ -517,15 +606,35 @@ export function renderDojoChat(containerId, config = {}) {
                 renderMessages();
 
                 if (isVoiceMode) {
-                    const cleanResponseForAudio = response.replace(/\[SUCCESS\]/g, '').trim();
+                    const aiRipple = container.querySelector('#ai-speaking-ripple');
+                    if (voiceStatusText) voiceStatusText.innerText = 'AI is speaking...';
+                    if (aiRipple) aiRipple.style.display = 'block';
+
+                    const cleanResponseForAudio = response.replace(/\[SUCCESS\]|\[FAILED\]/g, '').trim();
                     if (cleanResponseForAudio) {
                         generateChatAudio(cleanResponseForAudio).then(audioUrl => {
                             if (audioUrl) {
                                 const audio = new Audio(audioUrl);
-                                audio.play().catch(e => console.error("Audio play failed:", e));
+                                audio.onended = () => {
+                                    if (aiRipple) aiRipple.style.display = 'none';
+                                    if (voiceStatusText) voiceStatusText.innerText = 'Connected';
+                                };
+                                audio.play().catch(e => {
+                                    console.error("Audio play failed:", e);
+                                    if (aiRipple) aiRipple.style.display = 'none';
+                                    if (voiceStatusText) voiceStatusText.innerText = 'Connected';
+                                });
+                            } else {
+                                if (aiRipple) aiRipple.style.display = 'none';
+                                if (voiceStatusText) voiceStatusText.innerText = 'Connected';
                             }
                         });
+                    } else {
+                        if (aiRipple) aiRipple.style.display = 'none';
+                        if (voiceStatusText) voiceStatusText.innerText = 'Connected';
                     }
+                } else {
+                    if (voiceStatusText) voiceStatusText.innerText = 'Connected';
                 }
 
                 if (response.includes('[SUCCESS]')) {
@@ -539,6 +648,15 @@ export function renderDojoChat(containerId, config = {}) {
                     // Automatically end the call after a short delay so the user can read the final message
                     setTimeout(() => {
                         renderCallEndedScreen(true);
+                    }, 4000);
+                } else if (response.includes('[FAILED]')) {
+                    callComplete = true;
+                    clearInterval(callTimerInterval);
+                    container.querySelector('#call-status').innerHTML = '<span style="color:#ef4444">✕ MISSION FAILED</span>';
+
+                    // Automatically end the call after a short delay so the user can read the final message
+                    setTimeout(() => {
+                        renderCallEndedScreen(false);
                     }, 4000);
                 }
             } catch (error) {

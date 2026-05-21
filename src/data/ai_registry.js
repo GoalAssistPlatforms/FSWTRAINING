@@ -66,12 +66,13 @@ export const AI_REGISTRY = [
   },
   {
     id: 'ai-debate',
-    name: 'The Hot Seat',
+    name: 'Policy Pushback',
     context: "Use for ethics, critical thinking, or decision making where there is no single right answer, but the user must defend their position against a specific persona.",
     syntax: `\`\`\`ai-debate
 {
   "topic": "Should we prioritise a 'rush' order for a friend's company over a long-standing contract client?",
-  "persona": "A stubborn Area Manager focused entirely on hitting this month's regional sales targets."
+  "persona": "A stubborn Area Manager focused entirely on hitting this month's regional sales targets.",
+  "stakeholderName": "Dave"
 }
 \`\`\``
   },

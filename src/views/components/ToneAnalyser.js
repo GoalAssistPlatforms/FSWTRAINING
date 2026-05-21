@@ -254,7 +254,7 @@ export function renderToneAnalyser(containerId, config = {}) {
         } finally {
             isAnalyzing = false;
             analyzeBtn.disabled = false;
-            analyzeBtn.innerHTML = `<span>✨ Analyze Tone</span>`;
+            analyzeBtn.innerHTML = `<span>Send</span>`;
         }
     };
 

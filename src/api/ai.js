@@ -270,21 +270,21 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 - NEVER include markdown links to the interactive module in your description text (e.g., do not write \`[Communication Lab]\`).
                                 
                                 AI Component Configs (Use these PRECISE TITLES):
-                                - ai-tone: { "context": "A 1-2 sentence background highlighting the specific challenge (e.g., 'An irate contractor is demanding a refund for a supposedly faulty VRF unit').", "incoming_email": "A realistic, 2-3 paragraph email written in the FIRST PERSON from the sender. It must contain subtle professional or technical gaps for the user to navigate.", "initialText": "" } (Title: "Communication Lab")
-                                  * CRITICAL for ai-tone: The objective is for the USER to draft a professional reply. The email must sound like a real person using UK English. Do not formulate it as a scenario description.
-                                - ai-dojo: { "scenarioId": "generated_id", "intro": "A 1-sentence UI stage-setter (e.g., 'You are on a call with a site manager').", "role": "The distinct personality, job title, and CURRENT MOOD of the AI (e.g., 'Frustrated Project Manager under a tight deadline').", "objective": "A highly specific, achievable goal for the USER (e.g., 'De-escalate the situation and firmly request photos of the fault.').", "skills": ["Conflict Resolution", "Technical Troubleshooting"], "initialText": "MUST be written in the FIRST PERSON as a realistic, conversational opening from the character you are roleplaying. NEVER break character. NEVER give the user instructions. Start the conversation right away." } (Title: "Live Scenario Simulation")
-                                  * CRITICAL for ai-dojo: The persona must be mildly resistant but conquerable. The scenario must tie directly to the core lesson concept.
+                                - ai-tone: { "context": "A 1-2 sentence background highlighting a specific issue the sender is facing (e.g., 'A technician is struggling to configure a new VRF system').", "incoming_email": "A realistic, 2-3 paragraph email written in the FIRST PERSON from the sender clearly outlining their problem.", "initialText": "" } (Title: "Communication Lab")
+                                  * CRITICAL for ai-tone: The incoming email MUST present a specific problem or issue. The objective is for the USER to draft a reply that effectively resolves the issue, providing clear instructions on what the sender needs to do.
+                                - ai-dojo: { "scenarioId": "generated_id", "intro": "A 1-sentence UI stage-setter (e.g., 'You are receiving a call from a site manager experiencing a problem').", "role": "The distinct personality, job title, and CURRENT MOOD of the caller (e.g., 'Frustrated Project Manager facing a system leak').", "objective": "The specific issue the USER must successfully troubleshoot or resolve (e.g., 'Identify that the flare nut is loose and advise them to tighten it.').", "skills": ["Troubleshooting", "Customer Service"], "initialText": "MUST be written in the FIRST PERSON as a realistic, conversational opening where you state your problem. NEVER break character. Start the conversation right away." } (Title: "Live Scenario Simulation")
+                                  * CRITICAL for ai-dojo: The scenario MUST revolve around the caller experiencing a problem or issue directly related to the core lesson concept. The user must resolve this issue through the conversation.
                                 - ai-redline: { "title": "A realistic internal document title (e.g., 'Q3 Safety Protocol Memo')", "intro": "Formal document header/introduction.", "outro": "Official sign-off or footer.", "items": [{ "content": "A specific, realistic paragraph or clause in the document.", "isRisk": true, "feedback": "Detailed explanation of why this clause is risky or safe, referencing FSW best practices." }] } (Title: "Risk & Compliance Audit")
                                   * CRITICAL for ai-redline:
                                   * Generate exactly 5-7 items.
                                   * 2-3 items MUST be risks (isRisk: true). Risks must be subtle, realistic operational mistakes (e.g., bypassing a safety check to save time), not cartoonish errors.
                                   * 3-4 items MUST be safe (isRisk: false).
                                   * ALWAYS provide educational 'feedback' for SAFE items (don't just say 'Correct'). The text MUST read like a real technical document.
-                                - ai-debate: { "topic": "A controversial or nuanced operational decision anchored to the lesson (e.g., 'Should we replace the old HVAC system or keep repairing it?').", "persona": "A contrarian stakeholder who will push back against the likely user path (e.g., 'Budget-conscious Operations Director').", "stances": ["A clear action path", "The opposing action path"] } (Title: "Strategic Analysis")
-                                  * CRITICAL for ai-debate: The topic must not have a simple "trick" answer. It must force the user to defend best practices against a stubborn, financially or time-motivated persona.
-                                - ai-swipe: { "title": "Rapid Decision Deck", "cards": [{ "text": "A brief, actionable scenario (Max 150 characters, e.g., 'A technician arrives without PPE but promises to just stay in the van.').", "isCorrect": true, "feedback": "Why this is the right course of action." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "Rapid Decision Deck")
+                                - ai-debate: { "topic": "A controversial operational shortcut or policy bypass proposed by a colleague (e.g., 'Can we skip the system diagnostic this one time to save an hour?').", "persona": "A rushed, contrarian, or budget-conscious stakeholder pushing for the shortcut.", "stakeholderName": "A realistic name (e.g., Dave, Sarah)", "stances": ["Defend the Policy", "Allow the Shortcut"] } (Title: "Policy Pushback")
+                                  * CRITICAL for ai-debate: The scenario MUST involve a stakeholder pushing back against FSW best practices. The user must be forced to defend the correct, safe, or compliant procedure against this stubborn persona.
+                                - ai-swipe: { "title": "The Corkboard", "cards": [{ "text": "A brief, actionable scenario (Max 150 characters, e.g., 'A technician arrives without PPE but promises to just stay in the van.').", "isCorrect": true, "feedback": "Why this is the right course of action." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "The Corkboard")
                                   * CRITICAL for ai-swipe:
-                                  * Generate exactly 6-8 cards.
+                                  * Generate exactly 10-12 cards.
                                   * CARDS MUST NOT BE TRUE/FALSE TRIVIA. They must be practical snapshot scenarios describing a proposed action or decision. 
                                   * It MUST fundamentally make grammatical and logical sense for the user to reply to the scenario with either "Accept" or "Reject".
                                   * NEVER use open-ended questions. NEVER use questions like "Should we do this?". Instead, write statements like "A technician offers to..." so the user can Accept or Reject the offer.
@@ -430,17 +430,15 @@ export const chatWithDojo = async (messages, scenario) => {
 
             if (userTurns >= 5) {
                 fatigueInstructions = `
-                URGENT: The conversation is dragging on (Turn ${userTurns}).
-                - STOP asking probing questions.
-                - If the user has made ANY reasonable attempt or if they try to sign off, ACCEPT it immediately.
-                - Wrap up the call politely, thank them, say goodbye, and append [SUCCESS].
+                URGENT: The call is dragging on (Turn ${userTurns}).
+                - The user has taken too long to resolve the issue. 
+                - You MUST end the call now. State that you don't have any more time and will seek help elsewhere, say goodbye, and append [FAILED].
                 `;
             } else if (userTurns >= 3) {
                 fatigueInstructions = `
-                NOTE: The conversation is progressing (Turn ${userTurns}).
-                - Be constructive but efficient.
-                - Don't nitpick minor details.
-                - If the user's answer is "good enough", conclude the conversation naturally, say goodbye, and append [SUCCESS].
+                NOTE: The troubleshooting is progressing (Turn ${userTurns}).
+                - Be cooperative. If they provide a solution that is "good enough" or close to the objective, accept it naturally, say goodbye, and append [SUCCESS].
+                - If they are completely lost or unhelpful, end the call in frustration and append [FAILED].
                 `;
             }
 
@@ -450,24 +448,25 @@ export const chatWithDojo = async (messages, scenario) => {
                     {
                         role: "system",
                         content: `${FSW_INTERNAL_CONTEXT}
-                You are playing a role in a training simulation for FSW.
+                You are playing the role of a caller who is experiencing an issue in a training simulation for FSW.
                 ROLE: ${scenario.role}
-                OBJECTIVE FOR USER: ${scenario.objective}
+                ISSUE / OBJECTIVE TO BE RESOLVED BY USER: ${scenario.objective}
                 SCENARIO INTRO: ${scenario.intro}
-                USER CONTEXT (The Player): ${scenario.intro}
                 
                 CRITICAL RULES:
-                1. The USER CONTEXT describes the human player's role. Do NOT assume this is your role. You are strictly the character defined in ROLE.
-                2. STICK TO YOUR SIDE OF THE CONVERSATION. You are strictly the character defined in ROLE.
-                3. You are NOT an AI assistant, mentor, or helpful guide.
-                4. NEVER do the user's work for them. If the objective is for the USER to build, create, plan, or list something, you must wait for them to do it.
-                5. If the user asks you to provide a framework, list, or answer, REFUSE IN CHARACTER (e.g., "I'm waiting for your proposal," or "That's what I hired you for").
-                6. Ask probing questions to guide them if they are stuck, but NEVER provide the solution yourself.
+                1. You are strictly the character defined in ROLE. You are experiencing an issue related to the subject matter.
+                2. You are NOT an AI assistant, mentor, or helpful guide. Do not act like you are testing the user. You genuinely need their help to resolve your issue.
+                3. NEVER give away the solution. Let the user troubleshoot, ask questions, or provide the fix.
+                4. Answer the user's questions naturally based on your role and issue, but do not volunteer information they haven't asked for if it makes it too easy.
+                5. Show appropriate emotion (frustration, confusion, urgency) depending on your role.
 
                 COMPLETION LOGIC:
                 - Stay in character. 
-                - If the user's latest message achieves the objective, you MUST naturally conclude the conversation. Express gratitude ("Thanks for the help", "I'll let you get on with your day", etc.), say goodbye, and append [SUCCESS] at the very end. DO NOT ask any further questions or request more work if you are appending [SUCCESS].
-                - If the user explicitly asks to end the call, and they have done a decent job, gracefully accept, say goodbye, and add [SUCCESS].
+                - Evaluate the user's responses. Have they successfully identified and resolved your issue according to the OBJECTIVE?
+                - If the user has sufficiently resolved the issue, you MUST naturally conclude the conversation. Express gratitude or relief ("Thanks for sorting that out", "That makes sense now", etc.), say goodbye, and append [SUCCESS] at the very end. 
+                - If the user explicitly gives up, gives dangerously incorrect advice, or is completely unhelpful, you MUST end the call in frustration or disappointment. Say goodbye and append [FAILED] at the very end.
+                - DO NOT append [SUCCESS] or [FAILED] until the conversation naturally concludes or you are forced to end it.
+                - DO NOT ask any further questions or request more work if you are appending [SUCCESS] or [FAILED].
 
                 ${fatigueInstructions}
                 `
@@ -512,37 +511,38 @@ const getFallbackResponse = (messages, scenario) => {
  */
 export const chatWithDebater = async (messages, topic, persona, pointNumber = 1, failedAttempts = 0) => {
     let instructions = `
-        You are a skilled Socratic Debater, Critical Thinker, and Evaluator.
+        You are roleplaying a stubborn FSW stakeholder pushing back against a company policy.
         
-        TOPIC: ${topic}
-        YOUR PERSONA/STANCE: ${persona || "A neutral but discerning Critical Evaluator."}
-        CURRENT PROGRESS: Point ${pointNumber} of 5.
-        FAILED ATTEMPTS ON EXPECTED POINT: ${failedAttempts}
+        TOPIC / PROPOSED SHORTCUT: ${topic}
+        YOUR PERSONA: ${persona || "A rushed, budget-conscious contractor."}
+        CURRENT PUSHBACK LEVEL: ${pointNumber} of 5.
+        FAILED ATTEMPTS TO CONVINCE YOU: ${failedAttempts}
 
         OBJECTIVE: 
-        1. Evaluate the user's latest message (if any). Is it a coherent, thoughtful response, or is it weak/irrelevant? (If this is the start of the debate, assume it's true).
-        2. If the user's response is weak/lazy (e.g. "I don't know", "Yes"), set "advance_progress" to false. Push back gently in your reply.
-        3. If the user makes a genuine attempt, OR if FAILED ATTEMPTS >= 2 (meaning they are really stuck), set "advance_progress" to true, and move the discussion forward.
-        4. Provide an optional "hint" to help them out if advance_progress is false.
-        5. If CURRENT PROGRESS is 5 AND you set advance_progress to true, you MUST populate "final_feedback".
+        1. Evaluate the user's latest message. Are they successfully defending the policy with strong logic, or are they caving to your pressure / using weak arguments?
+        2. If the user caves to your request (e.g. "Okay, we can skip it this time") or gives a very weak reason (e.g. "Because management said so"), set "advance_progress" to false, and reply in character pointing out the flaw or accepting their capitulation (which means they fail).
+        3. If the user provides a strong, logical defense of the best practice, set "advance_progress" to true, and either push back from a different angle or start conceding.
+        4. Provide an optional "hint" (out of character) to help them out if advance_progress is false.
+        5. If CURRENT PROGRESS is 5 AND you set advance_progress to true, or if they have completely failed/given up, you MUST populate "final_feedback".
                 
         RULES:
         1. KEEP IT CONCISE. Your "reply" string must be under 50 words.
-        2. Stay in character based on YOUR PERSONA. Don't be too generic.
+        2. Stay in character based on YOUR PERSONA. Be stubborn but realistic.
         
         OUTPUT FORMAT (Return STRICT JSON):
         {
-          "reply": "Your next socratic question or response to their point...",
-          "advance_progress": true, // false if they gave a poor answer and you need them to elaborate
-          "hint": "Optional nudge if advance_progress is false. (string or null)",
+          "reply": "Your next pushback or response...",
+          "advance_progress": true, // false if they caved or gave a weak argument
+          "failed_state": false, // set to true ONLY if the user explicitly caves, gives up, or fails completely (this ends the simulation in a failure)
+          "hint": "Optional coaching nudge if advance_progress is false. (string or null)",
           "final_feedback": null
         }
         
-        ONLY if CURRENT PROGRESS is 5 and advance_progress is true, "final_feedback" MUST be:
+        ONLY if CURRENT PROGRESS is 5 and advance_progress is true, or if failed_state is true, "final_feedback" MUST be:
         {
-          "score": 85, // out of 100
-          "strongest_argument": "Summary of their best point",
-          "weakness": "Their logical blindspot or area for improvement"
+          "score": 85, // 0-74 means fail, 75-100 means pass. (If failed_state is true, score MUST be below 75)
+          "strongest_argument": "Summary of what they did well (or N/A)",
+          "weakness": "Why they failed or what they could improve"
         }
     `;
 
@@ -577,10 +577,13 @@ export const analyzeTone = async (userText, context, incomingEmail) => {
                 Incoming Email (that they are replying to): "${incomingEmail}"
                 
                 Analyze the User's Draft for:
-                1. Professionalism (appropriate framing, no slang)
-                2. Tone (confident, helpful, direct but polite)
-                3. Effectiveness (does it actually answer the incoming email?)
+                1. Problem Resolution (does the reply actually provide the correct steps or information to solve the sender's problem?)
+                2. Professionalism (appropriate framing, no slang)
+                3. Tone (confident, helpful, direct but polite)
                 
+                CRITICAL RULE:
+                If the user DOES NOT successfully resolve the issue or provide the necessary steps, the score MUST be below 75 (e.g. 50-60). The primary goal is problem resolution. Only give a score of 75 or higher if they have solved the problem.
+
                 Return JSON:
                 {
                     "score": number (0-100),
