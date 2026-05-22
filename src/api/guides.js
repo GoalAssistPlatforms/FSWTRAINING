@@ -1,28 +1,42 @@
 import { supabase } from './supabase.js';
 import { getPlatformSettings } from './admin.js';
-import OpenAI from 'openai';
 import * as pdfjsLib from 'pdfjs-dist';
-
-// Import the worker locally using Vite's URL resolution
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Allowed for this prototype architecture
-});
-
-// Initialize OpenRouter client for text completions
-const openrouter = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: import.meta.env.VITE_OPENROUTER_API_KEY,
-    dangerouslyAllowBrowser: true,
-    defaultHeaders: {
-        "HTTP-Referer": window.location?.href || "http://localhost:5173",
-        "X-Title": "FSW Training Platform",
+const openai = {
+    embeddings: {
+        create: async (payload) => {
+            const res = await fetch('/api/embeddings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                throw new Error(`OpenAI Proxy Error: ${res.status}`);
+            }
+            return res.json();
+        }
     }
-});
+};
+
+const openrouter = {
+    chat: {
+        completions: {
+            create: async (payload) => {
+                const res = await fetch('/api/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    throw new Error(`OpenRouter Proxy Error: ${res.status}`);
+                }
+                return res.json();
+            }
+        }
+    }
+};
 
 /**
  * Parses text from a PDF file

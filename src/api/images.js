@@ -1,21 +1,21 @@
 
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-    apiKey: (import.meta.env && import.meta.env.VITE_OPENAI_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENAI_API_KEY),
-    dangerouslyAllowBrowser: true // Allowed for this client-side demo
-});
-
-// Initialize OpenRouter client for text completions
-const openrouter = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENROUTER_API_KEY),
-    dangerouslyAllowBrowser: true,
-    defaultHeaders: {
-        "HTTP-Referer": (typeof window !== 'undefined' ? window.location?.href : "http://localhost:5173") || "http://localhost:5173",
-        "X-Title": "FSW Training Platform",
+const openrouter = {
+    chat: {
+        completions: {
+            create: async (payload) => {
+                const res = await fetch('/api/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    throw new Error(`OpenRouter Proxy Error: ${res.status}`);
+                }
+                return res.json();
+            }
+        }
     }
-});
+};
 
 /**
  * Uploads an image URL to Cloudinary and returns the secure URL.

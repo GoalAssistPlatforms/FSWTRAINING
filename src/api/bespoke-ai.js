@@ -1,14 +1,21 @@
-import OpenAI from 'openai';
-
-const openrouter = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_OPENROUTER_API_KEY),
-    dangerouslyAllowBrowser: true,
-    defaultHeaders: {
-        "HTTP-Referer": window.location?.href || "http://localhost:5173",
-        "X-Title": "FSW Training Platform",
-    }
-});
+const openrouter = {
+    chat: {
+        completions: {
+            create: async (payload) => {
+                const res = await fetch('/api/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    throw new Error(`OpenRouter Proxy Error: ${res.status}`);
+                }
+                return res.json();
+            }
+        }
+    },
+    apiKey: 'proxied'
+};
 
 const SYSTEM_PROMPT = `
 Role: You are an elite Creative Director and Presentation Designer for FSW. Your job is to convert raw information into visually stunning, minimalist, and highly effective presentation slides.
