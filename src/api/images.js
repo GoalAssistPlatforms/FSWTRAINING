@@ -90,7 +90,7 @@ async function getVisualDescription(topic) {
                     1. Output ONLY the visual description. No explanations.
                     2. DO NOT include people, faces, human limbs, or text of any kind.
                     3. The object must be the MOST RECOGNIZABLE symbol for the topic.
-                    4. The object must be suitable for a high-end product photography shot.
+                    4. The object must be suitable for a clean, flat vector illustration.
                     5. Examples:
                        - "Introduction to Recruitment" -> "A magnifying glass resting on a stack of premium paper resumes"
                        - "Time Management" -> "A complex mechanical pocket watch mechanism"
@@ -129,8 +129,8 @@ export const generateThumbnail = async (topic) => {
             console.log(`[Thumbnail] Visual Subject generated: "${visualSubject}"`);
 
             // Aesthetic enforcement
-            const stylePrefix = "A premium, high-contrast, professional close-up macro photograph of";
-            const styleSuffix = ". The aesthetic is sleek, industrial, and minimalist, featuring dramatic chiaroscuro lighting and deep shadows. CRITICAL: This is a direct view of the object. Do NOT show any production equipment, cameras, tripods, lights, studios, or film sets. The image must look like a high-end product shot, not a behind-the-scenes shot. No text. 8k resolution, photorealistic.";
+            const stylePrefix = "A clean, modern, flat vector illustration of";
+            const styleSuffix = ". The aesthetic is corporate minimalist, using the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Clean lines, soft lighting, isometric or 2d flat graphic design style. CRITICAL: Do not make it photorealistic. It must look like a high-quality modern corporate UI vector illustration. No text.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
             // 2. Generate Image via Pollinations.ai (Free, reliable, no API key required)

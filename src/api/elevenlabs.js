@@ -1,9 +1,7 @@
 import { supabase } from './supabase.js';
 
-const ELEVENLABS_API_KEY = (import.meta.env && import.meta.env.VITE_ELEVENLABS_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_ELEVENLABS_API_KEY);
-
 const DEFAULT_VOICE_ID = "P4wGl87YTnsZgReoqa8D"; // Liam
-const VOICE_ID = (import.meta.env && import.meta.env.VITE_ELEVENLABS_VOICE_ID) || DEFAULT_VOICE_ID;
+const VOICE_ID = DEFAULT_VOICE_ID;
 
 /**
  * Creates audio from text using ElevenLabs API and uploads to Supabase
@@ -11,19 +9,15 @@ const VOICE_ID = (import.meta.env && import.meta.env.VITE_ELEVENLABS_VOICE_ID) |
  * @returns {Promise<string>} The Public URL of the generated audio
  */
 export const createAudio = async (text) => {
-    if (!ELEVENLABS_API_KEY) {
-        console.warn("VITE_ELEVENLABS_API_KEY is missing. Returning null.");
-        return null;
-    }
+
 
     try {
         console.log("Generating audio for text length:", text.length);
 
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+        const response = await fetch(`/api/elevenlabs?voiceId=${VOICE_ID}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'xi-api-key': ELEVENLABS_API_KEY
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 text: text,
@@ -79,17 +73,13 @@ export const createAudio = async (text) => {
  * @returns {Promise<string>} The local Object URL of the generated audio
  */
 export const generateChatAudio = async (text) => {
-    if (!ELEVENLABS_API_KEY) {
-        console.warn("VITE_ELEVENLABS_API_KEY is missing. Returning null.");
-        return null;
-    }
+
 
     try {
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+        const response = await fetch(`/api/elevenlabs?voiceId=${VOICE_ID}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'xi-api-key': ELEVENLABS_API_KEY
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 text: text,

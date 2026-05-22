@@ -1,7 +1,7 @@
 
 import { supabase } from './supabase.js';
 
-const GAMMA_API_KEY = (import.meta.env && import.meta.env.VITE_GAMMA_API_KEY) || (typeof process !== 'undefined' && process.env.VITE_GAMMA_API_KEY);
+
 
 const GAMMA_THEME_ID = (import.meta.env && import.meta.env.VITE_GAMMA_THEME_ID) || 'gamma';
 
@@ -12,10 +12,7 @@ const GAMMA_THEME_ID = (import.meta.env && import.meta.env.VITE_GAMMA_THEME_ID) 
  * @returns {Promise<string>} The URL of the generated presentation
  */
 export const createPresentation = async (topic, detailed_input) => {
-    if (!GAMMA_API_KEY) {
-        console.warn("VITE_GAMMA_API_KEY is missing. Returning mock URL.");
-        return "https://gamma.app/docs/mock-presentation-url"; // Fallback for dev without key
-    }
+
 
     try {
         console.log("Generating Gamma presentation for:", topic);
@@ -54,8 +51,7 @@ export const createPresentation = async (topic, detailed_input) => {
         const response = await fetch('/api/gamma/generations', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-API-KEY': GAMMA_API_KEY
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestBody)
         });
@@ -75,9 +71,7 @@ export const createPresentation = async (topic, detailed_input) => {
         while (attempts < 60) { // Timeout after ~2 minutes
             await new Promise(r => setTimeout(r, 2000));
 
-            const checkResponse = await fetch(`/api/gamma/generations/${jobId}`, {
-                headers: { 'X-API-KEY': GAMMA_API_KEY }
-            });
+            const checkResponse = await fetch(`/api/gamma/generations/${jobId}`);
 
             if (checkResponse.ok) {
                 const checkData = await checkResponse.json();
