@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const { voiceId } = req.query;
-  const targetVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "P4wGl87YTnsZgReoqa8D";
+  const targetVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "zD0Xz72VOaxH7Rv955hb";
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Server configuration error: Missing ELEVENLABS_API_KEY' });

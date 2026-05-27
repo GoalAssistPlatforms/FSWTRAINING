@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 
-const DEFAULT_VOICE_ID = "P4wGl87YTnsZgReoqa8D"; // Liam
+const DEFAULT_VOICE_ID = "zD0Xz72VOaxH7Rv955hb"; // FSW Voice
 const VOICE_ID = DEFAULT_VOICE_ID;
 
 /**
