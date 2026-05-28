@@ -871,7 +871,7 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                         </div>
                         <textarea class="edit-track-script" style="width: 100%; height: 120px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.75rem; font-family: inherit; font-size: 1rem; outline: none; resize: vertical; line-height: 1.5;">${track.script || ''}</textarea>
                         ${track.url ? `<audio controls src="${track.url}" style="width: 100%; height: 32px; filter: invert(1); margin-top: 0.5rem;"></audio>` : ''}
-                        <button class="btn-secondary generate-single-track-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-top: 0.5rem;">🎙️ Synthesize This Track</button>
+                        <button class="btn-secondary generate-single-track-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-top: 0.5rem;">🎙️ Generate Audio</button>
                     `;
 
                     // Remove track

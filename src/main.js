@@ -8,6 +8,7 @@ import { renderAdminDashboard, initAdminEvents } from './views/AdminDashboard'
 import { renderNotificationBell, initNotificationEvents } from './views/components/NotificationBell'
 import { renderSettingsModal, initSettingsEvents } from './views/components/SettingsModal'
 import { checkAndGenerateDeadlineNotifications } from './utils/deadlineChecker'
+import { renderFeedbackModal, initFeedbackEvents } from './views/components/FeedbackModal'
 
 const initApp = async () => {
   const app = document.querySelector('#app')
@@ -139,6 +140,12 @@ export const renderMainLayout = async (user) => {
       ${dashboardContent}
     </main>
     ${renderSettingsModal(user)}
+    ${renderFeedbackModal()}
+    
+    <!-- Floating Feedback Button -->
+    <button id="floating-feedback-btn" style="position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; align-items: center; gap: 0.5rem; background: rgba(18, 142, 205, 0.9); backdrop-filter: blur(10px); color: white; padding: 0.75rem 1.25rem; border-radius: 50px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 15px 35px rgba(18,142,205,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.3)';">
+        <span>💬</span> Feedback
+    </button>
   `
 
   document.querySelector('#logout-btn').addEventListener('click', async () => {
@@ -152,6 +159,14 @@ export const renderMainLayout = async (user) => {
     settingsBtn.addEventListener('click', () => {
       document.getElementById('settings-modal').style.display = 'flex'
     })
+  }
+
+  // Floating Feedback button trigger
+  const feedbackBtn = document.getElementById('floating-feedback-btn');
+  if (feedbackBtn) {
+      feedbackBtn.addEventListener('click', () => {
+          document.getElementById('feedback-modal').style.display = 'flex';
+      });
   }
 
   // Setup Admin Toggle Listener
@@ -178,6 +193,7 @@ export const renderMainLayout = async (user) => {
   
   initNotificationEvents();
   initSettingsEvents(user);
+  initFeedbackEvents();
 
   // Listen for refresh requests
   window.addEventListener('fsw-reload-notifications', async () => {

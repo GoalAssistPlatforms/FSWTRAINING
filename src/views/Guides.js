@@ -51,36 +51,42 @@ export const renderGuides = (user, stats) => {
             ` : ''}
 
             <!-- Interactive Guides -->
-            <h4 onclick="const l = document.getElementById('interactive-guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Interactive Software Guides <span style="float: right; font-size: 0.7rem;">▼</span></h4>
-            <div id="interactive-guides-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
+            <h4 onclick="const l = document.getElementById('interactive-guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Interactive Software Guides <span style="float: right; font-size: 0.7rem;">▶</span></h4>
+            <div id="interactive-guides-list" style="display: none; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
                 <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading interactive guides...</div>
             </div>
 
             <!-- Document Guides -->
-            <h4 onclick="const l = document.getElementById('guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Documents <span style="float: right; font-size: 0.7rem;">▼</span></h4>
-            <div id="guides-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
+            <h4 onclick="const l = document.getElementById('guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Documents <span style="float: right; font-size: 0.7rem;">▶</span></h4>
+            <div id="guides-list" style="display: none; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
                 <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading documents...</div>
             </div>
 
             <!-- Web Links -->
-            <h4 onclick="const l = document.getElementById('links-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Links & Web Resources <span style="float: right; font-size: 0.7rem;">▼</span></h4>
-            <div id="links-list" style="display: flex; flex-direction: column; gap: 0.8rem; padding-bottom: 2rem;">
+            <h4 onclick="const l = document.getElementById('links-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Links & Web Resources <span style="float: right; font-size: 0.7rem;">▶</span></h4>
+            <div id="links-list" style="display: none; flex-direction: column; gap: 0.8rem; padding-bottom: 2rem;">
                 <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading links...</div>
             </div>
         </div>
 
         <!-- Center: Search & Chat (RAG AI) - Gemini Style -->
-        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; padding: 2rem; height: 100%;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; padding: 2rem 2rem 5rem 2rem; height: 100%; box-sizing: border-box;">
             
             <div id="chat-history" style="width: 100%; max-width: 800px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding-bottom: 2rem; padding-top: 1rem;">
-                <div id="chat-greeting" style="text-align: left; margin-top: 4rem; margin-bottom: 3rem; padding-left: 1rem;">
-                    <h1 style="font-size: 3.5rem; margin: 0; background: linear-gradient(to right, #4285f4, #d96570, #9b72cb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hi ${user.full_name ? user.full_name.split(' ')[0] : (user.email ? user.email.split('@')[0] : 'there')},</h1>
-                    <h2 style="font-size: 3.5rem; margin: 0.5rem 0 0 0; color: #444b53; line-height: 1.2;">What would you like to know?</h2>
+                <div id="chat-greeting" style="text-align: left; margin-top: 3rem; margin-bottom: 2.5rem; padding-left: 1rem; display: flex; flex-direction: column; align-items: flex-start;">
+                    <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                        <img src="/assets/helen_avatar.png" alt="Helen" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2; transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+                        <img src="/assets/lindsay_avatar.png" alt="Lindsay" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.4); margin-left: -20px; z-index: 1; transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='scale(1.08)'; this.style.zIndex='3';" onmouseout="this.style.transform='scale(1)'; this.style.zIndex='1';">
+                    </div>
+                    <h1 style="font-size: 3.5rem; margin: 0; background: linear-gradient(to right, #4285f4, #d96570, #9b72cb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; letter-spacing: -1px;">Ask Helen & Lindsay</h1>
+                    <p style="font-size: 1.2rem; color: #8a939e; margin: 0.75rem 0 0 0; line-height: 1.5; max-width: 650px;">
+                        Got questions about HR, WFH policies, booking holidays, or company guides? Ask Helen & Lindsay here for instant answers based on official FSW guidelines.
+                    </p>
                 </div>
             </div>
 
             <div style="width: 100%; max-width: 800px; position: relative; margin-top: auto;">
-                <input type="text" id="chat-input" placeholder="Ask FSW Assistant..." style="width: 100%; padding: 1.2rem 4rem 1.2rem 2rem; background: rgba(30, 31, 32, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 35px; color: white; font-size: 1.1rem; outline: none; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: background 0.3s, border-color 0.3s;" onfocus="this.style.background='rgba(40,41,42,0.9)'; this.style.borderColor='rgba(255,255,255,0.3)';" onblur="this.style.background='rgba(30,31,32,0.8)'; this.style.borderColor='rgba(255,255,255,0.1)';">
+                <input type="text" id="chat-input" placeholder="Ask Helen & Lindsay..." style="width: 100%; padding: 1.2rem 4rem 1.2rem 2rem; background: rgba(30, 31, 32, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 35px; color: white; font-size: 1.1rem; outline: none; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: background 0.3s, border-color 0.3s;" onfocus="this.style.background='rgba(40,41,42,0.9)'; this.style.borderColor='rgba(255,255,255,0.3)';" onblur="this.style.background='rgba(30,31,32,0.8)'; this.style.borderColor='rgba(255,255,255,0.1)';">
                 <button id="send-chat-btn" style="position: absolute; right: 8px; top: 8px; bottom: 8px; padding: 0 1rem; background: white; border: none; border-radius: 30px; color: black; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
             </div>
             
