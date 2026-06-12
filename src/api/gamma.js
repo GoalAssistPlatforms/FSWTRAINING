@@ -17,10 +17,15 @@ export const createPresentation = async (topic, detailed_input) => {
     try {
         console.log("Generating Gamma presentation for:", topic);
 
-        console.log(`DEBUG: Input text length: ${detailed_input.length}`);
+        // Safely ensure detailed_input is a string
+        const safeInput = typeof detailed_input === 'string' 
+            ? detailed_input 
+            : (detailed_input ? JSON.stringify(detailed_input, null, 2) : "");
+
+        console.log(`DEBUG: Input text length: ${safeInput.length}`);
 
         const requestBody = {
-            inputText: detailed_input.substring(0, 15000), // Increased limit to allow for more context
+            inputText: safeInput.substring(0, 15000), // Increased limit to allow for more context
             format: "presentation",
             themeId: GAMMA_THEME_ID,
             numCards: 10,
@@ -39,7 +44,7 @@ export const createPresentation = async (topic, detailed_input) => {
                 source: "aiGenerated"
             },
             sharingOptions: {
-                externalAccess: "edit",
+                externalAccess: "view",
                 enableSearchEngineIndexing: false
             }
         };
@@ -68,7 +73,7 @@ export const createPresentation = async (topic, detailed_input) => {
 
         // 2. Poll for Completion via Proxy
         let attempts = 0;
-        while (attempts < 60) { // Timeout after ~2 minutes
+        while (attempts < 150) { // Timeout after ~5 minutes
             await new Promise(r => setTimeout(r, 2000));
 
             const checkResponse = await fetch(`/api/gamma/generations/${jobId}`);
@@ -91,7 +96,7 @@ export const createPresentation = async (topic, detailed_input) => {
 
     } catch (error) {
         console.error("Gamma Generation Failed:", error);
-        return null;
+        throw error;
     }
 };
 

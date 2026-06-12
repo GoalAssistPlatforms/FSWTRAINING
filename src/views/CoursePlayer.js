@@ -250,7 +250,21 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                      <div id="gamma-scroller" style="width: 100%; height: 100%; position: relative; padding-right: ${(currentLesson.audio_tracks || currentLesson.audio_url || user.role === 'manager') ? '360px' : '0'}; padding-left: 2rem; padding-top: 2rem; padding-bottom: 2rem; box-sizing: border-box;">
                         <iframe 
                             id="gamma-iframe"
-                            src="${(currentLesson.gamma_url.includes('/docs/') ? currentLesson.gamma_url.replace('/docs/', '/embed/') : currentLesson.gamma_url) + '?mode=present'}" 
+                            src="${(() => {
+                                let url = currentLesson.gamma_url;
+                                if (!url) return '';
+                                if (url.includes('gamma.app') && !url.includes('/embed/')) {
+                                    try {
+                                        const u = new URL(url);
+                                        const pathParts = u.pathname.split('/').filter(Boolean);
+                                        if (pathParts.length > 0) {
+                                            const slug = pathParts[pathParts.length - 1];
+                                            url = 'https://gamma.app/embed/' + slug;
+                                        }
+                                    } catch(e) {}
+                                }
+                                return url + '?mode=present';
+                            })()}" 
                             style="width: 100%; height: 100%; border: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"
                             allow="fullscreen; autoplay"
                             allowfullscreen>
@@ -984,7 +998,7 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                         }
                     } catch (e) {
                          console.error('Failed to regenerate presentation:', e);
-                         await fswAlert("Failed to regenerate presentation.");
+                         await fswAlert("Failed to regenerate presentation: " + e.message);
                     } finally {
                         if (document.getElementById('regenerate-gamma-btn')) {
                             document.getElementById('regenerate-gamma-btn').querySelector('span').innerText = '🔄 Regenerate Slides';
