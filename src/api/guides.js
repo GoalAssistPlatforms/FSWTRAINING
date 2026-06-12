@@ -466,15 +466,11 @@ INSTRUCTIONS:
 
     const answerText = completion.choices[0].message.content;
 
-    // Filter to only include sources that the AI actually found relevant and cited
-    const relevantSources = matchedChunks.filter(chunk => {
-        const title = chunk.is_interactive ? chunk.courseData.title : chunk.document_title;
-        return answerText.includes(title);
-    });
-
+    // Return all retrieved chunks as sources so the user can explore them, 
+    // rather than relying on strict string matching against the AI's answer.
     return {
         answer: answerText,
-        sources: relevantSources
+        sources: matchedChunks
     };
 }
 

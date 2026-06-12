@@ -1,3 +1,4 @@
+import { marked } from 'marked';
 import { processAndUploadGuide, processAndUploadWebLink, chatWithGuides, fetchAllGuides, deleteGuide, fetchSystemTags } from '../api/guides.js';
 import { getCourses, deleteCourse } from '../api/courses.js';
 import { fswAlert, fswConfirm } from '../utils/dialog';
@@ -500,8 +501,8 @@ export const initGuidesEvents = async (user) => {
         msgDiv.style.lineHeight = '1.6'
         msgDiv.style.fontSize = '1.05rem'
 
-        // Convert simple markdown and linebreaks for AI response
-        const formattedContent = content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Convert markdown for AI response
+        const formattedContent = marked.parse(content);
         
         let sourceHtml = '';
         let embedHtml = '';
