@@ -288,8 +288,8 @@ export async function processAndUploadWebLink(url, tags = [], onProgress) {
             return { skipped: true, doc: existingDoc };
         }
 
-        // Fetch via open cors proxy (api.codetabs.com is much more reliable)
-        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+        // Fetch via our own serverless proxy to avoid third-party rate limits
+        const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error("Failed to fetch link");
         
