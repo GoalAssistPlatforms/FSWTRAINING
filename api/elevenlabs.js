@@ -5,20 +5,28 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const { voiceId } = req.query;
-  const targetVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "zD0Xz72VOaxH7Rv955hb";
+  const targetVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "i5LC8lKW1RRBmYdwr2bP";
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Server configuration error: Missing ELEVENLABS_API_KEY' });
   }
 
   try {
+    let requestBody = req.body;
+    if (requestBody && typeof requestBody.text === 'string') {
+      requestBody = {
+        ...requestBody,
+        text: requestBody.text.replace(/myhrtoolkit/gi, "my hr tool kit")
+      };
+    }
+
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'xi-api-key': apiKey
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {

@@ -1,9 +1,9 @@
 export default async function handler(req, res) {
-  const { path } = req.query;
-  const endpoint = Array.isArray(path) ? path.join('/') : path;
-  
-  if (!endpoint) {
-    return res.status(400).json({ error: 'Missing Gamma API path' });
+  const { id } = req.query;
+  console.log("DEBUG [api/gamma/generations/[id].js]: Polling status for job ID:", id);
+
+  if (!id) {
+    return res.status(400).json({ error: 'Missing Gamma generation job ID' });
   }
 
   const apiKey = process.env.GAMMA_API_KEY;
@@ -12,20 +12,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = `https://public-api.gamma.app/v1.0/${endpoint}`;
-    const options = {
-      method: req.method,
+    const url = `https://public-api.gamma.app/v1.0/generations/${id}`;
+    const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'X-API-KEY': apiKey
       }
-    };
-    
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      options.body = JSON.stringify(req.body);
-    }
-
-    const response = await fetch(url, options);
+    });
     
     if (!response.ok) {
         const text = await response.text();
@@ -35,7 +28,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     return res.status(200).json(data);
   } catch (error) {
-    console.error('Gamma Proxy Error:', error);
+    console.error('Gamma Poll GET Error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }

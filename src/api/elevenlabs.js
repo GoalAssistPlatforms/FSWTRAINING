@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 
-const DEFAULT_VOICE_ID = "zD0Xz72VOaxH7Rv955hb"; // FSW Voice
+const DEFAULT_VOICE_ID = "i5LC8lKW1RRBmYdwr2bP"; // FSW Voice
 const VOICE_ID = DEFAULT_VOICE_ID;
 
 /**
@@ -12,7 +12,8 @@ export const createAudio = async (text) => {
 
 
     try {
-        console.log("Generating audio for text length:", text.length);
+        console.log("Generating audio for text length:", text ? text.length : 0);
+        const cleanedText = typeof text === 'string' ? text.replace(/myhrtoolkit/gi, 'my hr tool kit') : text;
 
         const response = await fetch(`/api/elevenlabs?voiceId=${VOICE_ID}`, {
             method: 'POST',
@@ -20,7 +21,7 @@ export const createAudio = async (text) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                text: text,
+                text: cleanedText,
                 model_id: "eleven_turbo_v2_5",
                 voice_settings: {
                     stability: 0.5,
@@ -76,13 +77,14 @@ export const generateChatAudio = async (text) => {
 
 
     try {
+        const cleanedText = typeof text === 'string' ? text.replace(/myhrtoolkit/gi, 'my hr tool kit') : text;
         const response = await fetch(`/api/elevenlabs?voiceId=${VOICE_ID}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                text: text,
+                text: cleanedText,
                 model_id: "eleven_turbo_v2_5",
                 voice_settings: {
                     stability: 0.5,

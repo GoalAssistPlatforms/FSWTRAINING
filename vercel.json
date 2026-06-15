@@ -1,5 +1,6 @@
 {
+  "cleanUrls": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/|@vite/|@id/|src/|node_modules/|assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
   ]
 }
