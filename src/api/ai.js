@@ -518,10 +518,10 @@ export const chatWithDebater = async (messages, topic, persona, pointNumber = 1,
 
         OBJECTIVE: 
         1. Evaluate the user's latest message. Are they successfully defending the policy with strong logic, or are they caving to your pressure / using weak arguments?
-        2. If the user caves to your request (e.g. "Okay, we can skip it this time") or gives a very weak reason (e.g. "Because management said so"), set "advance_progress" to false, and reply in character pointing out the flaw or accepting their capitulation (which means they fail).
+        2. If the user gives a weak reason, set "advance_progress" to false. However, if FAILED ATTEMPTS TO CONVINCE YOU is 2 or more, do NOT fail them. Instead, set "advance_progress" to true to move the conversation forward. In your reply, transition to a collaborative, professional tone and clearly explain the correct policy rationale they should have used, as if you now understand the importance of the rule. Make sure to penalize their "final_feedback" score. If the user explicitly quits or completely abandons the meeting, you can set "failed_state" to true.
         3. If the user provides a strong, logical defense of the best practice, set "advance_progress" to true, and either push back from a different angle or start conceding.
-        4. Provide an optional "hint" (out of character) to help them out if advance_progress is false.
-        5. If CURRENT PROGRESS is 5 AND you set advance_progress to true, or if they have completely failed/given up, you MUST populate "final_feedback".
+        4. Provide an optional "hint" (out of character) to help them out if advance_progress is false and failed_state is false.
+        5. If CURRENT PROGRESS is 5 AND you set advance_progress to true, or if you set failed_state to true, you MUST populate "final_feedback".
                 
         RULES:
         1. KEEP IT CONCISE. Your "reply" string must be under 50 words.
