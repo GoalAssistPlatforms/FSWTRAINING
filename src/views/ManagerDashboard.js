@@ -23,6 +23,7 @@ export const renderManagerDashboard = (user) => {
         <button id="tab-courses" class="btn-primary">My Courses</button>
         <button id="tab-guides" class="btn-ghost" style="border: 1px solid var(--glass-border);">Guides & Policies</button>
         <button id="tab-team" class="btn-ghost" style="border: 1px solid var(--glass-border);">Team</button>
+        <button id="tab-feedback" class="btn-ghost" style="border: 1px solid var(--glass-border);">Feedback</button>
       </div>
 
       <!-- Courses View -->
@@ -60,21 +61,7 @@ export const renderManagerDashboard = (user) => {
             <div id="manager-inbox-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
         </div>
 
-        <!-- Recent Feedback Section -->
-        <div id="manager-feedback-container" style="margin-bottom: 2rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-lg); padding: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 style="margin: 0; color: #4ade80; display: flex; align-items: center; gap: 0.5rem;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                    Recent Feedback
-                </h3>
-                <div id="manager-feedback-metrics" style="display: flex; gap: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
-                    <!-- Metrics injected via JS -->
-                </div>
-            </div>
-            <div id="manager-feedback-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
-                <div style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading feedback...</div>
-            </div>
-        </div>
+
 
         <!-- Unified Control Toolbar -->
         <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05);">
@@ -108,6 +95,54 @@ export const renderManagerDashboard = (user) => {
 
         <div id="team-list" style="display: grid; gap: 1rem;">
           <!-- Team Member Stats -->
+        </div>
+      </div>
+
+      <!-- Feedback View -->
+      <div id="view-feedback" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h2 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            Feedback Dashboard
+          </h2>
+        </div>
+
+        <div id="loading-feedback-stats" style="text-align: center; display: none;">Loading feedback data...</div>
+        <div id="feedback-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+          <!-- Metrics injected here via JS -->
+        </div>
+
+        <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05);">
+          <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 300px;">
+            <div style="position: relative; flex: 1; max-width: 300px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="feedback-search" placeholder="Search by email or name..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            </div>
+            <select id="feedback-type-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; margin-right: 0.5rem;">
+                <option value="all">All Types</option>
+                <option value="positive">Positive / Testimonial</option>
+                <option value="negative">Product Improvement</option>
+                <option value="urgent">Urgent System Error</option>
+            </select>
+            <select id="feedback-status-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="under-review">Under Review</option>
+                <option value="acting-on">Acting On</option>
+                <option value="resolved">Resolved</option>
+            </select>
+          </div>
+          
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <button id="export-feedback-csv" class="btn-ghost" style="border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div id="view-feedback-list" style="display: flex; flex-direction: column; gap: 1rem;">
+           <div style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading feedback...</div>
         </div>
       </div>
     </div>
@@ -198,9 +233,11 @@ export const initManagerEvents = async (effectiveUser) => {
   const tabCourses = document.getElementById('tab-courses')
   const tabGuides = document.getElementById('tab-guides')
   const tabTeam = document.getElementById('tab-team')
+  const tabFeedback = document.getElementById('tab-feedback')
   const viewCourses = document.getElementById('view-courses')
   const viewGuides = document.getElementById('view-guides')
   const viewTeam = document.getElementById('view-team')
+  const viewFeedback = document.getElementById('view-feedback')
   const teamList = document.getElementById('team-list')
   const loadingTeam = document.getElementById('loading-team-stats')
   const teamMetrics = document.getElementById('team-metrics')
@@ -518,10 +555,10 @@ export const initManagerEvents = async (effectiveUser) => {
 
   // Tab switching logic
   const resetTabs = () => {
-    [tabCourses, tabGuides, tabTeam].forEach(t => {
+    [tabCourses, tabGuides, tabTeam, tabFeedback].forEach(t => {
       if(t) { t.className = 'btn-ghost'; t.style.border = '1px solid var(--glass-border)' }
     });
-    [viewCourses, viewGuides, viewTeam].forEach(v => {
+    [viewCourses, viewGuides, viewTeam, viewFeedback].forEach(v => {
       if(v) v.style.display = 'none'
     });
   }
@@ -558,6 +595,14 @@ export const initManagerEvents = async (effectiveUser) => {
     loadTeamStats()
   })
 
+  tabFeedback?.addEventListener('click', () => {
+    resetTabs()
+    tabFeedback.className = 'btn-primary'
+    tabFeedback.style.border = 'none'
+    viewFeedback.style.display = 'block'
+    loadFeedbackDashboard()
+  })
+
   async function loadTeamStats() {
     if (!loadingTeam) return;
     loadingTeam.style.display = 'block'
@@ -567,12 +612,11 @@ export const initManagerEvents = async (effectiveUser) => {
     try {
       const { getTotalActiveUsersCount } = await import('../api/manager.js')
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const [rates, pendingExtensions, platformSettings, totalActive, allFeedback] = await Promise.all([
+      const [rates, pendingExtensions, platformSettings, totalActive] = await Promise.all([
          getTeamCompletionRates(),
          fetchPendingExtensions(),
          getPlatformSettings(),
-         getTotalActiveUsersCount(),
-         getAllFeedback().catch(() => [])
+         getTotalActiveUsersCount()
       ]);
       
       window.globalTotalActiveUsersCount = totalActive;
@@ -597,59 +641,7 @@ export const initManagerEvents = async (effectiveUser) => {
           
           if (depts.has(currentDeptVal)) departmentFilter.value = currentDeptVal;
       }
-      /*
-      if (teamMetrics) {
-        const radius = 30;
-        const circumference = 2 * Math.PI * radius;
-        const offset = circumference - (rates.overallCompletionPercent / 100) * circumference;
 
-        teamMetrics.innerHTML = `
-          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(16, 185, 129, 0.3); box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);">
-            <div>
-              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Overall Completion</div>
-              <div style="font-size: 2rem; font-weight: bold; color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);">${rates.overallCompletionPercent}%</div>
-            </div>
-            <div style="position: relative; width: 70px; height: 70px;">
-              <svg width="70" height="70" style="transform: rotate(-90deg);">
-                <circle cx="35" cy="35" r="${radius}" fill="transparent" stroke="rgba(255,255,255,0.1)" stroke-width="6" />
-                <circle cx="35" cy="35" r="${radius}" fill="transparent" stroke="#10b981" stroke-width="6" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transition: stroke-dashoffset 1s ease-out; filter: drop-shadow(0 0 4px rgba(16,185,129,0.8));" />
-              </svg>
-            </div>
-          </div>
-
-          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(18, 142, 205, 0.3); box-shadow: inset 0 0 20px rgba(18, 142, 205, 0.05);">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(18, 142, 205, 0.1); display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#128ecd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(18,142,205,0.8));"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            </div>
-            <div>
-              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Members</div>
-              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${totalMembers}</div>
-            </div>
-          </div>
-          
-          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(245, 158, 11, 0.3); box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.05);">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(245, 158, 11, 0.1); display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(245,158,11,0.8));"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-            </div>
-            <div>
-              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Assigned</div>
-              <div style="font-size: 1.8rem; font-weight: bold; color: white;">${rates.totalAssigned}</div>
-            </div>
-          </div>
-
-          <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem; border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05);">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(239,68,68,0.8));"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            </div>
-            <div>
-              <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase;">Total Overdue</div>
-              <div style="font-size: 1.8rem; font-weight: bold; color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);">${rates.totalOverdue}</div>
-            </div>
-          </div>
-        `
-      }
-      
-      */
       // Render extensions inbox
       const inboxCont = document.getElementById('manager-inbox-container');
       if (inboxCont && inboxList) {
@@ -671,110 +663,6 @@ export const initManagerEvents = async (effectiveUser) => {
               `).join('');
           } else {
               inboxCont.style.display = 'none';
-          }
-      }
-
-      // Render Feedback Log
-      const feedbackMetrics = document.getElementById('manager-feedback-metrics');
-      const feedbackList = document.getElementById('manager-feedback-list');
-      if (feedbackMetrics && feedbackList) {
-          if (allFeedback && allFeedback.length > 0) {
-              const resolved = allFeedback.filter(f => f.status === 'resolved');
-              let totalMs = 0;
-              let countMs = 0;
-              resolved.forEach(f => {
-                  if (f.created_at && f.responded_at) {
-                      const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
-                      if (ms > 0) {
-                          totalMs += ms;
-                          countMs++;
-                      }
-                  }
-              });
-
-              let avgStr = 'N/A';
-              if (countMs > 0) {
-                  const avgMs = totalMs / countMs;
-                  const hours = Math.round(avgMs / (1000 * 60 * 60));
-                  if (hours < 1) avgStr = '< 1 hr';
-                  else avgStr = `~${hours} hrs`;
-              }
-
-              feedbackMetrics.innerHTML = `
-                  <div style="display: flex; gap: 1rem; align-items: center;">
-                      <div><strong>Total Addressed:</strong> ${resolved.length}</div>
-                      <div><strong>Average Response:</strong> ${avgStr}</div>
-                      <button id="export-feedback-csv" class="btn-ghost" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 0.3rem;">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                          Export CSV
-                      </button>
-                  </div>
-              `;
-
-              // Sort by newest first (should already be sorted by getAllFeedback, but let's be safe) and limit to 50 to prevent crowding
-              const displayFeedback = [...allFeedback].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
-
-              feedbackList.innerHTML = displayFeedback.map(f => {
-                  let badgeColor = '#9ca3af';
-                  if (f.status === 'resolved') badgeColor = '#10b981';
-                  else if (f.status === 'acting-on') badgeColor = '#3b82f6';
-                  else if (f.status === 'pending') badgeColor = '#f59e0b';
-                  else if (f.status === 'under-review') badgeColor = '#8b5cf6';
-
-                  let timeBadge = '';
-                  if (f.status === 'resolved' && f.created_at && f.responded_at) {
-                      const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
-                      if (ms > 0) {
-                          const hrs = Math.round(ms / (1000 * 60 * 60));
-                          timeBadge = `<span style="background: rgba(16,185,129,0.1); color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(16,185,129,0.2);">Resolved in ${hrs < 1 ? '< 1 hr' : `~${hrs} hrs`}</span>`;
-                      }
-                  }
-
-                  return `
-                  <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid ${badgeColor};">
-                      <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                          <div style="font-weight: bold; font-size: 0.95rem;">
-                              ${f.profiles?.full_name || f.profiles?.email || 'Unknown User'} 
-                              <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem; margin-left: 0.5rem;">(${new Date(f.created_at).toLocaleDateString()})</span>
-                          </div>
-                          <div style="display: flex; gap: 0.5rem; align-items: center;">
-                              ${timeBadge}
-                              <span style="background: rgba(255,255,255,0.05); color: ${badgeColor}; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: capitalize;">${f.status}</span>
-                          </div>
-                      </div>
-                      <div style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #e5e7eb;">${f.content}</div>
-                      ${f.admin_response ? `<div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-sm); border-left: 2px solid var(--primary); font-size: 0.85rem;"><strong style="color: var(--primary);">Admin Response:</strong> ${f.admin_response}</div>` : ''}
-                  </div>
-                  `;
-              }).join('');
-
-              // Attach event listener for Export CSV
-              document.getElementById('export-feedback-csv')?.addEventListener('click', () => {
-                  let csv = 'ID,User,Email,Date,Status,Feedback,Admin Response,Response Time (hrs)\n';
-                  allFeedback.forEach(f => {
-                      const user = `"${(f.profiles?.full_name || 'Unknown').replace(/"/g, '""')}"`;
-                      const email = `"${(f.profiles?.email || '').replace(/"/g, '""')}"`;
-                      const date = `"${new Date(f.created_at).toLocaleString().replace(/"/g, '""')}"`;
-                      const status = `"${f.status}"`;
-                      const content = `"${(f.content || '').replace(/"/g, '""')}"`;
-                      const response = `"${(f.admin_response || '').replace(/"/g, '""')}"`;
-                      let responseTime = '';
-                      if (f.created_at && f.responded_at) {
-                          const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
-                          if (ms > 0) responseTime = (ms / (1000 * 60 * 60)).toFixed(2);
-                      }
-                      csv += `${f.id},${user},${email},${date},${status},${content},${response},${responseTime}\n`;
-                  });
-                  const blob = new Blob([csv], { type: 'text/csv' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `feedback_export_${new Date().toISOString().split('T')[0]}.csv`;
-                  a.click();
-              });
-          } else {
-              feedbackMetrics.innerHTML = '';
-              feedbackList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem;">No feedback submitted yet.</div>';
           }
       }
 
@@ -1434,6 +1322,176 @@ export const initManagerEvents = async (effectiveUser) => {
           exportCsvBtn.disabled = false
       }
   })
+
+  let currentAllFeedback = [];
+
+  async function loadFeedbackDashboard() {
+      const feedbackMetrics = document.getElementById('feedback-metrics');
+      const feedbackList = document.getElementById('view-feedback-list');
+      const loadingFeedback = document.getElementById('loading-feedback-stats');
+      
+      if (!feedbackMetrics || !feedbackList || !loadingFeedback) return;
+      
+      loadingFeedback.style.display = 'block';
+      feedbackMetrics.innerHTML = '';
+      feedbackList.innerHTML = '';
+      
+      try {
+          const allFeedback = await getAllFeedback().catch(() => []);
+          currentAllFeedback = allFeedback.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          
+          // Calculate Metrics
+          const totalReceived = currentAllFeedback.length;
+          const resolved = currentAllFeedback.filter(f => f.status === 'resolved');
+          const pendingCount = currentAllFeedback.filter(f => f.status === 'pending').length;
+          const resolutionRate = totalReceived > 0 ? Math.round((resolved.length / totalReceived) * 100) : 0;
+          
+          let totalMs = 0;
+          let countMs = 0;
+          resolved.forEach(f => {
+              if (f.created_at && f.responded_at) {
+                  const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
+                  if (ms > 0) {
+                      totalMs += ms;
+                      countMs++;
+                  }
+              }
+          });
+
+          let avgStr = 'N/A';
+          if (countMs > 0) {
+              const avgMs = totalMs / countMs;
+              const hours = Math.round(avgMs / (1000 * 60 * 60));
+              if (hours < 1) avgStr = '< 1 hr';
+              else avgStr = `~${hours} hrs`;
+          }
+          
+          // Render Metrics
+          feedbackMetrics.innerHTML = `
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: white;">${totalReceived}</div>
+                <div style="color: var(--text-muted);">Total Received</div>
+            </div>
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #10b981;">${resolutionRate}%</div>
+                <div style="color: var(--text-muted);">Resolution Rate</div>
+            </div>
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); text-align: center; ${pendingCount > 0 ? 'border: 1px solid rgba(239, 68, 68, 0.3);' : ''}">
+                <div style="font-size: 2rem; font-weight: bold; color: ${pendingCount > 0 ? '#ef4444' : 'white'};">${pendingCount}</div>
+                <div style="color: var(--text-muted);">Pending Items</div>
+            </div>
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); text-align: center;">
+                <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">${avgStr}</div>
+                <div style="color: var(--text-muted);">Avg Response</div>
+            </div>
+          `;
+          
+          loadingFeedback.style.display = 'none';
+          
+          renderFeedbackList();
+      } catch (e) {
+          loadingFeedback.style.display = 'none';
+          feedbackList.innerHTML = '<div style="color: red; text-align: center;">Failed to load feedback.</div>';
+      }
+  }
+
+  function renderFeedbackList() {
+      const feedbackList = document.getElementById('view-feedback-list');
+      const searchInput = document.getElementById('feedback-search')?.value.toLowerCase() || '';
+      const typeFilter = document.getElementById('feedback-type-filter')?.value || 'all';
+      const statusFilter = document.getElementById('feedback-status-filter')?.value || 'all';
+      
+      let filtered = currentAllFeedback.filter(f => {
+          if (typeFilter !== 'all' && f.type !== typeFilter) return false;
+          if (statusFilter !== 'all' && f.status !== statusFilter) return false;
+          if (searchInput) {
+              const email = f.profiles?.email?.toLowerCase() || '';
+              const name = f.profiles?.full_name?.toLowerCase() || '';
+              if (!email.includes(searchInput) && !name.includes(searchInput)) return false;
+          }
+          return true;
+      });
+      
+      if (filtered.length === 0) {
+          feedbackList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem;">No feedback found matching criteria.</div>';
+          return;
+      }
+      
+      feedbackList.innerHTML = filtered.map(f => {
+          let badgeColor = '#9ca3af';
+          if (f.status === 'resolved') badgeColor = '#10b981';
+          else if (f.status === 'acting-on') badgeColor = '#3b82f6';
+          else if (f.status === 'pending') badgeColor = '#f59e0b';
+          else if (f.status === 'under-review') badgeColor = '#8b5cf6';
+          
+          let typeStr = f.type || 'Other';
+          if (f.type === 'positive') typeStr = 'Positive / Testimonial';
+          else if (f.type === 'negative') typeStr = 'Product Improvement';
+          else if (f.type === 'urgent') typeStr = 'Urgent System Error';
+
+          let timeBadge = '';
+          if (f.status === 'resolved' && f.created_at && f.responded_at) {
+              const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
+              if (ms > 0) {
+                  const hrs = Math.round(ms / (1000 * 60 * 60));
+                  timeBadge = `<span style="background: rgba(16,185,129,0.1); color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(16,185,129,0.2);">Resolved in ${hrs < 1 ? '< 1 hr' : `~${hrs} hrs`}</span>`;
+              }
+          }
+
+          return `
+          <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid ${badgeColor};">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                  <div style="font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+                      ${f.profiles?.full_name || f.profiles?.email || 'Unknown User'} 
+                      <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem;">(${new Date(f.created_at).toLocaleDateString()})</span>
+                      <span style="background: rgba(255,255,255,0.1); font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; color: var(--text-muted);">${typeStr}</span>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                      ${timeBadge}
+                      <span style="background: rgba(255,255,255,0.05); color: ${badgeColor}; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: capitalize;">${f.status}</span>
+                  </div>
+              </div>
+              <div style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #e5e7eb;">${f.content}</div>
+              ${f.admin_response ? `<div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-sm); border-left: 2px solid var(--primary); font-size: 0.85rem;"><strong style="color: var(--primary);">Admin Response:</strong> ${f.admin_response}</div>` : ''}
+          </div>
+          `;
+      }).join('');
+  }
+  
+  document.getElementById('feedback-search')?.addEventListener('input', renderFeedbackList);
+  document.getElementById('feedback-type-filter')?.addEventListener('change', renderFeedbackList);
+  document.getElementById('feedback-status-filter')?.addEventListener('change', renderFeedbackList);
+  
+  document.getElementById('export-feedback-csv')?.addEventListener('click', () => {
+      let csv = 'ID,User,Email,Date,Type,Status,Feedback,Admin Response,Response Time (hrs)\n';
+      currentAllFeedback.forEach(f => {
+          const user = `"${(f.profiles?.full_name || 'Unknown').replace(/"/g, '""')}"`;
+          const email = `"${(f.profiles?.email || '').replace(/"/g, '""')}"`;
+          const date = `"${new Date(f.created_at).toLocaleString().replace(/"/g, '""')}"`;
+          
+          let typeStr = f.type || 'Other';
+          if (f.type === 'positive') typeStr = 'Positive / Testimonial';
+          else if (f.type === 'negative') typeStr = 'Product Improvement';
+          else if (f.type === 'urgent') typeStr = 'Urgent System Error';
+          typeStr = `"${typeStr}"`;
+          
+          const status = `"${f.status}"`;
+          const content = `"${(f.content || '').replace(/"/g, '""')}"`;
+          const response = `"${(f.admin_response || '').replace(/"/g, '""')}"`;
+          let responseTime = '';
+          if (f.created_at && f.responded_at) {
+              const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
+              if (ms > 0) responseTime = (ms / (1000 * 60 * 60)).toFixed(2);
+          }
+          csv += `${f.id},${user},${email},${date},${typeStr},${status},${content},${response},${responseTime}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `feedback_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+  });
 
   // Auto-routing based on query parameter
   if (window.location.search.includes('tab=guides')) {
