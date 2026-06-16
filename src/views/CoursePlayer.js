@@ -269,10 +269,9 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                             allow="fullscreen; autoplay"
                             allowfullscreen>
                         </iframe>
-                        <div id="ghost-advance-banner" class="fade-in" style="display: none; position: absolute; top: 50%; right: 380px; transform: translateY(-50%); pointer-events: none; z-index: 100;">
-                            <div style="background: rgba(16, 185, 129, 0.95); color: white; padding: 1.5rem 2.5rem; border-radius: 20px; font-weight: bold; font-size: 1.25rem; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.6); border: 2px solid rgba(255,255,255,0.5); animation: pulse 2s infinite; display: flex; align-items: center; gap: 1rem; backdrop-filter: blur(10px);">
+                        <div id="ghost-advance-banner" class="fade-in" style="display: none; position: absolute; bottom: 3rem; right: 380px; pointer-events: none; z-index: 100;">
+                            <div style="background: rgba(16, 185, 129, 0.95); color: white; padding: 1.25rem 2rem; border-radius: 16px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.6); border: 2px solid rgba(255,255,255,0.5); animation: pulse 2s infinite; backdrop-filter: blur(10px);">
                                 <span>Click here to advance slide</span>
-                                <span style="font-size: 2rem; transform: rotate(180deg);">👈</span>
                             </div>
                         </div>
                      </div>
