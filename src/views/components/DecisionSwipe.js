@@ -2,8 +2,8 @@ export function renderDecisionSwipe(containerId, config) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const cards = config.cards || [];
-    const labels = config.labels || { left: "Bin It", right: "Pin It" };
+    const cards = config.cards || config.items || config.questions || config.scenarios || [];
+    const labels = config.labels || { left: "Reject", right: "Accept" };
     let currentIndex = 0;
     let score = 0;
 
