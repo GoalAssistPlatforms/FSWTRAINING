@@ -90,7 +90,7 @@ async function getVisualDescription(topic) {
                     1. Output ONLY the visual description. No explanations.
                     2. DO NOT include people, faces, human limbs, or text of any kind.
                     3. The object must be the MOST RECOGNIZABLE symbol for the topic.
-                    4. The object must be suitable for a clean, flat vector illustration.
+                    4. The object must be suitable for a premium, high-end 3D isometric render.
                     5. Examples:
                        - "Introduction to Recruitment" -> "A magnifying glass resting on a stack of premium paper resumes"
                        - "Time Management" -> "A complex mechanical pocket watch mechanism"
@@ -128,9 +128,9 @@ export const generateThumbnail = async (topic) => {
             const visualSubject = await getVisualDescription(topic);
             console.log(`[Thumbnail] Visual Subject generated: "${visualSubject}"`);
 
-            // Aesthetic enforcement (Keeping the same prompt as requested)
-            const stylePrefix = "A clean, modern, flat vector illustration of";
-            const styleSuffix = ". The aesthetic is corporate minimalist, using the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Clean lines, soft lighting, isometric or 2d flat graphic design style. CRITICAL: Do not make it photorealistic. It must look like a high-quality modern corporate UI vector illustration. No text.";
+            // Aesthetic enforcement (Upgraded to premium 3D isometric)
+            const stylePrefix = "A breathtaking, ultra-premium 3D isometric render of";
+            const styleSuffix = ". The aesthetic is state-of-the-art, high-end corporate tech, utilizing volumetric lighting, rich cinematic shadows, and a stunning glassmorphism style. It should look like a highly polished Apple or Stripe product marketing asset. CRITICAL: Ensure hyper-detailed textures, vibrant but elegant colors, and absolute visual perfection. No text.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
             // 2. Generate Image via Pollinations.ai (Free, reliable, no API key required)
