@@ -150,10 +150,15 @@ export const renderManagerDashboard = (user) => {
     <!--Create Course Modal-->
     <div id="create-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
       <h3 style="margin-top: 0;">Create New Course</h3>
-      <p style="color: var(--text-muted);">Enter a description and our AI will generate the course structure for you.</p>
+      <p style="color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">Enter a description and our AI will generate the course structure for you. For the best results, try to include:</p>
+      <ul style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0; padding-left: 1.5rem; margin-bottom: 1rem; line-height: 1.5;">
+          <li><strong>Target audience</strong> (e.g., New Warehouse Staff)</li>
+          <li><strong>Key topics</strong> (e.g., proper lifting, PPE, emergency exits)</li>
+          <li><strong>Tone</strong> (e.g., professional, engaging, direct)</li>
+      </ul>
       
-      <textarea id="course-prompt" rows="4" placeholder="e.g. Health and Safety in the Warehouse..." 
-        style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;"></textarea>
+      <textarea id="course-prompt" rows="5" placeholder="e.g. Create a comprehensive 'Health and Safety in the Warehouse' course for new hires. The tone should be professional and clear. Make sure to cover proper lifting techniques, PPE requirements, and what to do in case of a fire alarm..." 
+        style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; line-height: 1.5;"></textarea>
 
       <div style="margin-bottom: 1rem;">
         <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Supporting Documents (PDF, TXT)</label>
