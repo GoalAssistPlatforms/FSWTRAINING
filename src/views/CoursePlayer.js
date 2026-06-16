@@ -737,7 +737,17 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                 editMode.style.display = 'block';
 
                 if (!easyMDEInstance) {
-                    const EasyMDE = (await import('easymde')).default;
+                    if (!document.getElementById('easymde-script')) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.id = 'easymde-script';
+                            script.src = 'https://unpkg.com/easymde/dist/easymde.min.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    const EasyMDE = window.EasyMDE;
                     
                     if (!document.getElementById('easymde-css')) {
                         const link = document.createElement('link');
