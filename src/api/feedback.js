@@ -58,16 +58,16 @@ export async function submitFeedback(type, content, file) {
 
         if (error) throw error;
 
-        // Query all administrator accounts to dispatch notifications
+        // Query all administrator and manager accounts to dispatch notifications
         try {
-            const { data: admins } = await supabase
+            const { data: staffMembers } = await supabase
                 .from('profiles')
-                .select('id')
-                .eq('role', 'admin');
+                .select('id, email')
+                .in('role', ['admin', 'manager']);
 
-            if (admins && admins.length > 0) {
-                const notificationsPayload = admins.map(admin => ({
-                    recipient_id: admin.id,
+            if (staffMembers && staffMembers.length > 0) {
+                const notificationsPayload = staffMembers.map(staff => ({
+                    recipient_id: staff.id,
                     sender_id: userAuth.user.id,
                     type: 'feedback_alert',
                     message: `New feedback received: "${content.substring(0, 45)}${content.length > 45 ? '...' : ''}" (${type.toUpperCase()})`,
@@ -75,6 +75,24 @@ export async function submitFeedback(type, content, file) {
                 }));
                 
                 await supabase.from('notifications').insert(notificationsPayload);
+
+                // Dispatch Email Notification
+                const staffEmails = staffMembers.map(s => s.email).filter(Boolean);
+                if (staffEmails.length > 0) {
+                    fetch('/api/email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: staffEmails,
+                            subject: `New Feedback Submitted (${type.toUpperCase()})`,
+                            html: `<h2>New Feedback Submitted</h2>
+                                   <p><strong>Type:</strong> ${type}</p>
+                                   <p><strong>Message:</strong></p>
+                                   <blockquote style="background:#f9f9f9;border-left:5px solid #ccc;padding:10px;">${content}</blockquote>
+                                   <p>Please log in to the dashboard to review and resolve this feedback.</p>`
+                        })
+                    }).catch(err => console.error("Email dispatch failed:", err));
+                }
             }
         } catch (notifError) {
             console.error("Failed to generate administrator notifications:", notifError);
@@ -176,6 +194,21 @@ export async function updateFeedbackStatusAndResponse(feedbackId, status, adminR
                             message: `The Altius Insight Team has responded to your feedback: "${adminResponse.substring(0, 45)}${adminResponse.length > 45 ? '...' : ''}"`,
                             related_course_id: null
                         });
+
+                        // Also notify managers if status is 'resolved'
+                        if (status === 'resolved') {
+                            const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager');
+                            if (managers && managers.length > 0) {
+                                const managerPayload = managers.map(m => ({
+                                    recipient_id: m.id,
+                                    sender_id: adminAuth?.user?.id || null,
+                                    type: 'feedback_alert',
+                                    message: `Admin has resolved feedback from a user. Resolution: "${adminResponse.substring(0, 45)}${adminResponse.length > 45 ? '...' : ''}"`,
+                                    related_course_id: null
+                                }));
+                                await supabase.from('notifications').insert(managerPayload);
+                            }
+                        }
                     } catch (nErr) {
                         console.error("Failed to dispatch feedback response notification (retry path):", nErr);
                     }
@@ -197,6 +230,21 @@ export async function updateFeedbackStatusAndResponse(feedbackId, status, adminR
                     message: `The Altius Insight Team has responded to your feedback: "${adminResponse.substring(0, 45)}${adminResponse.length > 45 ? '...' : ''}"`,
                     related_course_id: null
                 });
+
+                // Also notify managers if status is 'resolved'
+                if (status === 'resolved') {
+                    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager');
+                    if (managers && managers.length > 0) {
+                        const managerPayload = managers.map(m => ({
+                            recipient_id: m.id,
+                            sender_id: adminAuth?.user?.id || null,
+                            type: 'feedback_alert',
+                            message: `Admin has resolved feedback from a user. Resolution: "${adminResponse.substring(0, 45)}${adminResponse.length > 45 ? '...' : ''}"`,
+                            related_course_id: null
+                        }));
+                        await supabase.from('notifications').insert(managerPayload);
+                    }
+                }
             } catch (nErr) {
                 console.error("Failed to dispatch feedback response notification:", nErr);
             }

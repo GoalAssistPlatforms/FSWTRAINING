@@ -1,4 +1,5 @@
 import { generateCourseContent } from '../api/ai'
+import { getAllFeedback } from '../api/feedback'
 import { createCourse, getCourses, deleteCourse, getCourseUsageStats } from '../api/courses'
 import { getTeamStats, assignCourseToUser, bulkAssignCourse, revokeAssignment, forceResitCourse, updateUserDepartment, archiveUser } from '../api/manager'
 import { getTeamCompletionRates, exportTeamDataCSV } from '../api/analytics'
@@ -57,6 +58,22 @@ export const renderManagerDashboard = (user) => {
                 Action Items
             </h3>
             <div id="manager-inbox-list" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        </div>
+
+        <!-- Recent Feedback Section -->
+        <div id="manager-feedback-container" style="margin-bottom: 2rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-lg); padding: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; color: #4ade80; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    Recent Feedback
+                </h3>
+                <div id="manager-feedback-metrics" style="display: flex; gap: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                    <!-- Metrics injected via JS -->
+                </div>
+            </div>
+            <div id="manager-feedback-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                <div style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading feedback...</div>
+            </div>
         </div>
 
         <!-- Unified Control Toolbar -->
@@ -550,11 +567,12 @@ export const initManagerEvents = async (effectiveUser) => {
     try {
       const { getTotalActiveUsersCount } = await import('../api/manager.js')
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const [rates, pendingExtensions, platformSettings, totalActive] = await Promise.all([
+      const [rates, pendingExtensions, platformSettings, totalActive, allFeedback] = await Promise.all([
          getTeamCompletionRates(),
          fetchPendingExtensions(),
          getPlatformSettings(),
-         getTotalActiveUsersCount()
+         getTotalActiveUsersCount(),
+         getAllFeedback().catch(() => [])
       ]);
       
       window.globalTotalActiveUsersCount = totalActive;
@@ -653,6 +671,76 @@ export const initManagerEvents = async (effectiveUser) => {
               `).join('');
           } else {
               inboxCont.style.display = 'none';
+          }
+      }
+
+      // Render Feedback Log
+      const feedbackMetrics = document.getElementById('manager-feedback-metrics');
+      const feedbackList = document.getElementById('manager-feedback-list');
+      if (feedbackMetrics && feedbackList) {
+          if (allFeedback && allFeedback.length > 0) {
+              const resolved = allFeedback.filter(f => f.status === 'resolved');
+              let totalMs = 0;
+              let countMs = 0;
+              resolved.forEach(f => {
+                  if (f.created_at && f.responded_at) {
+                      const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
+                      if (ms > 0) {
+                          totalMs += ms;
+                          countMs++;
+                      }
+                  }
+              });
+
+              let avgStr = 'N/A';
+              if (countMs > 0) {
+                  const avgMs = totalMs / countMs;
+                  const hours = Math.round(avgMs / (1000 * 60 * 60));
+                  if (hours < 1) avgStr = '< 1 hr';
+                  else avgStr = `~${hours} hrs`;
+              }
+
+              feedbackMetrics.innerHTML = `
+                  <div><strong>Total Addressed:</strong> ${resolved.length}</div>
+                  <div><strong>Average Response:</strong> ${avgStr}</div>
+              `;
+
+              feedbackList.innerHTML = allFeedback.map(f => {
+                  let badgeColor = '#9ca3af';
+                  if (f.status === 'resolved') badgeColor = '#10b981';
+                  else if (f.status === 'acting-on') badgeColor = '#3b82f6';
+                  else if (f.status === 'pending') badgeColor = '#f59e0b';
+                  else if (f.status === 'under-review') badgeColor = '#8b5cf6';
+
+                  let timeBadge = '';
+                  if (f.status === 'resolved' && f.created_at && f.responded_at) {
+                      const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
+                      if (ms > 0) {
+                          const hrs = Math.round(ms / (1000 * 60 * 60));
+                          timeBadge = `<span style="background: rgba(16,185,129,0.1); color: #10b981; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(16,185,129,0.2);">Resolved in ${hrs < 1 ? '< 1 hr' : `~${hrs} hrs`}</span>`;
+                      }
+                  }
+
+                  return `
+                  <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid ${badgeColor};">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                          <div style="font-weight: bold; font-size: 0.95rem;">
+                              ${f.profiles?.full_name || f.profiles?.email || 'Unknown User'} 
+                              <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem; margin-left: 0.5rem;">(${new Date(f.created_at).toLocaleDateString()})</span>
+                          </div>
+                          <div style="display: flex; gap: 0.5rem; align-items: center;">
+                              ${timeBadge}
+                              <span style="background: rgba(255,255,255,0.05); color: ${badgeColor}; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: capitalize;">${f.status}</span>
+                          </div>
+                      </div>
+                      <div style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #e5e7eb;">${f.content}</div>
+                      ${f.admin_response ? `<div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-sm); border-left: 2px solid var(--primary); font-size: 0.85rem;"><strong style="color: var(--primary);">Admin Response:</strong> ${f.admin_response}</div>` : ''}
+                  </div>
+                  `;
+              }).join('');
+          } else {
+              feedbackMetrics.innerHTML = '';
+              feedbackList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem;">No feedback submitted yet.</div>';
           }
       }
 
