@@ -17,10 +17,16 @@ export const createPresentation = async (topic, detailed_input) => {
     try {
         console.log("Generating Gamma presentation for:", topic);
 
-        // Safely ensure detailed_input is a string
-        const safeInput = typeof detailed_input === 'string' 
+        // Safely ensure detailed_input is a string and fix any escaped newlines
+        // Safely ensure detailed_input is a string and fix any escaped newlines
+        let safeInput = typeof detailed_input === 'string' 
             ? detailed_input 
             : (detailed_input ? JSON.stringify(detailed_input, null, 2) : "");
+        
+        safeInput = safeInput.replace(/\\n/g, '\n');
+        
+        // AI Fallback: Force `---` to be on its own isolated line so Gamma detects the slide break
+        safeInput = safeInput.replace(/([^\n])\s*---/g, '$1\n---\n').replace(/---\s*([^\n])/g, '\n---\n$1');
 
         console.log(`DEBUG: Input text length: ${safeInput.length}`);
 
@@ -29,7 +35,7 @@ export const createPresentation = async (topic, detailed_input) => {
             format: "presentation",
             themeId: GAMMA_THEME_ID,
             numCards: 10,
-            textMode: "condense",
+            textMode: "preserve",
             cardSplit: "inputTextBreaks",
             cardOptions: {
                 dimensions: "fluid"

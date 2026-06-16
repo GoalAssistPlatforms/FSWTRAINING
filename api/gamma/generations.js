@@ -1,5 +1,8 @@
+import fs from 'fs';
+
 export default async function handler(req, res) {
   console.log("DEBUG [api/gamma/generations.js]: Received request");
+  try { fs.writeFileSync('last_gamma_prompt.json', JSON.stringify(req.body, null, 2)); } catch(e) {}
 
   const apiKey = process.env.GAMMA_API_KEY;
   if (!apiKey) {
