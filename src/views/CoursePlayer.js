@@ -136,7 +136,8 @@ export function renderCoursePlayer(course, user, options = {}) {
     // --- TEMPORARY FIX SCRIPT TO BYPASS CLIPBOARD ISSUES ---
     try {
         let fixed = false;
-        course.content_json.forEach(mod => {
+        let modulesData = typeof course.content_json === 'string' ? JSON.parse(course.content_json) : course.content_json;
+        modulesData.forEach(mod => {
             mod.lessons.forEach(les => {
                 if (les.content && les.content.includes('Absence Management Scenarios') && !les.content.includes('\n  "title":')) {
                     les.content = `\n\n\`\`\`ai-swipe\n{\n  "title": "Absence Management Scenarios",\n  "cards": [\n    {\n      "text": "An employee has been off sick for 3 days. This is considered a long-term absence.",\n      "isCorrect": false,\n      "feedback": "Incorrect. Absences spanning less than 7 days are considered short-term."\n    },\n    {\n      "text": "Starting in 2026, SSP must be paid from the very first day of absence.",\n      "isCorrect": true,\n      "feedback": "Correct! The three-day waiting period has been eliminated."\n    },\n    {\n      "text": "An employee doesn't show up and hasn't called in. We should wait 24 hours before reaching out.",\n      "isCorrect": false,\n      "feedback": "Incorrect. Protocol calls for immediate outreach and logging it in the myhrtoolkit."\n    },\n    {\n      "text": "An employee needs to care for a sick dependent. You can offer unpaid dependent leave or accrued Toil.",\n      "isCorrect": true,\n      "feedback": "Correct! These are both valid strategies for dependent care absences."\n    }\n  ],\n  "labels": {\n    "left": "False",\n    "right": "True"\n  }\n}\n\`\`\`\n`;
@@ -146,12 +147,12 @@ export function renderCoursePlayer(course, user, options = {}) {
         });
         if (fixed) {
             import('../api/courses').then(({ updateCourse }) => {
-                updateCourse(course.id, { content_json: course.content_json }).then(() => {
+                updateCourse(course.id, { content_json: modulesData }).then(() => {
                     window.location.reload();
                 });
             });
         }
-    } catch(e) {}
+    } catch(e) { console.error("Hotfix error", e); }
     // --- END TEMPORARY FIX ---
 
     const progress = options.progress || null;
