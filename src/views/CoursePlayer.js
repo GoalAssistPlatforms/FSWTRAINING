@@ -192,6 +192,10 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                 /### Interactive Activity/g,
                 '<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;"><h3 style="color: white; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: var(--primary);">Interactive Activity</h3></div>'
             );
+            
+            // Auto-fix flattened code blocks that lose newlines when copy-pasted
+            processedContent = processedContent.replace(/```(ai-[a-z-]+)\s*(?=\{)/g, '```$1\n');
+            processedContent = processedContent.replace(/\}\s*```/g, '}\n```');
         }
 
         let htmlContent = processedContent
