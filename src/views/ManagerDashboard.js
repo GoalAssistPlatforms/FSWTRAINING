@@ -161,19 +161,19 @@ export const renderManagerDashboard = (user) => {
       <div style="max-height: 50vh; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
           <div>
               <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Course Objective *</label>
-              <textarea id="course-objective" rows="2" placeholder="e.g. Train line managers on our absence protocols" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+              <textarea id="course-objective" rows="2" placeholder="e.g. Train line managers on our absence protocols" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
           </div>
           <div>
               <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Target Audience</label>
-              <input type="text" id="course-audience" placeholder="e.g. Newly promoted managers" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
+              <input type="text" id="course-audience" placeholder="e.g. Newly promoted managers" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
           </div>
           <div>
               <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Mandatory Topics</label>
-              <textarea id="course-topics" rows="2" placeholder="e.g. You must cover short-term sickness, long-term sickness, and return-to-work interviews" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+              <textarea id="course-topics" rows="2" placeholder="e.g. You must cover short-term sickness, long-term sickness, and return-to-work interviews" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
           </div>
           <div>
               <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Scenarios / Activities</label>
-              <textarea id="course-scenarios" rows="2" placeholder="e.g. Please include a roleplay scenario where an employee goes AWOL for 3 days" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+              <textarea id="course-scenarios" rows="2" placeholder="e.g. Please include a roleplay scenario where an employee goes AWOL for 3 days" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
           </div>
       </div>
 
