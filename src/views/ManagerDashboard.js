@@ -251,6 +251,7 @@ export const initManagerEvents = async (effectiveUser) => {
 
   let currentTeamStats = [] // Store for filtering
   let currentPlatformSettings = null // Store for limit display
+  let currentAllFeedback = [] // Store for filtering feedback
   let selectedUserIds = new Set()
 
   const updateBulkAssignBtnState = () => {
@@ -1323,7 +1324,6 @@ export const initManagerEvents = async (effectiveUser) => {
       }
   })
 
-  let currentAllFeedback = [];
 
   async function loadFeedbackDashboard() {
       const feedbackMetrics = document.getElementById('feedback-metrics');
