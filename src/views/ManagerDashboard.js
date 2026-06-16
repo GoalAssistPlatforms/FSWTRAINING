@@ -149,23 +149,33 @@ export const renderManagerDashboard = (user) => {
 
     <!--Create Course Modal-->
     <style>
-      #course-prompt::placeholder {
-        color: rgba(255, 255, 255, 0.55);
+      #create-modal textarea::placeholder, #create-modal input::placeholder {
+        color: rgba(255, 255, 255, 0.4);
         font-style: italic;
       }
     </style>
     <div id="create-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 550px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
       <h3 style="margin-top: 0; font-size: 1.5rem;">Create New Course</h3>
-      <p style="color: rgba(255, 255, 255, 0.95); margin-bottom: 0.75rem; line-height: 1.5; font-size: 1rem;">Enter a description and our AI will generate the course structure for you. For the best results, try to include:</p>
-      <ul style="color: rgba(255, 255, 255, 0.9); font-size: 0.95rem; margin-top: 0; padding-left: 1.5rem; margin-bottom: 1.25rem; line-height: 1.6;">
-          <li><strong>Course Objective</strong> (e.g., Train managers on handling absence)</li>
-          <li><strong>Target Audience</strong> (e.g., New HR Staff)</li>
-          <li><strong>Mandatory Topics</strong> (e.g., MUST cover long-term sickness protocol)</li>
-          <li><strong>Scenarios / Activities</strong> (e.g., Include a scenario about an employee going AWOL)</li>
-      </ul>
+      <p style="color: rgba(255, 255, 255, 0.95); margin-bottom: 1.5rem; line-height: 1.5; font-size: 1rem;">Fill out the details below and our AI will generate the course structure for you. The more detail you provide, the better the output!</p>
       
-      <textarea id="course-prompt" rows="6" placeholder="e.g. Create a course on Managing Absence. Objective: Train line managers on our absence protocols. Target Audience: Newly promoted managers. Mandatory Topics: You must cover short-term sickness, long-term sickness, and return-to-work interviews. Scenarios: Please include a roleplay scenario where an employee goes AWOL for 3 days..." 
-        style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; margin-bottom: 1.5rem; line-height: 1.6; font-size: 0.95rem;"></textarea>
+      <div style="max-height: 50vh; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Course Objective *</label>
+              <textarea id="course-objective" rows="2" placeholder="e.g. Train line managers on our absence protocols" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+          </div>
+          <div>
+              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Target Audience</label>
+              <input type="text" id="course-audience" placeholder="e.g. Newly promoted managers" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
+          </div>
+          <div>
+              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Mandatory Topics</label>
+              <textarea id="course-topics" rows="2" placeholder="e.g. You must cover short-term sickness, long-term sickness, and return-to-work interviews" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+          </div>
+          <div>
+              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Scenarios / Activities</label>
+              <textarea id="course-scenarios" rows="2" placeholder="e.g. Please include a roleplay scenario where an employee goes AWOL for 3 days" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+          </div>
+      </div>
 
       <div style="margin-bottom: 1rem;">
         <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Supporting Documents (PDF, TXT)</label>
@@ -1141,15 +1151,34 @@ export const initManagerEvents = async (effectiveUser) => {
   function toggleModal(show) {
     modal.style.display = show ? 'block' : 'none'
     overlay.style.display = show ? 'block' : 'none'
-    if (!show) promptInput.value = ''
+    if (!show) {
+      if (promptInput) promptInput.value = ''
+      const fields = ['course-objective', 'course-audience', 'course-topics', 'course-scenarios']
+      fields.forEach(id => {
+        const el = document.getElementById(id)
+        if (el) el.value = ''
+      })
+    }
   }
 
   cancelBtn?.addEventListener('click', () => toggleModal(false))
   overlay?.addEventListener('click', () => toggleModal(false))
 
   confirmBtn?.addEventListener('click', async () => {
-    const description = promptInput.value
-    if (!description && fileInput.files.length === 0) return
+    const objective = document.getElementById('course-objective')?.value.trim() || ''
+    const audience = document.getElementById('course-audience')?.value.trim() || ''
+    const topics = document.getElementById('course-topics')?.value.trim() || ''
+    const scenarios = document.getElementById('course-scenarios')?.value.trim() || ''
+
+    if (!objective && fileInput.files.length === 0) {
+        alert("Please provide a course objective.")
+        return
+    }
+
+    let description = `Objective: ${objective}`
+    if (audience) description += `\nTarget Audience: ${audience}`
+    if (topics) description += `\nMandatory Topics: ${topics}`
+    if (scenarios) description += `\nScenarios/Activities: ${scenarios}`
 
     // Extract file content
     const files = Array.from(fileInput.files)
