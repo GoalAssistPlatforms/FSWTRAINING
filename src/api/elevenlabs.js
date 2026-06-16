@@ -1,7 +1,6 @@
 import { supabase } from './supabase.js';
 
-const DEFAULT_VOICE_ID = "i5LC8lKW1RRBmYdwr2bP"; // FSW Voice
-const VOICE_ID = DEFAULT_VOICE_ID;
+
 
 /**
  * Creates audio from text using ElevenLabs API and uploads to Supabase
@@ -15,7 +14,7 @@ export const createAudio = async (text) => {
         console.log("Generating audio for text length:", text ? text.length : 0);
         const cleanedText = typeof text === 'string' ? text.replace(/myhrtoolkit/gi, 'my hr tool kit') : text;
 
-        const response = await fetch(`/api/elevenlabs?voiceId=${VOICE_ID}`, {
+        const response = await fetch(`/api/elevenlabs?voiceType=fsw`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -78,7 +77,7 @@ export const generateChatAudio = async (text) => {
 
     try {
         const cleanedText = typeof text === 'string' ? text.replace(/myhrtoolkit/gi, 'my hr tool kit') : text;
-        const response = await fetch(`/api/elevenlabs?voiceId=${VOICE_ID}`, {
+        const response = await fetch(`/api/elevenlabs?voiceType=josh`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

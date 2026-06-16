@@ -3,12 +3,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  const { voiceId } = req.query;
-  const targetVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "i5LC8lKW1RRBmYdwr2bP";
+  const { voiceId, voiceType } = req.query;
+
+  let apiKey = process.env.ELEVENLABS_API_KEY;
+  let targetVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "i5LC8lKW1RRBmYdwr2bP";
+
+  if (voiceType === 'fsw') {
+    apiKey = process.env.ELEVENLABS_API_KEY_FSW || process.env.ELVENLABS_API_KEY_FSW || apiKey;
+    targetVoiceId = process.env.ELEVENLABS_VOICE_ID_FSW || targetVoiceId;
+  }
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'Server configuration error: Missing ELEVENLABS_API_KEY' });
+    return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
   }
 
   try {
