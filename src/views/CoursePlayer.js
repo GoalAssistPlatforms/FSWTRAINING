@@ -738,7 +738,14 @@ export const renderCoursePlayer = (course, user, options = {}) => {
 
                 if (!easyMDEInstance) {
                     const EasyMDE = (await import('easymde')).default;
-                    await import('easymde/dist/easymde.min.css');
+                    
+                    if (!document.getElementById('easymde-css')) {
+                        const link = document.createElement('link');
+                        link.id = 'easymde-css';
+                        link.rel = 'stylesheet';
+                        link.href = 'https://unpkg.com/easymde/dist/easymde.min.css';
+                        document.head.appendChild(link);
+                    }
                     
                     // Inject dark mode fix for the toolbar
                     if (!document.getElementById('easymde-dark-fix')) {
