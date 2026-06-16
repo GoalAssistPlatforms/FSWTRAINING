@@ -128,14 +128,33 @@ export const generateThumbnail = async (topic) => {
             const visualSubject = await getVisualDescription(topic);
             console.log(`[Thumbnail] Visual Subject generated: "${visualSubject}"`);
 
-            // Aesthetic enforcement
+            // Aesthetic enforcement (Keeping the same prompt as requested)
             const stylePrefix = "A clean, modern, flat vector illustration of";
             const styleSuffix = ". The aesthetic is corporate minimalist, using the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Clean lines, soft lighting, isometric or 2d flat graphic design style. CRITICAL: Do not make it photorealistic. It must look like a high-quality modern corporate UI vector illustration. No text.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
-            // 2. Generate Image via Pollinations.ai (Free, reliable, no API key required)
-            const tempImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&nologo=true`;
-            console.log(`[Thumbnail] Using Pollinations API URL...`);
+            // 2. Generate Image via DALL-E 3 using our new proxy
+            console.log(`[Thumbnail] Requesting DALL-E 3 image generation...`);
+            const dalleRes = await fetch('/api/dalle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: "dall-e-3",
+                    prompt: fullPrompt,
+                    n: 1,
+                    size: "1024x1024",
+                    quality: "standard"
+                })
+            });
+
+            if (!dalleRes.ok) {
+                const errData = await dalleRes.json();
+                throw new Error(`DALL-E 3 API Error: ${errData.error?.message || dalleRes.statusText}`);
+            }
+
+            const dalleData = await dalleRes.json();
+            const tempImageUrl = dalleData.data[0].url;
+            console.log(`[Thumbnail] DALL-E 3 URL generated successfully.`);
 
             // 3. Retry Loop for Uploading THIS specific image
             for (let uploadAttempt = 1; uploadAttempt <= MAX_UPLOAD_ATTEMPTS; uploadAttempt++) {
