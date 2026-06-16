@@ -239,6 +239,16 @@ export function renderCoursePlayer(course, user, options = {}) {
                 </button>
             </div>
             
+            <!-- TEMPORARY FIX BUTTON -->
+            <div style="margin-bottom: 2rem;">
+                <button id="manual-hotfix-btn" style="background: #ef4444; color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%;">
+                    🔧 FORCE FIX CORKBOARD
+                </button>
+            </div>
+            <!-- END FIX BUTTON -->
+
+            <div class="cp-module-list">
+            
             <h3 class="text-gradient-silver" style="margin: 0 0 2rem 0; font-size: 1.4rem; font-weight: 700;">${course.title}</h3>
             
             <div style="display: flex; flex-direction: column; gap: 2rem;">
@@ -1059,6 +1069,34 @@ export function renderCoursePlayer(course, user, options = {}) {
                             document.getElementById('regenerate-gamma-btn').disabled = false;
                         }
                     }
+                }
+            });
+        }
+
+        const hotfixBtn = document.getElementById('manual-hotfix-btn');
+        if (hotfixBtn) {
+            hotfixBtn.addEventListener('click', async () => {
+                try {
+                    let modulesData = typeof course.content_json === 'string' ? JSON.parse(course.content_json) : course.content_json;
+                    let fixed = false;
+                    modulesData.forEach(mod => {
+                        mod.lessons.forEach(les => {
+                            if (les.content && les.content.includes('Absence Management Scenarios')) {
+                                les.content = `\n\n\`\`\`ai-swipe\n{\n  "title": "Absence Management Scenarios",\n  "cards": [\n    {\n      "text": "An employee has been off sick for 3 days. This is considered a long-term absence.",\n      "isCorrect": false,\n      "feedback": "Incorrect. Absences spanning less than 7 days are considered short-term."\n    },\n    {\n      "text": "Starting in 2026, SSP must be paid from the very first day of absence.",\n      "isCorrect": true,\n      "feedback": "Correct! The three-day waiting period has been eliminated."\n    },\n    {\n      "text": "An employee doesn't show up and hasn't called in. We should wait 24 hours before reaching out.",\n      "isCorrect": false,\n      "feedback": "Incorrect. Protocol calls for immediate outreach and logging it in the myhrtoolkit."\n    },\n    {\n      "text": "An employee needs to care for a sick dependent. You can offer unpaid dependent leave or accrued Toil.",\n      "isCorrect": true,\n      "feedback": "Correct! These are both valid strategies for dependent care absences."\n    }\n  ],\n  "labels": {\n    "left": "False",\n    "right": "True"\n  }\n}\n\`\`\`\n`;
+                                fixed = true;
+                            }
+                        });
+                    });
+                    if (fixed) {
+                        const { updateCourse } = await import('../api/courses');
+                        await updateCourse(course.id, { content_json: modulesData });
+                        alert("✅ SUCCESS! The database was forcibly corrected. The page will now reload.");
+                        window.location.reload();
+                    } else {
+                        alert("⚠️ Could not find the text to fix in the database.");
+                    }
+                } catch(e) {
+                    alert("❌ ERROR: " + e.message);
                 }
             });
         }
