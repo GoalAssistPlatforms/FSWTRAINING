@@ -1337,8 +1337,9 @@ export const initManagerEvents = async (effectiveUser) => {
       feedbackList.innerHTML = '';
       
       try {
-          const allFeedback = await getAllFeedback().catch(() => []);
-          currentAllFeedback = allFeedback.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          const fetchedFeedback = await getAllFeedback().catch(() => []);
+          const safeFeedback = fetchedFeedback || [];
+          currentAllFeedback = [...safeFeedback].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           
           // Calculate Metrics
           const totalReceived = currentAllFeedback.length;
@@ -1390,8 +1391,9 @@ export const initManagerEvents = async (effectiveUser) => {
           
           renderFeedbackList();
       } catch (e) {
+          console.error("Feedback Dashboard Error:", e);
           loadingFeedback.style.display = 'none';
-          feedbackList.innerHTML = '<div style="color: red; text-align: center;">Failed to load feedback.</div>';
+          feedbackList.innerHTML = `<div style="color: red; text-align: center;">Failed to load feedback: ${e.message || e}</div>`;
       }
   }
 
