@@ -233,7 +233,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 
                                 Output JSON format:
                                 {
-                                    "presentation_input": "Detailed script content for the 10 slides, including bullet points and headers. This will be sent to Gamma AI.",
+                                    "presentation_input": "Exact text for Gamma. You MUST use exactly 10 slides. Separate each slide with a '---' (three dashes on a new line). Use '# [Slide Title]' for each slide's header. Ensure the headers exactly match the titles in audio_tracks.",
                                     "audio_tracks": [
                                         { "title": "Slide 1: Introduction", "script": "A 30-45 second audio script covering the first slide. Do NOT explicitly mention 'slides' or 'bullet points'. Keep it conversational." },
                                         { "title": "Slide 2: ...", "script": "..." }

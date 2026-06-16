@@ -30,7 +30,7 @@ export const createPresentation = async (topic, detailed_input) => {
             themeId: GAMMA_THEME_ID,
             numCards: 10,
             textMode: "condense",
-            cardSplit: "auto",
+            cardSplit: "inputTextBreaks",
             cardOptions: {
                 dimensions: "fluid"
             },
