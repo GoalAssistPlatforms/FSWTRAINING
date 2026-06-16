@@ -1332,6 +1332,19 @@ export const initManagerEvents = async (effectiveUser) => {
       
       if (!feedbackMetrics || !feedbackList || !loadingFeedback) return;
       
+      const searchEl = document.getElementById('feedback-search');
+      const typeEl = document.getElementById('feedback-type-filter');
+      const statusEl = document.getElementById('feedback-status-filter');
+      const exportEl = document.getElementById('export-feedback-csv');
+      
+      if (typeEl && !typeEl.hasAttribute('data-bound')) {
+          searchEl?.addEventListener('input', renderFeedbackList);
+          typeEl?.addEventListener('change', renderFeedbackList);
+          statusEl?.addEventListener('change', renderFeedbackList);
+          exportEl?.addEventListener('click', exportFeedbackCSV);
+          typeEl.setAttribute('data-bound', 'true');
+      }
+      
       loadingFeedback.style.display = 'block';
       feedbackMetrics.innerHTML = '';
       feedbackList.innerHTML = '';
@@ -1460,12 +1473,8 @@ export const initManagerEvents = async (effectiveUser) => {
       }).join('');
   }
   
-  document.getElementById('feedback-search')?.addEventListener('input', renderFeedbackList);
-  document.getElementById('feedback-type-filter')?.addEventListener('change', renderFeedbackList);
-  document.getElementById('feedback-status-filter')?.addEventListener('change', renderFeedbackList);
-  
-  document.getElementById('export-feedback-csv')?.addEventListener('click', () => {
-      let csv = 'ID,User,Email,Date,Type,Status,Feedback,Admin Response,Response Time (hrs)\n';
+  function exportFeedbackCSV() {
+      let csv = 'ID,User,Email,Date,Type,Status,Feedback,Admin Response,Response Time (hrs)\\n';
       currentAllFeedback.forEach(f => {
           const user = `"${(f.profiles?.full_name || 'Unknown').replace(/"/g, '""')}"`;
           const email = `"${(f.profiles?.email || '').replace(/"/g, '""')}"`;
@@ -1485,7 +1494,7 @@ export const initManagerEvents = async (effectiveUser) => {
               const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
               if (ms > 0) responseTime = (ms / (1000 * 60 * 60)).toFixed(2);
           }
-          csv += `${f.id},${user},${email},${date},${typeStr},${status},${content},${response},${responseTime}\n`;
+          csv += `${f.id},${user},${email},${date},${typeStr},${status},${content},${response},${responseTime}\\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -1493,7 +1502,7 @@ export const initManagerEvents = async (effectiveUser) => {
       a.href = url;
       a.download = `feedback_export_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
-  });
+  }
 
   // Auto-routing based on query parameter
   if (window.location.search.includes('tab=guides')) {
