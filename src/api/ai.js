@@ -112,8 +112,10 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
     1. Use UK English spelling.
     2. The "title" MUST be 50 characters or fewer for UI consistency.
     3. The "description" MUST be between 100 and 140 characters.
-    4. Create a comprehensive structure, typically 3-4 modules with 2-3 lessons each.
-    `;
+    
+    Ensure that any "Mandatory Topics" provided by the user are strictly included and thoroughly covered across the modules. Any "Scenarios/Activities" requested must also be deeply integrated into the lesson concepts.
+
+    Make the course highly engaging and practical. Limit to 3-5 modules, 2-4 lessons per module.`;
 
     if (supportingDocs) {
         systemPrompt += `\n\nADDITIONAL CONTEXT FROM UPLOADED DOCUMENTS:\n${supportingDocs}\n\nCRITICAL INSTRUCTION: You MUST use the information provided in the documents above. The course outline MUST be directly based on these documents. Prioritize this content over general knowledge.`;
