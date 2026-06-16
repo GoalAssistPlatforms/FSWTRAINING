@@ -160,6 +160,10 @@ export const renderManagerDashboard = (user) => {
       
       <div style="max-height: 50vh; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
           <div>
+              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Course Title *</label>
+              <input type="text" id="course-title" placeholder="e.g. Managing Absence" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
+          </div>
+          <div>
               <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Course Objective *</label>
               <textarea id="course-objective" rows="2" placeholder="e.g. Train line managers on our absence protocols" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
           </div>
@@ -1153,7 +1157,7 @@ export const initManagerEvents = async (effectiveUser) => {
     overlay.style.display = show ? 'block' : 'none'
     if (!show) {
       if (promptInput) promptInput.value = ''
-      const fields = ['course-objective', 'course-audience', 'course-topics', 'course-scenarios']
+      const fields = ['course-title', 'course-objective', 'course-audience', 'course-topics', 'course-scenarios']
       fields.forEach(id => {
         const el = document.getElementById(id)
         if (el) el.value = ''
@@ -1165,17 +1169,18 @@ export const initManagerEvents = async (effectiveUser) => {
   overlay?.addEventListener('click', () => toggleModal(false))
 
   confirmBtn?.addEventListener('click', async () => {
+    const title = document.getElementById('course-title')?.value.trim() || ''
     const objective = document.getElementById('course-objective')?.value.trim() || ''
     const audience = document.getElementById('course-audience')?.value.trim() || ''
     const topics = document.getElementById('course-topics')?.value.trim() || ''
     const scenarios = document.getElementById('course-scenarios')?.value.trim() || ''
 
-    if (!objective && fileInput.files.length === 0) {
-        alert("Please provide a course objective.")
+    if (!title || (!objective && fileInput.files.length === 0)) {
+        alert("Please provide both a Course Title and Course Objective.")
         return
     }
 
-    let description = `Objective: ${objective}`
+    let description = `Title: ${title}\nObjective: ${objective}`
     if (audience) description += `\nTarget Audience: ${audience}`
     if (topics) description += `\nMandatory Topics: ${topics}`
     if (scenarios) description += `\nScenarios/Activities: ${scenarios}`
