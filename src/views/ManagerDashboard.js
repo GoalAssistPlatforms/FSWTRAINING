@@ -152,12 +152,13 @@ export const renderManagerDashboard = (user) => {
       <h3 style="margin-top: 0;">Create New Course</h3>
       <p style="color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">Enter a description and our AI will generate the course structure for you. For the best results, try to include:</p>
       <ul style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0; padding-left: 1.5rem; margin-bottom: 1rem; line-height: 1.5;">
-          <li><strong>Target audience</strong> (e.g., New Warehouse Staff)</li>
-          <li><strong>Key topics</strong> (e.g., proper lifting, PPE, emergency exits)</li>
-          <li><strong>Tone</strong> (e.g., professional, engaging, direct)</li>
+          <li><strong>Course Objective</strong> (e.g., Train managers on handling absence)</li>
+          <li><strong>Target Audience</strong> (e.g., New HR Staff)</li>
+          <li><strong>Mandatory Topics</strong> (e.g., MUST cover long-term sickness protocol)</li>
+          <li><strong>Scenarios / Activities</strong> (e.g., Include a scenario about an employee going AWOL)</li>
       </ul>
       
-      <textarea id="course-prompt" rows="5" placeholder="e.g. Create a comprehensive 'Health and Safety in the Warehouse' course for new hires. The tone should be professional and clear. Make sure to cover proper lifting techniques, PPE requirements, and what to do in case of a fire alarm..." 
+      <textarea id="course-prompt" rows="6" placeholder="e.g. Create a course on Managing Absence. Objective: Train line managers on our absence protocols. Target Audience: Newly promoted managers. Mandatory Topics: You must cover short-term sickness, long-term sickness, and return-to-work interviews. Scenarios: Please include a roleplay scenario where an employee goes AWOL for 3 days..." 
         style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; line-height: 1.5;"></textarea>
 
       <div style="margin-bottom: 1rem;">
