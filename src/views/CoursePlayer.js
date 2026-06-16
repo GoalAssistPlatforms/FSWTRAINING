@@ -312,9 +312,7 @@ export function renderCoursePlayer(course, user, options = {}) {
                         <span>✏️ Edit Slides</span>
                     </button>
                     ` : ''}
-                    <button id="link-gamma-btn" class="hover-glow" style="position: absolute; top: 2rem; right: ${currentLesson.gamma_url ? '22rem' : '14rem'}; z-index: 50; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Link an existing Gamma Presentation">
-                        <span>🔗 Link Slides</span>
-                    </button>
+
                 ` : ''}
                 
                 <!-- Interactive Sidebar Curriculum (Right) -->
@@ -1048,27 +1046,7 @@ export function renderCoursePlayer(course, user, options = {}) {
             });
         }
 
-        const linkGammaBtn = document.getElementById('link-gamma-btn');
-        if (linkGammaBtn) {
-            linkGammaBtn.addEventListener('click', async () => {
-                const url = prompt("Enter the exact Gamma.app URL to link to this lesson:");
-                if (url && url.includes("gamma.app")) {
-                    try {
-                        const l = modules[currentModuleIndex].lessons[currentLessonIndex];
-                        l.gamma_url = url;
-                        const { updateCourse } = await import('../api/courses.js');
-                        await updateCourse(course.id, { content_json: modules, updated_at: new Date() });
-                        mount();
-                    } catch (e) {
-                        const { fswAlert } = await import('../utils/dialog.js');
-                        await fswAlert("Failed to save the linked presentation: " + e.message);
-                    }
-                } else if (url) {
-                    const { fswAlert } = await import('../utils/dialog.js');
-                    await fswAlert("Please enter a valid gamma.app URL.");
-                }
-            });
-        }
+
 
 
         document.getElementById('exit-course').addEventListener('click', () => {
