@@ -269,17 +269,10 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                             allow="fullscreen; autoplay"
                             allowfullscreen>
                         </iframe>
-                        <div id="advance-banner" class="fade-in" style="display: none; position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%); background: rgba(16, 185, 129, 0.95); color: white; padding: 1rem 2.5rem; border-radius: 50px; font-weight: 600; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.5); z-index: 100; cursor: pointer; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s;" onmouseenter="this.style.transform='translateX(-50%) scale(1.05)'; this.style.background='rgba(16, 185, 129, 1)';" onmouseleave="this.style.transform='translateX(-50%) scale(1)'; this.style.background='rgba(16, 185, 129, 0.95)';">
-                            <div style="display: flex; align-items: center; gap: 1.5rem;">
-                                <div style="display: flex; align-items: center; gap: 0.5rem; opacity: 0.9;">
-                                    <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">1</div>
-                                    <span>Advance slide</span>
-                                </div>
-                                <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.3);"></div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem; color: white;">
-                                    <div style="width: 28px; height: 28px; border-radius: 50%; background: white; color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; margin-right: 0.25rem;">▶</div>
-                                    <span style="font-size: 1.1rem;">Play Next Audio</span>
-                                </div>
+                        <div id="ghost-advance-banner" class="fade-in" style="display: none; position: absolute; top: 0; right: 0; width: 50%; height: 100%; pointer-events: none; z-index: 100; align-items: center; justify-content: flex-end; padding-right: 3rem;">
+                            <div style="background: rgba(16, 185, 129, 0.95); color: white; padding: 1.5rem 2.5rem; border-radius: 20px; font-weight: bold; font-size: 1.25rem; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.6); border: 2px solid rgba(255,255,255,0.5); animation: pulse 2s infinite; display: flex; align-items: center; gap: 1rem; backdrop-filter: blur(10px);">
+                                <span>Click here to advance slide</span>
+                                <span style="font-size: 2rem;">👉</span>
                             </div>
                         </div>
                      </div>
@@ -331,8 +324,8 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                                         <div class="audio-track-item ${idx === 0 ? 'active' : ''}" data-track-idx="${idx}" style="padding: 1rem; border-radius: var(--radius-md); background: ${idx === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${idx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: all 0.2s; position: relative;">
                                             <div style="font-size: 0.85rem; font-weight: 600; color: ${idx === 0 ? 'white' : 'var(--text-muted)'}; margin-bottom: 0.5rem;">${track.title || `Slide ${idx + 1}`}</div>
                                             <audio class="track-audio" controls src="${track.url}" preload="metadata" style="width: 100%; height: 28px; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.9; outline: none;"></audio>
-                                            <div class="next-prompt fade-in" style="display: none; margin-top: 0.75rem; font-size: 0.75rem; color: var(--primary); font-weight: bold; text-align: center;">
-                                                Advance slide, then play next →
+                                            <div class="next-prompt fade-in" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; color: #10b981; font-weight: bold; text-align: center; background: rgba(16, 185, 129, 0.15); padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                                ▶ Now Play Audio
                                             </div>
                                         </div>
                                     `).join('');
@@ -1223,16 +1216,18 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                     t.style.background = 'rgba(255,255,255,0.03)';
                     t.style.borderColor = 'rgba(255,255,255,0.05)';
                     t.querySelector('div').style.color = 'var(--text-muted)';
+                    t.style.animation = 'none';
                     const prompt = t.querySelector('.next-prompt');
                     if (prompt) prompt.style.display = 'none';
                 });
                 item.classList.add('active');
                 item.style.background = 'rgba(255,255,255,0.1)';
                 item.style.borderColor = 'rgba(255,255,255,0.2)';
+                item.style.animation = 'none';
                 item.querySelector('div').style.color = 'white';
                 
-                const advanceBanner = document.getElementById('advance-banner');
-                if (advanceBanner) advanceBanner.style.display = 'none';
+                const ghostBanner = document.getElementById('ghost-advance-banner');
+                if (ghostBanner) ghostBanner.style.display = 'none';
             });
 
             audioEl.addEventListener('ended', () => {
@@ -1242,18 +1237,14 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                     const nextPrompt = nextItem.querySelector('.next-prompt');
                     if (nextPrompt) nextPrompt.style.display = 'block';
                     
-                    nextItem.style.background = 'rgba(16, 185, 129, 0.1)'; // subtle green highlight
-                    nextItem.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                    nextItem.style.background = 'rgba(16, 185, 129, 0.15)';
+                    nextItem.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                    nextItem.style.animation = 'pulse 2s infinite';
                     nextItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     
-                    const advanceBanner = document.getElementById('advance-banner');
-                    if (advanceBanner) {
-                        advanceBanner.style.display = 'flex';
-                        advanceBanner.onclick = () => {
-                            advanceBanner.style.display = 'none';
-                            const nextAudio = nextItem.querySelector('audio');
-                            if (nextAudio) nextAudio.play();
-                        };
+                    const ghostBanner = document.getElementById('ghost-advance-banner');
+                    if (ghostBanner) {
+                        ghostBanner.style.display = 'flex';
                     }
                 } else {
                     // All audio finished, switch to reading mode
