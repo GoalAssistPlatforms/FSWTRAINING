@@ -604,7 +604,11 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                     const id = container.id
                     const type = container.dataset.type
                     const script = document.getElementById(`config-${id}`)
-                    const config = JSON.parse(script.textContent)
+                    let config = {}
+                    const rawText = script.textContent.trim()
+                    if (rawText && rawText !== 'undefined') {
+                        config = JSON.parse(rawText)
+                    }
 
                     if (type === 'ai-tone') renderToneAnalyser(id, config)
                     if (type === 'ai-dojo') renderDojoChat(id, config)
@@ -614,7 +618,7 @@ export const renderCoursePlayer = (course, user, options = {}) => {
 
                 } catch (e) {
                     console.error(`Error rendering component ${container.dataset.type}`, e)
-                    container.innerHTML = `<div style="color:red; border:1px solid red; padding:1rem;">Error rendering AI Component</div>`
+                    container.innerHTML = `<div style="color:red; border:1px solid red; padding:1rem;">Error rendering AI Component: ${e.message}</div>`
                 }
             })
 

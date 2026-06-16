@@ -363,7 +363,12 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                     // Append AI interactive component
                     let finalContent = contentData.markdown_content || "";
                     if (contentData.ai_component && contentData.ai_component.type) {
-                        const componentCode = `\n\n\`\`\`${contentData.ai_component.type}\n${JSON.stringify(contentData.ai_component.config, null, 2)}\n\`\`\``;
+                        let config = contentData.ai_component.config;
+                        if (!config) {
+                            config = { ...contentData.ai_component };
+                            delete config.type;
+                        }
+                        const componentCode = `\n\n\`\`\`${contentData.ai_component.type}\n${JSON.stringify(config || {}, null, 2)}\n\`\`\``;
                         if (!finalContent.includes('### Interactive Activity')) {
                             finalContent += `\n\n### Interactive Activity\n${componentCode}`;
                         } else {
