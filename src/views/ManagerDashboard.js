@@ -701,11 +701,20 @@ export const initManagerEvents = async (effectiveUser) => {
               }
 
               feedbackMetrics.innerHTML = `
-                  <div><strong>Total Addressed:</strong> ${resolved.length}</div>
-                  <div><strong>Average Response:</strong> ${avgStr}</div>
+                  <div style="display: flex; gap: 1rem; align-items: center;">
+                      <div><strong>Total Addressed:</strong> ${resolved.length}</div>
+                      <div><strong>Average Response:</strong> ${avgStr}</div>
+                      <button id="export-feedback-csv" class="btn-ghost" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 0.3rem;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                          Export CSV
+                      </button>
+                  </div>
               `;
 
-              feedbackList.innerHTML = allFeedback.map(f => {
+              // Sort by newest first (should already be sorted by getAllFeedback, but let's be safe) and limit to 50 to prevent crowding
+              const displayFeedback = [...allFeedback].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
+
+              feedbackList.innerHTML = displayFeedback.map(f => {
                   let badgeColor = '#9ca3af';
                   if (f.status === 'resolved') badgeColor = '#10b981';
                   else if (f.status === 'acting-on') badgeColor = '#3b82f6';
@@ -738,6 +747,31 @@ export const initManagerEvents = async (effectiveUser) => {
                   </div>
                   `;
               }).join('');
+
+              // Attach event listener for Export CSV
+              document.getElementById('export-feedback-csv')?.addEventListener('click', () => {
+                  let csv = 'ID,User,Email,Date,Status,Feedback,Admin Response,Response Time (hrs)\n';
+                  allFeedback.forEach(f => {
+                      const user = `"${(f.profiles?.full_name || 'Unknown').replace(/"/g, '""')}"`;
+                      const email = `"${(f.profiles?.email || '').replace(/"/g, '""')}"`;
+                      const date = `"${new Date(f.created_at).toLocaleString().replace(/"/g, '""')}"`;
+                      const status = `"${f.status}"`;
+                      const content = `"${(f.content || '').replace(/"/g, '""')}"`;
+                      const response = `"${(f.admin_response || '').replace(/"/g, '""')}"`;
+                      let responseTime = '';
+                      if (f.created_at && f.responded_at) {
+                          const ms = new Date(f.responded_at).getTime() - new Date(f.created_at).getTime();
+                          if (ms > 0) responseTime = (ms / (1000 * 60 * 60)).toFixed(2);
+                      }
+                      csv += `${f.id},${user},${email},${date},${status},${content},${response},${responseTime}\n`;
+                  });
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `feedback_export_${new Date().toISOString().split('T')[0]}.csv`;
+                  a.click();
+              });
           } else {
               feedbackMetrics.innerHTML = '';
               feedbackList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem;">No feedback submitted yet.</div>';
