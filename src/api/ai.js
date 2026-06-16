@@ -226,12 +226,14 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                 
                                 **OBJECTIVE**: Create a 10-slide visual presentation script and a written lesson.
                                 **CONTEXT**: You are writing a specific lesson within a larger course. 
+                                USER'S ORIGINAL COURSE REQUEST: "${topic}"
                                 COURSE TITLE: "${outline.title}"
                                 MODULE: "${module.title}"
                                 THIS LESSON: "${lesson.title}"
                                 FULL OUTLINE: ${JSON.stringify(outline.modules.map(m => ({ title: m.title, lessons: m.lessons.map(l => l.title) })))}
                                 
-                                Ensure this lesson flows naturally from previous ones and leads into the next.
+                                Ensure this lesson flows naturally from previous ones and leads into the next. 
+                                CRITICAL: If the User's Original Request includes specific "Scenarios/Activities", you MUST try to base the "ai_component" interactive activity around those scenarios if they are relevant to this lesson.
                                 
                                 Output JSON format:
                                 {
