@@ -148,10 +148,16 @@ export const renderManagerDashboard = (user) => {
     </div>
 
     <!--Create Course Modal-->
-    <div id="create-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <h3 style="margin-top: 0;">Create New Course</h3>
-      <p style="color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">Enter a description and our AI will generate the course structure for you. For the best results, try to include:</p>
-      <ul style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0; padding-left: 1.5rem; margin-bottom: 1rem; line-height: 1.5;">
+    <style>
+      #course-prompt::placeholder {
+        color: rgba(255, 255, 255, 0.55);
+        font-style: italic;
+      }
+    </style>
+    <div id="create-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 550px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <h3 style="margin-top: 0; font-size: 1.5rem;">Create New Course</h3>
+      <p style="color: rgba(255, 255, 255, 0.95); margin-bottom: 0.75rem; line-height: 1.5; font-size: 1rem;">Enter a description and our AI will generate the course structure for you. For the best results, try to include:</p>
+      <ul style="color: rgba(255, 255, 255, 0.9); font-size: 0.95rem; margin-top: 0; padding-left: 1.5rem; margin-bottom: 1.25rem; line-height: 1.6;">
           <li><strong>Course Objective</strong> (e.g., Train managers on handling absence)</li>
           <li><strong>Target Audience</strong> (e.g., New HR Staff)</li>
           <li><strong>Mandatory Topics</strong> (e.g., MUST cover long-term sickness protocol)</li>
@@ -159,7 +165,7 @@ export const renderManagerDashboard = (user) => {
       </ul>
       
       <textarea id="course-prompt" rows="6" placeholder="e.g. Create a course on Managing Absence. Objective: Train line managers on our absence protocols. Target Audience: Newly promoted managers. Mandatory Topics: You must cover short-term sickness, long-term sickness, and return-to-work interviews. Scenarios: Please include a roleplay scenario where an employee goes AWOL for 3 days..." 
-        style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; line-height: 1.5;"></textarea>
+        style="width: 100%; padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; margin-bottom: 1.5rem; line-height: 1.6; font-size: 0.95rem;"></textarea>
 
       <div style="margin-bottom: 1rem;">
         <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Supporting Documents (PDF, TXT)</label>
