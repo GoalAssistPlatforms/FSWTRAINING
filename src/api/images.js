@@ -90,13 +90,13 @@ async function getVisualDescription(topic) {
                     1. Output ONLY the visual description. No explanations.
                     2. DO NOT include people, faces, human limbs, or text of any kind.
                     3. The object must be the MOST RECOGNIZABLE symbol for the topic.
-                    4. The object must be suitable for a premium, high-end 3D isometric render.
+                    4. The object must be suitable for a clean, flat 2D vector graphic illustration.
                     5. Examples:
                        - "Introduction to Recruitment" -> "A magnifying glass resting on a stack of premium paper resumes"
-                       - "Time Management" -> "A complex mechanical pocket watch mechanism"
-                       - "Leadership" -> "A chess king piece made of polished obsidian"
+                       - "Time Management" -> "A clean flat vector calendar icon"
+                       - "Leadership" -> "A chess king piece"
                        - "Conflict Resolution" -> "A balanced scale made of brass"
-                       - "Cloud Computing" -> "A glowing server rack module made of glass and light"
+                       - "Cloud Computing" -> "A glowing server rack module"
                     `
                 },
                 { role: "user", content: `Topic: ${topic}` }
@@ -128,9 +128,9 @@ export const generateThumbnail = async (topic) => {
             const visualSubject = await getVisualDescription(topic);
             console.log(`[Thumbnail] Visual Subject generated: "${visualSubject}"`);
 
-            // Aesthetic enforcement (Upgraded to premium 3D isometric)
-            const stylePrefix = "A breathtaking, ultra-premium 3D isometric render of";
-            const styleSuffix = ". The aesthetic is state-of-the-art, high-end corporate tech, utilizing volumetric lighting, rich cinematic shadows, and a stunning glassmorphism style. It should look like a highly polished Apple or Stripe product marketing asset. CRITICAL: Ensure hyper-detailed textures, vibrant but elegant colors, and absolute visual perfection. No text.";
+            // Aesthetic enforcement (Clean, modern flat 2D graphics)
+            const stylePrefix = "A beautifully clean, modern, flat 2D vector graphic illustration of";
+            const styleSuffix = ". The aesthetic is premium corporate minimalist, similar to Stripe or Duolingo marketing assets. Use the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Solid colors, crisp clean lines, no shading, strictly flat 2D graphic design style. CRITICAL: Do not make it photorealistic or 3D. It must look like a high-end vector illustration. No text.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
             // 2. Generate Image via Pollinations.ai (Free, reliable, no API key required)
