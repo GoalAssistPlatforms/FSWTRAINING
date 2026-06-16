@@ -324,7 +324,7 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                                             <div style="font-size: 0.85rem; font-weight: 600; color: ${idx === 0 ? 'white' : 'var(--text-muted)'}; margin-bottom: 0.5rem;">${track.title || `Slide ${idx + 1}`}</div>
                                             <audio class="track-audio" controls src="${track.url}" preload="metadata" style="width: 100%; height: 28px; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.9; outline: none;"></audio>
                                             <div class="next-prompt fade-in" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; color: #10b981; font-weight: bold; text-align: center; background: rgba(16, 185, 129, 0.15); padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
-                                                Advance slide first, then click Play ▶
+                                                Advance slide ➔ Play ▶
                                             </div>
                                         </div>
                                     `).join('');
