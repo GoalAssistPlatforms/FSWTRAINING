@@ -269,6 +269,19 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                             allow="fullscreen; autoplay"
                             allowfullscreen>
                         </iframe>
+                        <div id="advance-banner" class="fade-in" style="display: none; position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%); background: rgba(16, 185, 129, 0.95); color: white; padding: 1rem 2.5rem; border-radius: 50px; font-weight: 600; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.5); z-index: 100; cursor: pointer; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s;" onmouseenter="this.style.transform='translateX(-50%) scale(1.05)'; this.style.background='rgba(16, 185, 129, 1)';" onmouseleave="this.style.transform='translateX(-50%) scale(1)'; this.style.background='rgba(16, 185, 129, 0.95)';">
+                            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; opacity: 0.9;">
+                                    <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">1</div>
+                                    <span>Advance slide</span>
+                                </div>
+                                <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.3);"></div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: white;">
+                                    <div style="width: 28px; height: 28px; border-radius: 50%; background: white; color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; margin-right: 0.25rem;">▶</div>
+                                    <span style="font-size: 1.1rem;">Play Next Audio</span>
+                                </div>
+                            </div>
+                        </div>
                      </div>
                 ` : currentModule.slides_url ? `
                      <iframe src="${currentModule.slides_url}" style="width: 100%; height: 100%; border: none;"></iframe>
@@ -1217,6 +1230,9 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                 item.style.background = 'rgba(255,255,255,0.1)';
                 item.style.borderColor = 'rgba(255,255,255,0.2)';
                 item.querySelector('div').style.color = 'white';
+                
+                const advanceBanner = document.getElementById('advance-banner');
+                if (advanceBanner) advanceBanner.style.display = 'none';
             });
 
             audioEl.addEventListener('ended', () => {
@@ -1229,6 +1245,16 @@ export const renderCoursePlayer = (course, user, options = {}) => {
                     nextItem.style.background = 'rgba(16, 185, 129, 0.1)'; // subtle green highlight
                     nextItem.style.borderColor = 'rgba(16, 185, 129, 0.3)';
                     nextItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    
+                    const advanceBanner = document.getElementById('advance-banner');
+                    if (advanceBanner) {
+                        advanceBanner.style.display = 'flex';
+                        advanceBanner.onclick = () => {
+                            advanceBanner.style.display = 'none';
+                            const nextAudio = nextItem.querySelector('audio');
+                            if (nextAudio) nextAudio.play();
+                        };
+                    }
                 } else {
                     // All audio finished, switch to reading mode
                     const grid = document.querySelector('.cp-grid');
