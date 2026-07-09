@@ -8,7 +8,7 @@ export const renderFeedbackModal = () => {
             <!-- Modal Header with Tab Navigation -->
             <div style="padding: 1.5rem; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; color: white; font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;"><span>💬</span> FSW Feedback Hub</h3>
+                    <h3 style="margin: 0; color: white; font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6; vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> FSW Feedback Hub</h3>
                     <button id="close-feedback-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; padding: 0; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
                 </div>
                 
@@ -27,17 +27,17 @@ export const renderFeedbackModal = () => {
                     <label style="color: white; display: block; margin-bottom: 1rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; border-left: 2px solid var(--primary); padding-left: 0.6rem;">Select Feedback Type</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
                         <button class="feedback-type-btn" data-type="positive" style="background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(255,255,255,0.1); padding: 1.25rem 0.5rem; border-radius: 12px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; font-weight: bold; transition: all 0.2s;">
-                            <span style="font-size: 1.8rem;">⭐</span>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.25rem;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             <span style="font-size: 0.8rem;">Positive / Testimonial</span>
                         </button>
                         
                         <button class="feedback-type-btn active" data-type="negative" style="background: rgba(59, 130, 246, 0.05); border: 2px solid #3b82f6; padding: 1.25rem 0.5rem; border-radius: 12px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; font-weight: bold; transition: all 0.2s; box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);">
-                            <span style="font-size: 1.8rem;">💡</span>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.25rem;"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .5 2.5 1.5 3.5.7.8 1.3 1.5 1.5 2.5"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
                             <span style="font-size: 0.8rem;">Product Improvement</span>
                         </button>
                         
                         <button class="feedback-type-btn" data-type="urgent" style="background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(255,255,255,0.1); padding: 1.25rem 0.5rem; border-radius: 12px; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; font-weight: bold; transition: all 0.2s;">
-                            <span style="font-size: 1.8rem;">🚨</span>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.25rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             <span style="font-size: 0.8rem;">Urgent System Error</span>
                         </button>
                     </div>
@@ -53,8 +53,8 @@ export const renderFeedbackModal = () => {
                 <div>
                     <label style="color: white; display: block; margin-bottom: 1rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; border-left: 2px solid var(--primary); padding-left: 0.6rem;">Attach Screenshot (Optional)</label>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <div id="fb-screenshot-zone" style="flex: 1; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; padding: 1.2rem; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(0,0,0,0.3);" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(0,0,0,0.45)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'; this.style.background='rgba(0,0,0,0.3)';">
-                            <span style="font-size: 1.2rem; margin-right: 0.5rem;">📸</span>
+                        <div id="fb-screenshot-zone" style="flex: 1; border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; padding: 1.2rem; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; gap: 0.5rem;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(0,0,0,0.45)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'; this.style.background='rgba(0,0,0,0.3)';">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                             <span id="fb-screenshot-label" style="font-size: 0.85rem; color: var(--text-muted);">Choose an image or drag here...</span>
                             <input type="file" id="fb-screenshot-input" accept="image/*" style="display: none;">
                         </div>
@@ -282,8 +282,9 @@ export const initFeedbackEvents = () => {
             
             if (activeFeedbacks.length === 0) {
                 catalogueList.innerHTML = `
-                    <div style="text-align: center; color: var(--text-muted); padding: 3rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        📋 No resolved or active updates listed yet. Checked feedback will show up here.
+                    <div style="text-align: center; color: var(--text-muted); padding: 3rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        <span>No resolved or active updates listed yet. Checked feedback will show up here.</span>
                     </div>
                 `;
                 return;
@@ -292,15 +293,27 @@ export const initFeedbackEvents = () => {
             catalogueList.innerHTML = activeFeedbacks.map(f => {
                 const isPositive = f.type === 'positive';
                 const isUrgent = f.type === 'urgent';
-                let typeBadge = '💡 Improvement';
+                let typeBadge = '<span style="display:inline-flex; align-items:center; gap:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .5 2.5 1.5 3.5.7.8 1.3 1.5 1.5 2.5"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/></svg>Improvement</span>';
                 let badgeColor = '#3b82f6';
-                if (isPositive) { typeBadge = '⭐ Positive'; badgeColor = '#10b981'; }
-                if (isUrgent) { typeBadge = '🚨 Urgent Error'; badgeColor = '#ef4444'; }
+                if (isPositive) { 
+                    typeBadge = '<span style="display:inline-flex; align-items:center; gap:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Positive</span>'; 
+                    badgeColor = '#10b981'; 
+                }
+                if (isUrgent) { 
+                    typeBadge = '<span style="display:inline-flex; align-items:center; gap:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Urgent Error</span>'; 
+                    badgeColor = '#ef4444'; 
+                }
 
                 let statusBadge = 'Under Review';
                 let statusColor = '#3b82f6';
-                if (f.status === 'acting-on') { statusBadge = '🛠️ Acting On'; statusColor = '#f59e0b'; }
-                if (f.status === 'resolved') { statusBadge = '✓ Resolved'; statusColor = '#10b981'; }
+                if (f.status === 'acting-on') { 
+                    statusBadge = '<span style="display:inline-flex; align-items:center; gap:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Acting On</span>'; 
+                    statusColor = '#f59e0b'; 
+                }
+                if (f.status === 'resolved') { 
+                    statusBadge = '<span style="display:inline-flex; align-items:center; gap:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Resolved</span>'; 
+                    statusColor = '#10b981'; 
+                }
 
                 return `
                 <div class="glass" style="padding: 1.2rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 0.8rem; background: rgba(255,255,255,0.01);">

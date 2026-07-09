@@ -123,34 +123,13 @@ export async function searchCompanyContext(queryText, limit = 5) {
 /**
  * Helper: Uploads PDF, Extracts it, Embeds it, and saves to DB.
  */
-export async function processAndUploadGuide(file, title, description, tags = [], onProgress) {
+export async function processAndUploadGuide(file, title, description, tags = [], reviewIntervalMonths = 12, onProgress) {
     try {
         if (onProgress) onProgress("Uploading file to storage...");
         
         const { data: userAuth } = await supabase.auth.getUser();
         if (!userAuth.user) throw new Error("Not authenticated");
 
-        // Check limits if user is a manager
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
-        if (profile?.role === 'manager') {
-            const { getPlatformSettings, getBillingPeriodDates } = await import('./admin.js');
-            const settings = await getPlatformSettings();
-            if (settings) {
-                const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
-                if (dates) {
-                    const { count, error: countError } = await supabase
-                        .from('guide_documents')
-                        .select('*', { count: 'exact', head: true })
-                        .gte('created_at', dates.periodStart.toISOString());
-                        
-                    if (countError) throw countError;
-                    
-                    if (count >= settings.max_guides_per_period) {
-                        throw new Error(`Limit Reached: You have created ${count} guides in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
-                    }
-                }
-            }
-        }
 
         // 1. Upload to Supabase Storage (assuming a 'guides' bucket exists, if not we'll create it)
         const fileName = `${Date.now()}_${file.name}`;
@@ -174,6 +153,14 @@ export async function processAndUploadGuide(file, title, description, tags = [],
 
         // 3. Create document record
         if (onProgress) onProgress("Creating database record...");
+        
+        let nextReviewDate = null;
+        if (reviewIntervalMonths && reviewIntervalMonths > 0) {
+            const d = new Date();
+            d.setMonth(d.getMonth() + parseInt(reviewIntervalMonths));
+            nextReviewDate = d.toISOString();
+        }
+
         const { data: docData, error: docError } = await supabase
             .from('guide_documents')
             .insert({
@@ -181,6 +168,8 @@ export async function processAndUploadGuide(file, title, description, tags = [],
                 description,
                 file_url: fileUrl,
                 tags,
+                review_interval_months: reviewIntervalMonths,
+                next_review_date: nextReviewDate,
                 created_by: userAuth.user.id
             })
             .select()
@@ -229,15 +218,37 @@ export const getGuideUsageStats = async () => {
     const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
     if (!dates) return null;
 
-    const { count, error } = await supabase
-        .from('knowledge_base')
+    // 1. Count Document Guides (PDFs/Links)
+    const { count: docsCount, error: docsError } = await supabase
+        .from('guide_documents')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', dates.periodStart.toISOString());
         
-    if (error) throw error;
+    if (docsError) throw docsError;
+
+    // 2. Count Software Guides (timeline walkthroughs and simulations)
+    const { data: coursesData, error: coursesError } = await supabase
+        .from('courses')
+        .select('content_json')
+        .gte('created_at', dates.periodStart.toISOString());
+
+    if (coursesError) throw coursesError;
+
+    let coursesCount = 0;
+    if (coursesData) {
+        coursesData.forEach(c => {
+            let content = c.content_json;
+            if (typeof content === 'string') {
+                try { content = JSON.parse(content); } catch (e) {}
+            }
+            if (content?.is_system_simulation === true || content?.type === 'video_walkthrough') {
+                coursesCount++;
+            }
+        });
+    }
     
     return {
-        used: count || 0,
+        used: (docsCount || 0) + coursesCount,
         total: settings.max_guides_per_period,
         renewalDate: dates.nextRenewal
     };
@@ -246,34 +257,13 @@ export const getGuideUsageStats = async () => {
 /**
  * Helper: Fetches a URL via proxy, cleans HTML to extract text or metadata, and embeds it.
  */
-export async function processAndUploadWebLink(url, tags = [], onProgress) {
+export async function processAndUploadWebLink(url, tags = [], reviewIntervalMonths = 12, onProgress) {
     try {
         if (onProgress) onProgress("Fetching content from link...");
         
         const { data: userAuth } = await supabase.auth.getUser();
         if (!userAuth.user) throw new Error("Not authenticated");
 
-        // Check limits if user is a manager
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
-        if (profile?.role === 'manager') {
-            const { getPlatformSettings, getBillingPeriodDates } = await import('./admin.js');
-            const settings = await getPlatformSettings();
-            if (settings) {
-                const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
-                if (dates) {
-                    const { count, error: countError } = await supabase
-                        .from('guide_documents')
-                        .select('*', { count: 'exact', head: true })
-                        .gte('created_at', dates.periodStart.toISOString());
-                        
-                    if (countError) throw countError;
-                    
-                    if (count >= settings.max_guides_per_period) {
-                        throw new Error(`Limit Reached: You have created ${count} guides in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
-                    }
-                }
-            }
-        }
 
         // --- Deduplication Check ---
         // If the URL already exists in the database, safely skip it.
@@ -336,6 +326,14 @@ export async function processAndUploadWebLink(url, tags = [], onProgress) {
         }
 
         if (onProgress) onProgress("Creating database record...");
+        
+        let nextReviewDate = null;
+        if (reviewIntervalMonths && reviewIntervalMonths > 0) {
+            const d = new Date();
+            d.setMonth(d.getMonth() + parseInt(reviewIntervalMonths));
+            nextReviewDate = d.toISOString();
+        }
+
         const { data: docData, error: docError } = await supabase
             .from('guide_documents')
             .insert({
@@ -343,6 +341,8 @@ export async function processAndUploadWebLink(url, tags = [], onProgress) {
                 description,
                 file_url: url, // For generic links, file_url holds the http link
                 tags,
+                review_interval_months: reviewIntervalMonths,
+                next_review_date: nextReviewDate,
                 created_by: userAuth.user.id
             })
             .select()
@@ -404,13 +404,16 @@ export async function chatWithGuides(userQuestion, conversationHistory = []) {
     // 2.5 Query all Interactive Guides (we inject these fully since they are short step-by-steps)
     const { data: rawCourses } = await supabase
         .from('courses')
-        .select('title, description, content_json')
+        .select('id, title, description, content_json')
         .eq('status', 'live');
         
     let interactiveGuidesContext = '';
     let interactiveSources = [];
     if (rawCourses) {
-        const interactiveGuides = rawCourses.filter(c => c.content_json?.is_system_simulation === true);
+        const interactiveGuides = rawCourses.filter(c => 
+            c.content_json?.is_system_simulation === true || 
+            c.content_json?.type === 'video_walkthrough'
+        );
         interactiveGuides.forEach((g, idx) => {
             interactiveSources.push({ 
                 document_title: `Interactive Guide: ${g.title}`,
@@ -419,10 +422,12 @@ export async function chatWithGuides(userQuestion, conversationHistory = []) {
             });
             interactiveGuidesContext += `[Source Interactive Guide: ${g.title}]\n`;
             interactiveGuidesContext += `Description: ${g.description || 'Step-by-step guide'}\n`;
-            if (g.content_json.slides) {
+            
+            const stepsList = g.content_json?.steps || g.content_json?.slides || [];
+            if (stepsList.length > 0) {
                 interactiveGuidesContext += `Steps:\n`;
-                g.content_json.slides.forEach((slide, sIdx) => {
-                    interactiveGuidesContext += `Step ${sIdx + 1}: ${slide.instruction || ''} - ${slide.teachingText || ''}\n`;
+                stepsList.forEach((step, sIdx) => {
+                    interactiveGuidesContext += `Step ${sIdx + 1}: ${step.instruction || ''} - ${step.teachingText || ''}\n`;
                 });
             }
             interactiveGuidesContext += `\n`;
@@ -519,4 +524,92 @@ export async function fetchSystemTags() {
     }
 
     return Array.from(allTags).sort();
+}
+
+export async function updateGuideMetadata(id, updates) {
+    if (updates.review_interval_months !== undefined && updates.next_review_date === undefined) {
+        if (updates.review_interval_months) {
+            const d = new Date();
+            d.setMonth(d.getMonth() + parseInt(updates.review_interval_months));
+            updates.next_review_date = d.toISOString();
+        } else {
+            updates.next_review_date = null;
+        }
+    }
+    const { data, error } = await supabase
+        .from('guide_documents')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function getOverdueContent() {
+    const nowStr = new Date().toISOString();
+    const [guidesRes, coursesRes] = await Promise.all([
+        supabase.from('guide_documents').select('id, title, file_url, next_review_date, review_interval_months').lt('next_review_date', nowStr),
+        supabase.from('courses').select('id, title, next_review_date, review_interval_months, status, content_json').lt('next_review_date', nowStr).neq('status', 'archived')
+    ]);
+
+    const overdueItems = [];
+    if (guidesRes.data) {
+        guidesRes.data.forEach(g => {
+            const isLink = g.file_url && !g.file_url.includes('/storage/');
+            overdueItems.push({
+                id: g.id,
+                title: g.title,
+                type: isLink ? 'link' : 'document',
+                next_review_date: g.next_review_date,
+                review_interval_months: g.review_interval_months
+            });
+        });
+    }
+
+    if (coursesRes.data) {
+        coursesRes.data.forEach(c => {
+            let isGuide = false;
+            try {
+                const content = typeof c.content_json === 'string' ? JSON.parse(c.content_json) : c.content_json;
+                isGuide = content?.is_system_simulation === true || content?.type === 'video_walkthrough';
+            } catch(e) {}
+            
+            overdueItems.push({
+                id: c.id,
+                title: c.title,
+                type: isGuide ? 'guide' : 'course',
+                next_review_date: c.next_review_date,
+                review_interval_months: c.review_interval_months
+            });
+        });
+    }
+
+    return overdueItems;
+}
+
+export async function snoozeContentReview(type, id, intervalMonths) {
+    const d = new Date();
+    d.setMonth(d.getMonth() + parseInt(intervalMonths || 12));
+    const nextReviewDate = d.toISOString();
+
+    if (type === 'course' || type === 'guide') {
+        const { error } = await supabase
+            .from('courses')
+            .update({
+                next_review_date: nextReviewDate,
+                review_interval_months: intervalMonths || 12
+            })
+            .eq('id', id);
+        if (error) throw error;
+    } else {
+        const { error } = await supabase
+            .from('guide_documents')
+            .update({
+                next_review_date: nextReviewDate,
+                review_interval_months: intervalMonths || 12
+            })
+            .eq('id', id);
+        if (error) throw error;
+    }
 }

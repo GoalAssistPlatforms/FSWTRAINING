@@ -5,15 +5,6 @@ import { fswAlert, fswConfirm } from '../utils/dialog';
 
 export const renderGuides = (user, stats) => {
     let statsHtml = '';
-    if (stats && user.role === 'manager') {
-        const renewalDateStr = stats.renewalDate ? stats.renewalDate.toLocaleDateString() : 'N/A';
-        statsHtml = `
-            <div style="font-size: 0.8rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); padding: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--primary); font-weight: bold;">${stats.used} / ${stats.total} Guides Used</span>
-                <span style="color: var(--text-muted);">Renews: ${renewalDateStr}</span>
-            </div>
-        `;
-    }
 
     return `
     <div class="guides-container fade-in" style="display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 180px);">
@@ -45,16 +36,20 @@ export const renderGuides = (user, stats) => {
                     <div style="font-size: 1.2rem; margin-bottom: 0.2rem;">🔗</div>
                     <div style="font-size: 0.7rem; color: #4285f4;">Add Link</div>
                 </div>
-
             </div>
             ${statsHtml}
             <div id="upload-progress" style="margin-top: 0; margin-bottom: 1rem; font-size: 0.8rem; color: var(--primary); font-weight: bold; display: none; text-align: center;"></div>
+            
+            <button id="manage-content-btn" class="btn-ghost" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid var(--glass-border); padding: 0.6rem; border-radius: var(--radius-md); font-size: 0.8rem; cursor: pointer; color: white; margin-bottom: 2rem; margin-top: 0.8rem; transition: background-color 0.2s;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                Manage Curation & Reviews
+            </button>
             ` : ''}
 
-            <!-- Interactive Guides -->
-            <h4 onclick="const l = document.getElementById('interactive-guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Interactive Software Guides <span style="float: right; font-size: 0.7rem;">▶</span></h4>
+            <!-- Software Guides -->
+            <h4 onclick="const l = document.getElementById('interactive-guides-list'); l.style.display = l.style.display==='none' ? 'flex' : 'none'; this.querySelector('span').innerText = l.style.display==='none' ? '▶' : '▼';" style="cursor: pointer; color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Software Guides <span style="float: right; font-size: 0.7rem;">▶</span></h4>
             <div id="interactive-guides-list" style="display: none; flex-direction: column; gap: 0.8rem; margin-bottom: 2rem;">
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading interactive guides...</div>
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">Loading software guides...</div>
             </div>
 
             <!-- Document Guides -->
@@ -70,31 +65,90 @@ export const renderGuides = (user, stats) => {
             </div>
         </div>
 
-        <!-- Center: Search & Chat (RAG AI) - Gemini Style -->
-        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; padding: 2rem 2rem 5rem 2rem; height: 100%; box-sizing: border-box;">
+        <!-- Center: Main Panel (Hides Chat / Shows Manager Dashboard) -->
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; padding: 2rem 2rem 5rem 2rem; height: 100%; box-sizing: border-box; overflow-y: auto;">
             
-            <div id="chat-history" style="width: 100%; max-width: 800px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding-bottom: 2rem; padding-top: 1rem;">
-                <div id="chat-greeting" style="text-align: left; margin-top: 3rem; margin-bottom: 2.5rem; padding-left: 1rem; display: flex; flex-direction: column; align-items: flex-start;">
-                    <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
-                        <img src="https://cjtevckufmaygyhnbtup.supabase.co/storage/v1/object/public/avatars/4313ce56-d8bc-4041-80e6-cb84938a8ac3_1781602741917.png" alt="Helen" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2; transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-                        <img src="https://cjtevckufmaygyhnbtup.supabase.co/storage/v1/object/public/avatars/8ca7a52e-629b-44d5-8426-10dccf1093b8_1781603778024.png" alt="Lindsay" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.4); margin-left: -20px; z-index: 1; transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='scale(1.08)'; this.style.zIndex='3';" onmouseout="this.style.transform='scale(1)'; this.style.zIndex='1';">
+            <!-- Chat View -->
+            <div id="guides-chat-view" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+                <!-- Review Alert Banner (Manager Only) -->
+                ${user.role === 'manager' ? `
+                <div id="curation-alert-banner" class="glass fade-in" style="display: none; width: 100%; max-width: 800px; padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.1); align-items: center; justify-content: space-between; margin-bottom: 1rem; box-sizing: border-box; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: #fca5a5; font-size: 0.9rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>
+                        <span id="curation-alert-text">Training materials require review.</span>
                     </div>
-                    <h1 style="font-size: 3.5rem; margin: 0; background: linear-gradient(to right, #4285f4, #d96570, #9b72cb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; letter-spacing: -1px;">Ask Helen & Lindsay</h1>
-                    <p style="font-size: 1.2rem; color: #8a939e; margin: 0.75rem 0 0 0; line-height: 1.5; max-width: 650px;">
-                        Got questions about HR, WFH policies, booking holidays, or company guides? Ask Helen & Lindsay here for instant answers based on official FSW guidelines.
-                    </p>
+                    <button id="alert-audit-btn" class="btn-ghost" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border: 1px solid rgba(239, 68, 68, 0.4); color: white;">Audit Items</button>
+                </div>
+                ` : ''}
+
+                <div id="chat-history" style="width: 100%; max-width: 800px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding-bottom: 2rem; padding-top: 1rem;">
+                    <div id="chat-greeting" style="text-align: left; margin-top: 3rem; margin-bottom: 2.5rem; padding-left: 1rem; display: flex; flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                            <img src="https://cjtevckufmaygyhnbtup.supabase.co/storage/v1/object/public/avatars/4313ce56-d8bc-4041-80e6-cb84938a8ac3_1781602741917.png" alt="Helen" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2; transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+                            <img src="https://cjtevckufmaygyhnbtup.supabase.co/storage/v1/object/public/avatars/8ca7a52e-629b-44d5-8426-10dccf1093b8_1781603778024.png" alt="Lindsay" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.4); margin-left: -20px; z-index: 1; transition: transform 0.3s; cursor: pointer;" onmouseover="this.style.transform='scale(1.08)'; this.style.zIndex='3';" onmouseout="this.style.transform='scale(1)'; this.style.zIndex='1';">
+                        </div>
+                        <h1 style="font-size: 3.5rem; margin: 0; background: linear-gradient(to right, #4285f4, #d96570, #9b72cb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; letter-spacing: -1px;">Ask Helen & Lindsay</h1>
+                        <p style="font-size: 1.2rem; color: #8a939e; margin: 0.75rem 0 0 0; line-height: 1.5; max-width: 650px;">
+                            Got questions about HR, WFH policies, booking holidays, or company guides? Ask Helen & Lindsay here for instant answers based on official FSW guidelines.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="width: 100%; max-width: 800px; position: relative; margin-top: auto; box-sizing: border-box;">
+                    <input type="text" id="chat-input" placeholder="Ask Helen & Lindsay..." style="width: 100%; padding: 1.2rem 4rem 1.2rem 2rem; background: rgba(30, 31, 32, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 35px; color: white; font-size: 1.1rem; outline: none; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: background 0.3s, border-color 0.3s;" onfocus="this.style.background='rgba(40,41,42,0.9)'; this.style.borderColor='rgba(255,255,255,0.3)';" onblur="this.style.background='rgba(30,31,32,0.8)'; this.style.borderColor='rgba(255,255,255,0.1)';">
+                    <button id="send-chat-btn" style="position: absolute; right: 8px; top: 8px; bottom: 8px; padding: 0 1rem; background: white; border: none; border-radius: 30px; color: black; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem; width: 100%; max-width: 800px;" id="chat-suggestions">
+                    <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #4285f4">✏️</span> Summarize the WFH Policy</button>
+                    <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #fbbc04">💡</span> How do I request PTO?</button>
+                    <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #34a853">📊</span> How to create a Sales Order</button>
                 </div>
             </div>
 
-            <div style="width: 100%; max-width: 800px; position: relative; margin-top: auto;">
-                <input type="text" id="chat-input" placeholder="Ask Helen & Lindsay..." style="width: 100%; padding: 1.2rem 4rem 1.2rem 2rem; background: rgba(30, 31, 32, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 35px; color: white; font-size: 1.1rem; outline: none; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: background 0.3s, border-color 0.3s;" onfocus="this.style.background='rgba(40,41,42,0.9)'; this.style.borderColor='rgba(255,255,255,0.3)';" onblur="this.style.background='rgba(30,31,32,0.8)'; this.style.borderColor='rgba(255,255,255,0.1)';">
-                <button id="send-chat-btn" style="position: absolute; right: 8px; top: 8px; bottom: 8px; padding: 0 1rem; background: white; border: none; border-radius: 30px; color: black; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
-            </div>
-            
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem; width: 100%; max-width: 800px;" id="chat-suggestions">
-                <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #4285f4">✏️</span> Summarize the WFH Policy</button>
-                <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #fbbc04">💡</span> How do I request PTO?</button>
-                <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #34a853">📊</span> How to create a Sales Order</button>
+            <!-- Content Manager Panel -->
+            <div id="guides-manager-view" style="display: none; width: 100%; max-width: 900px; height: 100%; flex-direction: column; gap: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; width: 100%;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.8rem; color: white; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                            Curation & Review Manager
+                        </h2>
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Audit, update review intervals, and snooze or prune training materials.</p>
+                    </div>
+                    <button id="close-manager-view-btn" class="btn-ghost" style="border: 1px solid var(--glass-border); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+                        Back to Chat
+                    </button>
+                </div>
+
+                <!-- Toolbar/Filters -->
+                <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); gap: 1rem; width: 100%; box-sizing: border-box;">
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; flex: 1;">
+                        <div style="position: relative; width: 260px; flex-shrink: 0; box-sizing: border-box;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="curation-search" placeholder="Search materials..." style="box-sizing: border-box; width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                        </div>
+                        <select id="curation-type-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; cursor: pointer;">
+                            <option value="all">All Types</option>
+                            <option value="course">Courses</option>
+                            <option value="guide">Interactive Guides</option>
+                            <option value="document">Documents</option>
+                            <option value="link">Web Links</option>
+                        </select>
+                        <select id="curation-status-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; cursor: pointer;">
+                            <option value="all">All Review States</option>
+                            <option value="overdue">Review Overdue</option>
+                            <option value="soon">Reviewing Soon (<30d)</option>
+                            <option value="ok">Up to Date</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- List Grid -->
+                <div id="curation-items-list" style="display: flex; flex-direction: column; gap: 1rem; width: 100%; box-sizing: border-box;">
+                    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading curation items...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -116,14 +170,22 @@ export const renderGuides = (user, stats) => {
             <h3 style="margin-top: 0; color: white;">Upload Document Guide</h3>
             
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Document Name</label>
-            <input type="text" id="upload-title" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+            <input type="text" id="upload-title" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
             
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Description</label>
-            <input type="text" id="upload-desc" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+            <input type="text" id="upload-desc" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
 
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Tags (comma separated)</label>
-            <input type="text" id="upload-tags" list="upload-tags-list" placeholder="e.g. Policies, HR" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+            <input type="text" id="upload-tags" list="upload-tags-list" placeholder="e.g. Policies, HR" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
             <datalist id="upload-tags-list"></datalist>
+
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Review Cycle</label>
+            <select id="upload-review-interval" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1.5rem; outline: none; box-sizing: border-box; cursor: pointer;">
+                <option value="12">12 Months (Recommended)</option>
+                <option value="6">6 Months</option>
+                <option value="3">3 Months</option>
+                <option value="0">No Review Required</option>
+            </select>
 
             <div style="display: flex; gap: 1rem; justify-content: space-between;">
                 <button id="cancel-upload-btn" class="btn-ghost" style="flex: 1;">Cancel</button>
@@ -138,10 +200,18 @@ export const renderGuides = (user, stats) => {
             <h3 style="margin-top: 0; color: white;">Add Web Resource</h3>
             
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">URLs (Enter multiple links separated by commas or new lines)</label>
-            <textarea id="link-url" placeholder="https://..." style="width: 100%; height: 100px; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; resize: vertical;"></textarea>
+            <textarea id="link-url" placeholder="https://..." style="width: 100%; height: 100px; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
             
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Tags (comma separated)</label>
-            <input type="text" id="link-tags" placeholder="e.g. Training, External" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem;">
+            <input type="text" id="link-tags" placeholder="e.g. Training, External" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
+
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Review Cycle</label>
+            <select id="link-review-interval" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1.5rem; outline: none; box-sizing: border-box; cursor: pointer;">
+                <option value="12">12 Months (Recommended)</option>
+                <option value="6">6 Months</option>
+                <option value="3">3 Months</option>
+                <option value="0">No Review Required</option>
+            </select>
 
             <div style="display: flex; gap: 1rem; justify-content: space-between;">
                 <button id="cancel-link-btn" class="btn-ghost" style="flex: 1;">Cancel</button>
@@ -149,7 +219,35 @@ export const renderGuides = (user, stats) => {
             </div>
         </div>
     </div>
-    
+
+    <!-- Edit Curation Item Modal -->
+    <div id="edit-curation-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: var(--bg-dark); padding: 2rem; border-radius: var(--radius-lg); width: 400px; max-width: 90%; border: 1px solid var(--glass-border);">
+            <h3 style="margin-top: 0; color: white;" id="edit-curation-title-header">Edit Item Details</h3>
+            
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Title</label>
+            <input type="text" id="edit-curation-title" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
+            
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Description / Notes</label>
+            <input type="text" id="edit-curation-desc" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
+
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Tags (comma separated)</label>
+            <input type="text" id="edit-curation-tags" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
+
+            <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Review Cycle</label>
+            <select id="edit-curation-review-interval" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1.5rem; outline: none; box-sizing: border-box; cursor: pointer;">
+                <option value="12">12 Months (Recommended)</option>
+                <option value="6">6 Months</option>
+                <option value="3">3 Months</option>
+                <option value="0">No Review Required</option>
+            </select>
+
+            <div style="display: flex; gap: 1rem; justify-content: space-between;">
+                <button id="cancel-edit-curation-btn" class="btn-ghost" style="flex: 1;">Cancel</button>
+                <button id="confirm-edit-curation-btn" class="btn-primary" style="flex: 1;">Save Changes</button>
+            </div>
+        </div>
+    </div>
     
     <style>
         #upload-zone:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
@@ -260,11 +358,14 @@ export const initGuidesEvents = async (user) => {
         // LOAD INTERACTIVE GUIDES
         try {
             const courses = await getCourses(user.role);
-            const interactiveGuides = courses.filter(c => c.content_json?.is_system_simulation === true);
+            const interactiveGuides = courses.filter(c => 
+                c.content_json?.is_system_simulation === true || 
+                c.content_json?.type === 'video_walkthrough'
+            );
             const interactiveGuidesList = document.getElementById('interactive-guides-list');
             
             if (!interactiveGuides || interactiveGuides.length === 0) {
-                interactiveGuidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No interactive guides available.</div>`;
+                interactiveGuidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No software guides available.</div>`;
             } else {
                 interactiveGuidesList.innerHTML = interactiveGuides.map(g => `
                     <div class="guide-card clickable-interactive-card card-hover" data-course='${JSON.stringify(g).replace(/'/g, "&#39;")}' style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;">
@@ -398,8 +499,10 @@ export const initGuidesEvents = async (user) => {
             const desc = descInput.value.trim() || 'PDF Document';
             const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
             
+            const reviewInterval = parseInt(document.getElementById('upload-review-interval')?.value || '12');
+            
             try {
-                await processAndUploadGuide(pendingFile, title, desc, tags, (progressMsg) => {
+                await processAndUploadGuide(pendingFile, title, desc, tags, reviewInterval, (progressMsg) => {
                     progressDiv.innerText = progressMsg
                 })
                 
@@ -444,12 +547,14 @@ export const initGuidesEvents = async (user) => {
                 const urlsToProcess = rawUrls.split(/[\n,]+/).map(u => u.trim()).filter(u => u.length > 5 && u.startsWith('http'));
                 const tags = linkTagsInput.value.split(',').map(t => t.trim()).filter(t => t);
                 
+                const reviewInterval = parseInt(document.getElementById('link-review-interval')?.value || '12');
+                
                 try {
                     for (let i = 0; i < urlsToProcess.length; i++) {
                         const isBatch = urlsToProcess.length > 1;
                         if (isBatch) progressDiv.innerText = `Processing link ${i+1}/${urlsToProcess.length}...`;
                         
-                        await processAndUploadWebLink(urlsToProcess[i], tags, (progressMsg) => {
+                        await processAndUploadWebLink(urlsToProcess[i], tags, reviewInterval, (progressMsg) => {
                             if (!isBatch) progressDiv.innerText = progressMsg;
                         });
                     }
@@ -667,5 +772,439 @@ export const initGuidesEvents = async (user) => {
                 document.getElementById('pdf-iframe').src = '';
             }
         });
+    }
+
+    // ==========================================
+    // Curation and Review Manager Implementation
+    // ==========================================
+    if (user.role === 'manager') {
+        const manageBtn = document.getElementById('manage-content-btn');
+        const backToChatBtn = document.getElementById('close-manager-view-btn');
+        const chatView = document.getElementById('guides-chat-view');
+        const managerView = document.getElementById('guides-manager-view');
+        const curationSearch = document.getElementById('curation-search');
+        const curationTypeFilter = document.getElementById('curation-type-filter');
+        const curationStatusFilter = document.getElementById('curation-status-filter');
+        const curationItemsList = document.getElementById('curation-items-list');
+
+        const editModal = document.getElementById('edit-curation-modal');
+        const editTitleInput = document.getElementById('edit-curation-title');
+        const editDescInput = document.getElementById('edit-curation-desc');
+        const editTagsInput = document.getElementById('edit-curation-tags');
+        const editIntervalSelect = document.getElementById('edit-curation-review-interval');
+        const cancelEditBtn = document.getElementById('cancel-edit-curation-btn');
+        const confirmEditBtn = document.getElementById('confirm-edit-curation-btn');
+
+        let allCurationItems = [];
+        let currentlyEditingItem = null;
+
+        // Toggle Curation View
+        const showCurationView = async () => {
+            chatView.style.display = 'none';
+            managerView.style.display = 'flex';
+            if (manageBtn) {
+                manageBtn.classList.add('btn-primary');
+                manageBtn.classList.remove('btn-ghost');
+            }
+            await loadCurationItems();
+        };
+
+        const showChatView = () => {
+            managerView.style.display = 'none';
+            chatView.style.display = 'flex';
+            if (manageBtn) {
+                manageBtn.classList.add('btn-ghost');
+                manageBtn.classList.remove('btn-primary');
+            }
+        };
+
+        if (manageBtn) {
+            manageBtn.addEventListener('click', showCurationView);
+        }
+        if (backToChatBtn) {
+            backToChatBtn.addEventListener('click', showChatView);
+        }
+
+        // Fetch and load both courses and guides for curation
+        const loadCurationItems = async () => {
+            try {
+                curationItemsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading curation items...</div>';
+                
+                const [guides, courses] = await Promise.all([
+                    fetchAllGuides(),
+                    getCourses('manager')
+                ]);
+
+                allCurationItems = [];
+
+                // Format guides
+                guides.forEach(g => {
+                    const isLink = g.file_url && !g.file_url.includes('/storage/');
+                    allCurationItems.push({
+                        id: g.id,
+                        title: g.title,
+                        description: g.description,
+                        tags: g.tags || [],
+                        type: isLink ? 'link' : 'document',
+                        file_url: g.file_url,
+                        created_at: g.created_at,
+                        next_review_date: g.next_review_date,
+                        review_interval_months: g.review_interval_months
+                    });
+                });
+
+                // Format courses / system guides
+                courses.forEach(c => {
+                    let isGuide = false;
+                    try {
+                        const content = typeof c.content_json === 'string' ? JSON.parse(c.content_json) : c.content_json;
+                        isGuide = content?.is_system_simulation === true || content?.type === 'video_walkthrough';
+                    } catch(e) {}
+
+                    allCurationItems.push({
+                        id: c.id,
+                        title: c.title,
+                        description: c.description,
+                        tags: c.tags || [],
+                        type: isGuide ? 'guide' : 'course',
+                        created_at: c.created_at,
+                        next_review_date: c.next_review_date,
+                        review_interval_months: c.review_interval_months
+                    });
+                });
+
+                applyCurationFilters();
+                updateAlertBanner();
+
+            } catch (err) {
+                console.error("Curation loading failed", err);
+                curationItemsList.innerHTML = `<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading items: ${err.message}</div>`;
+            }
+        };
+
+        const updateAlertBanner = () => {
+            const now = new Date();
+            const overdueItems = allCurationItems.filter(item => item.next_review_date && new Date(item.next_review_date) < now);
+            const banner = document.getElementById('curation-alert-banner');
+            const alertText = document.getElementById('curation-alert-text');
+            
+            if (banner && alertText) {
+                if (overdueItems.length > 0) {
+                    banner.style.display = 'flex';
+                    alertText.innerHTML = `⚠️ <strong>${overdueItems.length} training item${overdueItems.length > 1 ? 's' : ''} require${overdueItems.length === 1 ? 's' : ''} review</strong> (out of date)`;
+                } else {
+                    banner.style.display = 'none';
+                }
+            }
+        };
+
+        const auditBtn = document.getElementById('alert-audit-btn');
+        if (auditBtn) {
+            auditBtn.addEventListener('click', () => {
+                showCurationView();
+                if (curationStatusFilter) {
+                    curationStatusFilter.value = 'overdue';
+                    applyCurationFilters();
+                }
+            });
+        }
+
+        const applyCurationFilters = () => {
+            const query = curationSearch.value.toLowerCase().trim();
+            const typeFilter = curationTypeFilter.value;
+            const statusFilter = curationStatusFilter.value;
+            const now = new Date();
+
+            const filtered = allCurationItems.filter(item => {
+                // Search match
+                const matchQuery = item.title.toLowerCase().includes(query) || 
+                                   (item.description && item.description.toLowerCase().includes(query)) ||
+                                   item.tags.some(t => t.toLowerCase().includes(query));
+                if (!matchQuery) return false;
+
+                // Type match
+                if (typeFilter !== 'all' && item.type !== typeFilter) return false;
+
+                // Status match
+                if (statusFilter === 'overdue') {
+                    return item.next_review_date && new Date(item.next_review_date) < now;
+                } else if (statusFilter === 'soon') {
+                    if (!item.next_review_date) return false;
+                    const diffTime = new Date(item.next_review_date) - now;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays >= 0 && diffDays <= 30;
+                } else if (statusFilter === 'ok') {
+                    return !item.next_review_date || new Date(item.next_review_date) >= now;
+                }
+
+                return true;
+            });
+
+            renderCurationGrid(filtered);
+        };
+
+        curationSearch.addEventListener('input', applyCurationFilters);
+        curationTypeFilter.addEventListener('change', applyCurationFilters);
+        curationStatusFilter.addEventListener('change', applyCurationFilters);
+
+        const renderCurationGrid = (items) => {
+            if (items.length === 0) {
+                curationItemsList.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-muted); background: rgba(255,255,255,0.01); border-radius: var(--radius-lg); border: 1px dashed var(--glass-border);">No matching training materials found.</div>';
+                return;
+            }
+
+            const now = new Date();
+
+            curationItemsList.innerHTML = items.map(item => {
+                let iconBg = 'rgba(66, 133, 244, 0.1)';
+                let iconColor = '#4285f4';
+                let iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>'; // Book
+                let typeName = 'Course';
+
+                if (item.type === 'guide') {
+                    iconBg = 'rgba(16, 185, 129, 0.1)';
+                    iconColor = '#10b981';
+                    iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>'; // Monitor
+                    typeName = 'Interactive Guide';
+                } else if (item.type === 'document') {
+                    iconBg = 'rgba(239, 68, 68, 0.1)';
+                    iconColor = '#ef4444';
+                    iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>'; // PDF file
+                    typeName = 'PDF Document';
+                } else if (item.type === 'link') {
+                    iconBg = 'rgba(245, 158, 11, 0.1)';
+                    iconColor = '#f59e0b';
+                    iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'; // Link
+                    typeName = 'Web Link';
+                }
+
+                // Review Status badge
+                let statusBadge = `<span style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">Up to Date</span>`;
+                let isOverdue = false;
+                let isSoon = false;
+                let dateColor = 'white';
+
+                if (item.next_review_date) {
+                    const reviewDate = new Date(item.next_review_date);
+                    if (reviewDate < now) {
+                        statusBadge = `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">Review Overdue</span>`;
+                        isOverdue = true;
+                        dateColor = '#ef4444';
+                    } else {
+                        const diffTime = reviewDate - now;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays <= 30) {
+                            statusBadge = `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">Review Soon</span>`;
+                            isSoon = true;
+                            dateColor = '#f59e0b';
+                        }
+                    }
+                }
+
+                const reviewDateText = item.next_review_date ? new Date(item.next_review_date).toLocaleDateString() : 'Never';
+
+                return `
+                <div class="glass curation-card" style="padding: 1.2rem; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 1rem; box-sizing: border-box; background: rgba(0,0,0,0.15);">
+                    <!-- Top Row: Icon, Title, Type, Status Badge -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                        <div style="display: flex; gap: 0.8rem; align-items: center;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: ${iconBg}; display: flex; align-items: center; justify-content: center; color: ${iconColor}; font-size: 1.2rem;">
+                                ${iconSvg}
+                            </div>
+                            <div>
+                                <div style="font-weight: bold; font-size: 1rem; color: white;">${item.title}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.5rem; align-items: center; margin-top: 0.2rem;">
+                                    <span style="background: rgba(255,255,255,0.05); padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 500; font-size: 0.7rem; text-transform: uppercase;">${typeName}</span>
+                                    &bull;
+                                    <span>Added: ${new Date(item.created_at).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;">
+                            ${statusBadge}
+                        </div>
+                    </div>
+                    
+                    <!-- Middle Row: Next Review Details -->
+                    <div style="background: rgba(0,0,0,0.25); padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="color: var(--text-muted);">
+                            Next Scheduled Review: <span style="color: ${dateColor}; font-weight: 600;">${reviewDateText}</span>
+                            ${item.review_interval_months ? ` <span style="font-size: 0.75rem;">(every ${item.review_interval_months} months)</span>` : ''}
+                        </div>
+                        ${isOverdue ? `<span style="color: #f87171; font-weight: 500; font-size: 0.75rem; display: flex; align-items: center; gap: 0.2rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Out of Date</span>` : ''}
+                    </div>
+
+                    <!-- Bottom Row: Unified Actions -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; gap: 0.5rem;">
+                            ${isOverdue || isSoon ? `
+                            <button class="btn-primary snooze-curation-btn" data-id="${item.id}" data-type="${item.type}" data-interval="${item.review_interval_months || 12}" style="padding: 0.4rem 1rem; font-size: 0.8rem; background: #10b981; border-color: #10b981; cursor: pointer; color: white;">
+                                Snooze (Extend ${item.review_interval_months || 12}m)
+                            </button>
+                            ` : ''}
+                            <button class="btn-ghost edit-curation-btn" data-id="${item.id}" data-type="${item.type}" data-title="${encodeURIComponent(item.title)}" data-desc="${encodeURIComponent(item.description || '')}" data-tags="${encodeURIComponent(item.tags ? item.tags.join(', ') : '')}" data-interval="${item.review_interval_months || 12}" style="padding: 0.4rem 1rem; font-size: 0.8rem; border: 1px solid var(--glass-border); cursor: pointer; color: white;">
+                                Edit Details
+                            </button>
+                        </div>
+                        <button class="btn-ghost delete-curation-btn" data-id="${item.id}" data-type="${item.type}" data-title="${encodeURIComponent(item.title)}" style="padding: 0.4rem 1rem; font-size: 0.8rem; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); cursor: pointer;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            // Attach listeners to snooze, edit, delete
+            curationItemsList.querySelectorAll('.snooze-curation-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = btn.dataset.id;
+                    const type = btn.dataset.type;
+                    const interval = btn.dataset.interval || 12;
+
+                    try {
+                        btn.disabled = true;
+                        btn.innerText = 'Snoozing...';
+                        const { snoozeContentReview } = await import('../api/guides.js');
+                        await snoozeContentReview(type, id, interval);
+                        await loadCurationItems();
+                        await loadGuides(); // Reload sidebar accordion
+                        await fswAlert('Content review successfully postponed!');
+                    } catch (err) {
+                        btn.disabled = false;
+                        btn.innerText = `Snooze (Extend ${interval}m)`;
+                        await fswAlert('Snooze failed: ' + err.message);
+                    }
+                });
+            });
+
+            curationItemsList.querySelectorAll('.edit-curation-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentlyEditingItem = {
+                        id: btn.dataset.id,
+                        type: btn.dataset.type
+                    };
+
+                    document.getElementById('edit-curation-title-header').innerText = `Edit ${btn.dataset.type.toUpperCase()}`;
+                    editTitleInput.value = decodeURIComponent(btn.dataset.title);
+                    editDescInput.value = decodeURIComponent(btn.dataset.desc);
+                    editTagsInput.value = decodeURIComponent(btn.dataset.tags);
+                    editIntervalSelect.value = btn.dataset.interval || '12';
+
+                    editModal.style.display = 'flex';
+                });
+            });
+
+            curationItemsList.querySelectorAll('.delete-curation-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    const type = btn.dataset.type;
+                    const title = decodeURIComponent(btn.dataset.title);
+
+                    const confirmDel = await fswConfirm(`Are you sure you want to delete this ${type}: "${title}"? This cannot be undone.`);
+                    if (!confirmDel) return;
+
+                    try {
+                        btn.disabled = true;
+                        if (type === 'course' || type === 'guide') {
+                            const { deleteCourse } = await import('../api/courses.js');
+                            await deleteCourse(id, 'manager');
+                        } else {
+                            const { deleteGuide } = await import('../api/guides.js');
+                            await deleteGuide(id);
+                        }
+                        await loadCurationItems();
+                        await loadGuides(); // Reload sidebar accordion
+                        await fswAlert('Item deleted successfully.');
+                    } catch (err) {
+                        btn.disabled = false;
+                        await fswAlert('Delete failed: ' + err.message);
+                    }
+                });
+            });
+        };
+
+        // Edit Modal Events
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener('click', () => {
+                editModal.style.display = 'none';
+                currentlyEditingItem = null;
+            });
+        }
+
+        if (confirmEditBtn) {
+            confirmEditBtn.addEventListener('click', async () => {
+                if (!currentlyEditingItem) return;
+                
+                const id = currentlyEditingItem.id;
+                const type = currentlyEditingItem.type;
+                const title = editTitleInput.value.trim();
+                const desc = editDescInput.value.trim();
+                const tags = editTagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+                const interval = parseInt(editIntervalSelect.value);
+
+                try {
+                    confirmEditBtn.disabled = true;
+                    confirmEditBtn.innerText = 'Saving...';
+
+                    if (type === 'course' || type === 'guide') {
+                        const { updateCourse } = await import('../api/courses.js');
+                        await updateCourse(id, {
+                            title,
+                            description: desc,
+                            tags,
+                            review_interval_months: interval
+                        });
+                    } else {
+                        const { updateGuideMetadata } = await import('../api/guides.js');
+                        await updateGuideMetadata(id, {
+                            title,
+                            description: desc,
+                            tags,
+                            review_interval_months: interval
+                        });
+                    }
+
+                    editModal.style.display = 'none';
+                    await loadCurationItems();
+                    await loadGuides(); // Reload sidebar accordion
+                    await fswAlert('Item details updated successfully!');
+                } catch (err) {
+                    await fswAlert('Update failed: ' + err.message);
+                } finally {
+                    confirmEditBtn.disabled = false;
+                    confirmEditBtn.innerText = 'Save Changes';
+                    currentlyEditingItem = null;
+                }
+            });
+        }
+        
+        // Initial setup to verify status and show banner
+        setTimeout(async () => {
+            try {
+                // Fetch alert banner details
+                const [guides, courses] = await Promise.all([
+                    fetchAllGuides(),
+                    getCourses('manager')
+                ]);
+                const now = new Date();
+                let overdueCount = 0;
+                
+                guides.forEach(g => {
+                    if (g.next_review_date && new Date(g.next_review_date) < now) overdueCount++;
+                });
+                courses.forEach(c => {
+                    if (c.next_review_date && new Date(c.next_review_date) < now) overdueCount++;
+                });
+
+                const banner = document.getElementById('curation-alert-banner');
+                const alertText = document.getElementById('curation-alert-text');
+                if (banner && alertText && overdueCount > 0) {
+                    banner.style.display = 'flex';
+                    alertText.innerHTML = `⚠️ <strong>${overdueCount} training item${overdueCount > 1 ? 's' : ''} require${overdueCount === 1 ? 's' : ''} review</strong> (out of date)`;
+                }
+            } catch(e) {
+                console.error("Alert initial check error", e);
+            }
+        }, 1000);
     }
 }

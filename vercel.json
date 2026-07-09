@@ -1,6 +1,7 @@
 {
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/api/gamma-assets/:path*", "destination": "https://assets.api.gamma.app/:path*" },
     { "source": "/((?!api/|@vite/|@id/|src/|node_modules/|assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
   ]
 }

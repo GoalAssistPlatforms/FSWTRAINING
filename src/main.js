@@ -144,7 +144,7 @@ export const renderMainLayout = async (user) => {
     
     <!-- Floating Feedback Button -->
     <button id="floating-feedback-btn" style="position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; align-items: center; gap: 0.5rem; background: rgba(18, 142, 205, 0.9); backdrop-filter: blur(10px); color: white; padding: 0.75rem 1.25rem; border-radius: 50px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 15px 35px rgba(18,142,205,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.3)';">
-        <span>💬</span> Feedback
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Feedback
     </button>
   `
 

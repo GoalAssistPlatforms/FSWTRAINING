@@ -13,7 +13,7 @@ BEGIN
   BEGIN
     SELECT max_users INTO max_allowed_users FROM public.platform_settings WHERE id = 1;
     -- Note: We exclude 'admin' from the limit logic if we want, but since admin is 1 user it's fine to just count all profiles.
-    IF max_allowed_users IS NOT NULL AND current_user_count >= max_allowed_users THEN
+    IF max_allowed_users IS NOT NULL AND max_allowed_users > 0 AND current_user_count >= max_allowed_users THEN
       RAISE EXCEPTION 'Platform user limit reached. Please contact your administrator.';
     END IF;
   EXCEPTION WHEN undefined_table THEN

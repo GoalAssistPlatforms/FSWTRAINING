@@ -35,16 +35,24 @@ export const getCourseUsageStats = async () => {
     const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
     if (!dates) return null;
 
-    const { count, error } = await supabase
+    const { data: courses, error } = await supabase
         .from('courses')
-        .select('*', { count: 'exact', head: true })
+        .select('content_json')
         .gte('created_at', dates.periodStart.toISOString())
         .neq('status', 'archived');
         
     if (error) throw error;
+
+    const actualCoursesCount = (courses || []).filter(c => {
+        let content = c.content_json;
+        if (typeof content === 'string') {
+            try { content = JSON.parse(content); } catch (e) {}
+        }
+        return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
+    }).length;
     
     return {
-        used: count || 0,
+        used: actualCoursesCount,
         total: settings.max_courses_per_period,
         renewalDate: dates.nextRenewal
     };
@@ -60,20 +68,35 @@ export const createCourse = async (courseData) => {
             if (settings) {
                 const dates = getBillingPeriodDates(settings.subscription_start_date, settings.renewal_period_months);
                 if (dates) {
-                    const { count, error: countError } = await supabase
+                    const { data: courses, error: countError } = await supabase
                         .from('courses')
-                        .select('*', { count: 'exact', head: true })
+                        .select('content_json')
                         .gte('created_at', dates.periodStart.toISOString())
                         .neq('status', 'archived');
                         
                     if (countError) throw countError;
+
+                    const actualCoursesCount = (courses || []).filter(c => {
+                        let content = c.content_json;
+                        if (typeof content === 'string') {
+                            try { content = JSON.parse(content); } catch (e) {}
+                        }
+                        return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
+                    }).length;
                     
-                    if (count >= settings.max_courses_per_period) {
-                        throw new Error(`Limit Reached: You have created ${count} courses in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
+                    if (settings.max_courses_per_period > 0 && actualCoursesCount >= settings.max_courses_per_period) {
+                        throw new Error(`Limit Reached: You have created ${actualCoursesCount} courses in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
                     }
                 }
             }
         }
+    }
+
+
+    if (courseData.review_interval_months && !courseData.next_review_date) {
+        const d = new Date();
+        d.setMonth(d.getMonth() + parseInt(courseData.review_interval_months));
+        courseData.next_review_date = d.toISOString();
     }
 
     const { data, error } = await supabase
@@ -86,6 +109,16 @@ export const createCourse = async (courseData) => {
 }
 
 export const updateCourse = async (id, updates) => {
+    if (updates.review_interval_months !== undefined && updates.next_review_date === undefined) {
+        if (updates.review_interval_months) {
+            const d = new Date();
+            d.setMonth(d.getMonth() + parseInt(updates.review_interval_months));
+            updates.next_review_date = d.toISOString();
+        } else {
+            updates.next_review_date = null;
+        }
+    }
+
     const { data, error } = await supabase
         .from('courses')
         .update(updates)
@@ -157,3 +190,40 @@ export const saveLessonProgress = async (userId, courseId, moduleIndex, lessonIn
         console.error('Error saving lesson progress:', e);
     }
 }
+
+export const saveExemptedLessons = async (userId, courseId, exemptedLessons, status = 'in-progress', certId = null, expiresAt = null) => {
+    try {
+        const { data: existing } = await supabase
+            .from('user_progress')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('course_id', courseId)
+            .maybeSingle();
+
+        const updates = {
+            status,
+            exempted_lessons: exemptedLessons
+        };
+
+        if (status === 'completed') {
+            updates.completed_at = new Date().toISOString();
+            updates.certificate_id = certId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2));
+            if (expiresAt) {
+                updates.expires_at = expiresAt;
+            }
+        }
+
+        if (existing) {
+            await supabase.from('user_progress').update(updates).eq('id', existing.id);
+        } else {
+            await supabase.from('user_progress').insert({
+                user_id: userId,
+                course_id: courseId,
+                ...updates
+            });
+        }
+    } catch (e) {
+        console.error('Error saving exempted lessons:', e);
+    }
+}
+

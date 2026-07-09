@@ -10,7 +10,10 @@ import { getCurrentUser } from '../api/auth'
 import { downloadCertificate } from '../utils/certificateGenerator'
 import { fetchPendingExtensions, resolveExtension, sendNudge } from '../api/notifications'
 import { fswAlert, fswConfirm, fswPrompt } from '../utils/dialog'
+import { getPacks, getPack, createPack, updatePack, deletePack, assignPack, bulkAssignPack, revokePackAssignment, getPackCompletionStats, getPackAssignments } from '../api/packs'
+import { fetchAllGuides } from '../api/guides.js'
 import * as pdfjsLib from 'pdfjs-dist'
+
 
 // Set worker source for pdf.js
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -28,14 +31,30 @@ export const renderManagerDashboard = (user) => {
 
       <!-- Courses View -->
       <div id="view-courses">
-        <div id="loading-courses" style="text-align: center; display: none;">Loading courses...</div>
-        <div id="course-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-          <!-- Create Course Card and Course Cards will go here -->
+        <div id="loading-courses" style="text-align: center; display: none;">Loading courses & packs...</div>
+        
+        <div style="margin-bottom: 2.5rem;">
+          <h2 style="margin: 0 0 1rem 0; font-size: 1.35rem; color: white; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Courses
+          </h2>
+          <div id="course-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+            <!-- Create Course Card and Course Cards will go here -->
+          </div>
+        </div>
+
+        <div style="margin-top: 3rem; margin-bottom: 1.5rem;">
+          <h2 style="margin: 0 0 1rem 0; font-size: 1.35rem; color: white; display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Learning Packs
+          </h2>
+          <div id="pack-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+            <!-- Create Pack Card and Pack Cards will go here -->
+          </div>
         </div>
       </div>
 
       <!-- Guides View -->
       <div id="view-guides" style="display: none;"></div>
+
 
       <!-- Team View (Unified Dashboard) -->
       <div id="view-team" style="display: none;">
@@ -64,16 +83,16 @@ export const renderManagerDashboard = (user) => {
 
 
         <!-- Unified Control Toolbar -->
-        <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05);">
-          <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 300px;">
-            <div style="position: relative; flex: 1; max-width: 400px;">
+        <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); gap: 1rem;">
+          <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <div style="position: relative; width: 260px; flex-shrink: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="text" id="user-search" placeholder="Search team by email..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; transition: border-color 0.2s;">
+              <input type="text" id="user-search" placeholder="Search team by email..." style="box-sizing: border-box; width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; transition: border-color 0.2s;">
             </div>
             
             <select id="user-status-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; margin-right: 0.5rem;">
                 <option value="all">All Members</option>
-                <option value="overdue">Has Overdue Courses</option>
+                <option value="overdue">Has Overdue Training</option>
                 <option value="in-progress">In Progress</option>
             </select>
             <select id="department-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
@@ -112,11 +131,11 @@ export const renderManagerDashboard = (user) => {
           <!-- Metrics injected here via JS -->
         </div>
 
-        <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05);">
-          <div style="display: flex; gap: 1rem; align-items: center; flex: 1; min-width: 300px;">
-            <div style="position: relative; flex: 1; max-width: 300px;">
+        <div class="glass" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); gap: 1rem;">
+          <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <div style="position: relative; width: 260px; flex-shrink: 0;">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="text" id="feedback-search" placeholder="Search by email or name..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+              <input type="text" id="feedback-search" placeholder="Search by email or name..." style="box-sizing: border-box; width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
             </div>
             <select id="feedback-type-filter" style="padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; margin-right: 0.5rem;">
                 <option value="all">All Types</option>
@@ -153,40 +172,60 @@ export const renderManagerDashboard = (user) => {
         color: rgba(255, 255, 255, 0.4);
         font-style: italic;
       }
+      #create-modal input:focus, #create-modal textarea:focus {
+        border-color: var(--primary) !important;
+        background: rgba(0,0,0,0.5) !important;
+      }
+      #create-modal label {
+        color: var(--text-muted);
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+      }
     </style>
-    <div id="create-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 550px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <h3 style="margin-top: 0; font-size: 1.5rem;">Create New Course</h3>
-      <p style="color: rgba(255, 255, 255, 0.95); margin-bottom: 1.5rem; line-height: 1.5; font-size: 1rem;">Fill out the details below and our AI will generate the course structure for you. The more detail you provide, the better the output!</p>
+    <div id="create-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2.2rem; border-radius: var(--radius-lg); z-index: 1000; width: 580px; box-shadow: 0 25px 60px rgba(0,0,0,0.65); background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(16px); box-sizing: border-box;">
+      <h3 style="margin-top: 0; font-size: 1.6rem; font-weight: bold; background: linear-gradient(to right, #ffffff, #d1d5db); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Create New Course</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; font-size: 0.9rem; margin-top: 0.25rem;">Fill out the details below and our AI will generate the course structure for you. The more detail you provide, the better the output!</p>
       
-      <div style="max-height: 50vh; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+      <div style="max-height: 45vh; overflow-y: auto; padding-right: 0.75rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; box-sizing: border-box;">
           <div>
-              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Course Title *</label>
-              <input type="text" id="course-title" placeholder="e.g. Managing Absence" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
+              <label>Course Title *</label>
+              <input type="text" id="course-title" placeholder="e.g. Managing Absence" style="box-sizing: border-box; width: 100%; padding: 0.8rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 0.95rem; outline: none; transition: border-color 0.2s, background 0.2s;" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin: 0.15rem 0; padding: 0.75rem 1rem; background: rgba(255,255,255,0.03); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); box-sizing: border-box;">
+              <input type="checkbox" id="course-allow-pretest" style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
+              <div>
+                  <label for="course-allow-pretest" style="color: white; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: block; margin: 0; text-transform: none; letter-spacing: 0;">Allow Diagnostic Pre-Test</label>
+                  <span style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.1rem; line-height: 1.3;">Users can skip modules they already know by passing pre-test questions.</span>
+              </div>
           </div>
           <div>
-              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Course Objective *</label>
-              <textarea id="course-objective" rows="2" placeholder="e.g. Train line managers on our absence protocols" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+              <label>Course Objective <span style="font-weight: normal; text-transform: none; font-size: 0.75rem; color: var(--text-muted); opacity: 0.85;">(*Required if no files attached)</span></label>
+              <textarea id="course-objective" rows="2" placeholder="e.g. Train line managers on our absence protocols" style="box-sizing: border-box; width: 100%; padding: 0.8rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 0.95rem; outline: none; resize: none; transition: border-color 0.2s, background 0.2s;"></textarea>
           </div>
           <div>
-              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Target Audience</label>
-              <input type="text" id="course-audience" placeholder="e.g. Newly promoted managers" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
+              <label>Target Audience</label>
+              <input type="text" id="course-audience" placeholder="e.g. Newly promoted managers" style="box-sizing: border-box; width: 100%; padding: 0.8rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 0.95rem; outline: none; transition: border-color 0.2s, background 0.2s;" />
           </div>
           <div>
-              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Mandatory Topics</label>
-              <textarea id="course-topics" rows="2" placeholder="e.g. You must cover short-term sickness, long-term sickness, and return-to-work interviews" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+              <label>Mandatory Topics</label>
+              <textarea id="course-topics" rows="2" placeholder="e.g. You must cover short-term sickness, long-term sickness, and return-to-work interviews" style="box-sizing: border-box; width: 100%; padding: 0.8rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 0.95rem; outline: none; resize: none; transition: border-color 0.2s, background 0.2s;"></textarea>
           </div>
           <div>
-              <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white; font-size: 0.95rem;">Scenarios / Activities</label>
-              <textarea id="course-scenarios" rows="2" placeholder="e.g. Please include a roleplay scenario where an employee goes AWOL for 3 days" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;"></textarea>
+              <label>Scenarios / Activities</label>
+              <textarea id="course-scenarios" rows="2" placeholder="e.g. Please include a roleplay scenario where an employee goes AWOL for 3 days" style="box-sizing: border-box; width: 100%; padding: 0.8rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 0.95rem; outline: none; resize: none; transition: border-color 0.2s, background 0.2s;"></textarea>
           </div>
       </div>
 
-      <div style="margin-bottom: 1rem;">
-        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Supporting Documents (PDF, TXT)</label>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;">
+        <label style="margin-bottom: 0.6rem;">Supporting Documents (PDF, TXT, MD)</label>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
           <input type="file" id="course-files" multiple accept=".pdf,.txt,.md" style="display: none;" />
-          <button id="upload-btn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.5rem 1rem;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+          <button id="upload-btn" class="btn-ghost" style="font-size: 0.8rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--glass-border); color: white; cursor: pointer; border-radius: var(--radius-md); transition: background-color 0.2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -209,11 +248,17 @@ export const renderManagerDashboard = (user) => {
 
     <!-- Assign Course Modal -->
     <div id="assign-modal" class="glass" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 1000; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <h3 style="margin-top: 0;" id="assign-modal-title">Assign Course</h3>
-      <p style="color: var(--text-muted);" id="assign-modal-desc">Select a course to assign.</p>
+      <h3 style="margin-top: 0;" id="assign-modal-title">Assign Course or Pack</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;" id="assign-modal-desc">Select a course or learning pack to assign.</p>
       
+      <!-- Type Toggle -->
+      <div id="assign-type-toggle-container" style="display: flex; background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 4px; margin-bottom: 1.25rem; border: 1px solid var(--glass-border);">
+        <button id="assign-type-course" type="button" style="flex: 1; padding: 0.5rem; border: none; border-radius: var(--radius-sm); background: var(--primary); color: white; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: all 0.2s;">Course</button>
+        <button id="assign-type-pack" type="button" style="flex: 1; padding: 0.5rem; border: none; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: all 0.2s;">Learning Pack</button>
+      </div>
+
       <div style="margin-bottom: 1rem;">
-        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Select Course</label>
+        <label id="assign-select-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Select Course</label>
         <select id="assign-course-select" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white;">
           <option value="">Loading courses...</option>
         </select>
@@ -231,7 +276,7 @@ export const renderManagerDashboard = (user) => {
         <input type="date" id="assign-due-date" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; color-scheme: dark;">
       </div>
 
-      <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <div id="assign-mandatory-container" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
         <input type="checkbox" id="assign-mandatory" style="width: 1.2rem; height: 1.2rem;">
         <label for="assign-mandatory" style="color: white; font-size: 0.9rem;">Mark as Mandatory</label>
       </div>
@@ -255,6 +300,8 @@ export const initManagerEvents = async (effectiveUser) => {
   const fileCount = document.getElementById('file-count')
   const fileList = document.getElementById('file-list')
   const courseList = document.getElementById('course-list')
+  const packList = document.getElementById('pack-list')
+
 
   const tabCourses = document.getElementById('tab-courses')
   const tabGuides = document.getElementById('tab-guides')
@@ -273,12 +320,24 @@ export const initManagerEvents = async (effectiveUser) => {
   const departmentFilter = document.getElementById('department-filter')
   const exportCsvBtn = document.getElementById('export-csv-btn')
 
+  // Analytics Declarations (Prevents ReferenceError crashes)
+  const analyticsSearch = document.getElementById('analytics-search')
+  const analyticsFilter = document.getElementById('analytics-filter')
+  const loadingAnalytics = document.getElementById('loading-analytics')
+  const analyticsMetrics = document.getElementById('analytics-metrics')
+  const analyticsTableBody = document.getElementById('analytics-table-body')
+
   const user = effectiveUser || await getCurrentUser()
 
   let currentTeamStats = [] // Store for filtering
   let currentPlatformSettings = null // Store for limit display
   let currentAllFeedback = [] // Store for filtering feedback
+  let currentAnalyticsStats = [] // Store for analytics filtering
   let selectedUserIds = new Set()
+  let currentPackAssignments = [] // Store pack assignments
+
+
+
 
   const updateBulkAssignBtnState = () => {
     const bulkAssignBtn = document.getElementById('bulk-assign-btn')
@@ -303,6 +362,119 @@ export const initManagerEvents = async (effectiveUser) => {
       if (e.target.checked) selectedUserIds.add(userId)
       else selectedUserIds.delete(userId)
       updateBulkAssignBtnState()
+    }
+  })
+
+  // Event Delegation for dynamically rendered course list buttons (Courses & Packs combined)
+  viewCourses?.addEventListener('click', async (e) => {
+    // 1. Create Course Card Click
+    if (e.target.closest('#create-course-card')) {
+      toggleModal(true)
+      return
+    }
+
+    // 2. Create Pack Card Click
+    if (e.target.closest('#create-pack-card')) {
+      openPackBuilder()
+      return
+    }
+
+    // 3. View Course
+    const viewBtn = e.target.closest('.view-course-btn')
+    if (viewBtn) {
+      e.stopPropagation()
+      const courseId = viewBtn.dataset.id
+      const course = localCourses.find(c => c.id === courseId)
+      if (course) {
+        renderCoursePlayer(course, { ...user, role: 'user' }) // Preview as normal user
+      }
+      return
+    }
+
+    // 4. Edit Course (Run course player with manager privileges)
+    const editBtn = e.target.closest('.edit-course-btn')
+    if (editBtn) {
+      e.stopPropagation()
+      const courseId = editBtn.dataset.id
+      const course = localCourses.find(c => c.id === courseId)
+      if (course) {
+        renderCoursePlayer(course, user) // Open with manager edit features
+      }
+      return
+    }
+
+    // 5. Delete Course
+    const deleteBtn = e.target.closest('.delete-course-btn')
+    if (deleteBtn) {
+      e.stopPropagation()
+      const courseId = deleteBtn.dataset.id
+      const courseTitle = deleteBtn.dataset.title
+      if (await fswConfirm(`Are you sure you want to delete "${courseTitle}"? This cannot be undone.`)) {
+        try {
+          deleteBtn.innerText = 'Deleting...'
+          deleteBtn.disabled = true
+          deleteBtn.style.opacity = '0.7'
+
+          await deleteCourse(courseId, user.role)
+          await fswAlert('Course deleted successfully')
+          await loadCourses()
+        } catch (err) {
+          console.error('[Manager] Delete Error:', err)
+          await fswAlert(`Failed to delete course:\n${err.message}`)
+          deleteBtn.innerText = 'Delete'
+          deleteBtn.disabled = false
+          deleteBtn.style.opacity = '1'
+        }
+      }
+      return
+    }
+
+    // 6. View Pack Progress
+    const progressBtn = e.target.closest('.view-pack-progress-btn')
+    if (progressBtn) {
+      e.stopPropagation()
+      openPackProgressModal(progressBtn.dataset.id, progressBtn.dataset.title)
+      return
+    }
+
+    // 7. Edit Pack
+    const editPackBtn = e.target.closest('.edit-pack-btn')
+    if (editPackBtn) {
+      e.stopPropagation()
+      openPackBuilder(editPackBtn.dataset.id)
+      return
+    }
+
+    // 8. Delete Pack
+    const deletePackBtn = e.target.closest('.delete-pack-btn')
+    if (deletePackBtn) {
+      e.stopPropagation()
+      const packId = deletePackBtn.dataset.id
+      if (await fswConfirm('Are you sure you want to delete this learning pack? This will also remove all assignments and progress associated with it.')) {
+        try {
+          deletePackBtn.innerText = 'Deleting...'
+          deletePackBtn.disabled = true
+          await deletePack(packId)
+          await loadCourses()
+        } catch (err) {
+          console.error(err)
+          await fswAlert('Failed to delete pack.')
+          deletePackBtn.innerText = 'Delete'
+          deletePackBtn.disabled = false
+        }
+      }
+      return
+    }
+
+    // 9. Click on Course Tile Background (Edit Course Details)
+    const courseTile = e.target.closest('.course-tile-btn')
+    if (courseTile) {
+      const courseId = courseTile.dataset.id
+      const course = localCourses.find(c => c.id === courseId)
+      if (course) {
+        renderCourseEditor(course, user)
+      }
+      return
     }
   })
 
@@ -424,12 +596,55 @@ export const initManagerEvents = async (effectiveUser) => {
         }
       }
     }
+
+    // 9. Revoke Pack Assignment
+    const revokePackBtn = e.target.closest('.revoke-pack-assign-btn')
+    if (revokePackBtn) {
+      const assignId = revokePackBtn.dataset.assignid
+      if (await fswConfirm('Are you sure you want to revoke this learning pack assignment?')) {
+        try {
+          revokePackBtn.innerText = 'Revoking...'
+          revokePackBtn.disabled = true
+          await revokePackAssignment(assignId)
+          loadTeamStats() // refresh ui
+        } catch (error) {
+          console.error(error)
+          await fswAlert('Failed to revoke learning pack assignment.')
+          revokePackBtn.innerText = 'Revoke'
+          revokePackBtn.disabled = false
+        }
+      }
+    }
   })
+
 
   // Inbox Delegation Handler
   inboxList?.addEventListener('click', async (e) => {
       const approveBtn = e.target.closest('.approve-ext-btn');
       const denyBtn = e.target.closest('.deny-ext-btn');
+      const auditContentBtn = e.target.closest('#inbox-audit-content-btn');
+
+      if (auditContentBtn) {
+          const tabGuidesBtn = document.getElementById('tab-guides');
+          if (tabGuidesBtn) {
+              tabGuidesBtn.click();
+              // Allow time for guides tab to render, then open the manager panel and filter
+              setTimeout(() => {
+                  const manageBtn = document.getElementById('manage-content-btn');
+                  if (manageBtn) {
+                      manageBtn.click();
+                      setTimeout(() => {
+                          const statusFilter = document.getElementById('curation-status-filter');
+                          if (statusFilter) {
+                              statusFilter.value = 'overdue';
+                              statusFilter.dispatchEvent(new Event('change'));
+                          }
+                      }, 150);
+                  }
+              }, 300);
+          }
+          return;
+      }
 
       if (approveBtn || denyBtn) {
           const id = (approveBtn || denyBtn).dataset.id;
@@ -460,15 +675,32 @@ export const initManagerEvents = async (effectiveUser) => {
       let totalOverdue = 0;
 
       statsList.forEach(member => {
-          totalAssigned += member.totalAssigned;
-          totalCompleted += member.completed;
+          let memberAssigned = member.totalAssigned;
+          let memberCompleted = member.completed;
+          let memberOverdue = 0;
           if (member.progressData) {
               member.progressData.forEach(p => {
                   if (p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed') {
-                      totalOverdue++;
+                      memberOverdue++;
                   }
               })
           }
+
+          // Incorporate packs
+          const memberPacks = currentPackAssignments.filter(pa => pa.user_id === member.id);
+          memberPacks.forEach(pa => {
+              memberAssigned++;
+              if (pa.status === 'completed') {
+                  memberCompleted++;
+              }
+              if (pa.due_date && new Date(pa.due_date) < new Date() && pa.status !== 'completed') {
+                  memberOverdue++;
+              }
+          });
+
+          totalAssigned += memberAssigned;
+          totalCompleted += memberCompleted;
+          totalOverdue += memberOverdue;
       });
       
       const overallCompletionPercent = totalAssigned > 0 
@@ -477,8 +709,8 @@ export const initManagerEvents = async (effectiveUser) => {
 
       const totalMembers = window.globalTotalActiveUsersCount || statsList.length;
       const maxUsers = currentPlatformSettings ? currentPlatformSettings.max_users : 10;
-      const isAtCapacity = totalMembers >= maxUsers;
-      const percentUsed = Math.min(100, Math.round((totalMembers / maxUsers) * 100));
+      const isAtCapacity = maxUsers > 0 && totalMembers >= maxUsers;
+      const percentUsed = maxUsers <= 0 ? 0 : Math.min(100, Math.round((totalMembers / maxUsers) * 100));
       const membersColor = isAtCapacity ? '#ef4444' : 'white';
 
       const radius = 30;
@@ -508,7 +740,7 @@ export const initManagerEvents = async (effectiveUser) => {
                 <div>
                   <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.1rem; text-transform: uppercase;">Team Capacity</div>
                   <div style="font-size: 1.6rem; font-weight: bold; color: ${membersColor}; display: flex; align-items: baseline; gap: 0.4rem;">
-                    ${totalMembers} <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted);">of ${maxUsers} seats</span>
+                    ${totalMembers} <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted);">${maxUsers <= 0 ? 'seats (Unlimited)' : `of ${maxUsers} seats`}</span>
                   </div>
                 </div>
               </div>
@@ -554,14 +786,23 @@ export const initManagerEvents = async (effectiveUser) => {
       // 2. Status Filter
       if (statusVal === 'overdue') {
         let hasOverdue = false
+        // Check standalone courses
         if (s.progressData) {
           s.progressData.forEach(p => {
              if (p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed') hasOverdue = true
           })
         }
+        // Check learning packs
+        const memberPacks = currentPackAssignments.filter(pa => pa.user_id === s.id);
+        memberPacks.forEach(pa => {
+             if (pa.due_date && new Date(pa.due_date) < new Date() && pa.status !== 'completed') hasOverdue = true
+        });
+
         if (!hasOverdue) return false
       } else if (statusVal === 'in-progress') {
-        if (s.inProgress === 0) return false
+        const memberPacks = currentPackAssignments.filter(pa => pa.user_id === s.id);
+        const hasInProgressPack = memberPacks.some(pa => pa.status === 'in-progress');
+        if (s.inProgress === 0 && !hasInProgressPack) return false
       }
       return true
     })
@@ -602,6 +843,7 @@ export const initManagerEvents = async (effectiveUser) => {
     tabGuides.className = 'btn-primary'
     tabGuides.style.border = 'none'
     viewGuides.style.display = 'block'
+
     
     if (!viewGuides.dataset.loaded) {
        const { renderGuides, initGuidesEvents } = await import('./Guides.js')
@@ -639,12 +881,18 @@ export const initManagerEvents = async (effectiveUser) => {
     try {
       const { getTotalActiveUsersCount } = await import('../api/manager.js')
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const [rates, pendingExtensions, platformSettings, totalActive] = await Promise.all([
+      const [rates, pendingExtensions, platformSettings, totalActive, packAssignments, guides, courses] = await Promise.all([
          getTeamCompletionRates(),
          fetchPendingExtensions(),
          getPlatformSettings(),
-         getTotalActiveUsersCount()
+         getTotalActiveUsersCount(),
+         getPackAssignments(),
+         fetchAllGuides(),
+         getCourses('manager')
       ]);
+      
+      currentPackAssignments = packAssignments || [];
+
       
       window.globalTotalActiveUsersCount = totalActive;
       currentPlatformSettings = platformSettings;
@@ -669,25 +917,62 @@ export const initManagerEvents = async (effectiveUser) => {
           if (depts.has(currentDeptVal)) departmentFilter.value = currentDeptVal;
       }
 
-      // Render extensions inbox
+      // Render extensions & content review alerts in inbox
       const inboxCont = document.getElementById('manager-inbox-container');
       if (inboxCont && inboxList) {
-          if (pendingExtensions && pendingExtensions.length > 0) {
+          const now = new Date();
+          let overdueCount = 0;
+          if (guides && Array.isArray(guides)) {
+              guides.forEach(g => {
+                  if (g.next_review_date && new Date(g.next_review_date) < now) overdueCount++;
+              });
+          }
+          if (courses && Array.isArray(courses)) {
+              courses.forEach(c => {
+                  if (c.next_review_date && new Date(c.next_review_date) < now) overdueCount++;
+              });
+          }
+
+          const hasExtensions = pendingExtensions && pendingExtensions.length > 0;
+          const hasOverdueContent = overdueCount > 0;
+
+          if (hasExtensions || hasOverdueContent) {
               inboxCont.style.display = 'block';
-              inboxList.innerHTML = pendingExtensions.map(ext => `
-                  <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #f59e0b; display: flex; justify-content: space-between; align-items: center;">
+              
+              let html = '';
+              if (hasOverdueContent) {
+                  html += `
+                  <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #ef4444; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; box-sizing: border-box;">
                       <div>
-                          <div style="font-weight: bold;">${ext.user?.email || 'A user'} requested an extension</div>
-                          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Course: ${ext.course_assignment?.course?.title} (Originally due: ${new Date(ext.course_assignment?.due_date).toLocaleDateString()})</div>
-                          <div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; font-size: 0.9rem; font-style: italic;">"${ext.reason_text}"</div>
-                          <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #10b981;">Requested new date: ${new Date(ext.requested_date).toLocaleDateString()}</div>
+                          <div style="font-weight: bold; color: #fca5a5; display: flex; align-items: center; gap: 0.4rem;">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>
+                              Content Review Alert
+                          </div>
+                          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">${overdueCount} training item${overdueCount > 1 ? 's are' : ' is'} out of date and require${overdueCount === 1 ? 's' : ''} review.</div>
                       </div>
-                      <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-                          <button class="btn-primary approve-ext-btn" data-id="${ext.id}" data-date="${ext.requested_date}" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Approve</button>
-                          <button class="btn-ghost deny-ext-btn" data-id="${ext.id}" style="padding: 0.4rem 1rem; font-size: 0.8rem; color: #ef4444;">Deny</button>
-                      </div>
+                      <button id="inbox-audit-content-btn" class="btn-primary" style="padding: 0.4rem 1rem; font-size: 0.8rem; background: #ef4444; border-color: #ef4444; cursor: pointer; color: white;">Audit Content</button>
                   </div>
-              `).join('');
+                  `;
+              }
+
+              if (hasExtensions) {
+                  html += pendingExtensions.map(ext => `
+                      <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #f59e0b; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; box-sizing: border-box;">
+                          <div>
+                              <div style="font-weight: bold;">${ext.user?.email || 'A user'} requested an extension</div>
+                              <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Course: ${ext.course_assignment?.course?.title} (Originally due: ${new Date(ext.course_assignment?.due_date).toLocaleDateString()})</div>
+                              <div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; font-size: 0.9rem; font-style: italic;">"${ext.reason_text}"</div>
+                              <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #10b981;">Requested new date: ${new Date(ext.requested_date).toLocaleDateString()}</div>
+                          </div>
+                          <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+                              <button class="btn-primary approve-ext-btn" data-id="${ext.id}" data-date="${ext.requested_date}" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Approve</button>
+                              <button class="btn-ghost deny-ext-btn" data-id="${ext.id}" style="padding: 0.4rem 1rem; font-size: 0.8rem; color: #ef4444;">Deny</button>
+                          </div>
+                      </div>
+                  `).join('');
+              }
+
+              inboxList.innerHTML = html;
           } else {
               inboxCont.style.display = 'none';
           }
@@ -725,82 +1010,90 @@ export const initManagerEvents = async (effectiveUser) => {
       }
 
       teamList.innerHTML = filteredStats.map((member) => {
-        const completionPct = member.totalAssigned > 0 ? Math.round((member.completed / member.totalAssigned) * 100) : 0;
+        const memberPacks = currentPackAssignments.filter(pa => pa.user_id === member.id);
         
-        let overdueCount = 0;
+        let standaloneOverdue = 0;
         if (member.progressData) {
             member.progressData.forEach(p => {
                 if (p.due_date && new Date(p.due_date) < new Date() && p.status !== 'completed') {
-                    overdueCount++;
+                    standaloneOverdue++;
                 }
             })
         }
 
+        let packsOverdue = 0;
+        memberPacks.forEach(pa => {
+            if (pa.due_date && new Date(pa.due_date) < new Date() && pa.status !== 'completed') {
+                packsOverdue++;
+            }
+        });
+
+        // Combined standalone courses + packs
+        const totalAssignedCombined = member.totalAssigned + memberPacks.length;
+        const totalCompletedCombined = member.completed + memberPacks.filter(pa => pa.status === 'completed').length;
+        const totalInProgressCombined = member.inProgress + memberPacks.filter(pa => pa.status === 'in-progress').length;
+        const totalOverdueCombined = standaloneOverdue + packsOverdue;
+
+        const completionPct = totalAssignedCombined > 0 
+            ? Math.round((totalCompletedCombined / totalAssignedCombined) * 100) 
+            : 0;
+
         return `
-        <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 1rem; border-left: 4px solid ${completionPct === 100 ? '#10b981' : (overdueCount > 0 ? '#ef4444' : 'var(--glass-border)')};">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div style="flex: 1; display: flex; gap: 0.75rem;">
-              <div style="padding-top: 0.2rem;">
+        <div class="glass" style="padding: 1rem 1.25rem; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 0.75rem; border-left: 4px solid ${completionPct === 100 ? '#10b981' : (totalOverdueCombined > 0 ? '#ef4444' : 'var(--glass-border)')};">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="flex: 1; display: flex; gap: 0.75rem; align-items: center; min-width: 280px;">
+              <div style="display: flex; align-items: center;">
                 <input type="checkbox" class="user-select-cb" data-userid="${member.id}" ${selectedUserIds.has(member.id) ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
               </div>
-              <img src="${member.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.full_name || member.email) + '&background=random'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
-              <div style="flex: 1;">
-                <h4 style="margin: 0 0 0.25rem 0;">${escapeHTML(member.full_name || member.email)}</h4>
-                ${member.full_name ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${escapeHTML(member.email)}</div>` : ''}
-              <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${escapeHTML(member.team_role) || 'member'}</span>
-                <button class="edit-dept-btn" data-userid="${member.id}" data-dept="${escapeHTML(member.department) || ''}" style="background: ${member.department ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${member.department ? '#10b981' : 'var(--glass-border)'}; color: ${member.department ? '#10b981' : 'var(--text-muted)'}; font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                  ${escapeHTML(member.department) || '+ Dept'}
-                </button>
-              </div>
-              <div style="margin-top: 0.5rem;">
-                <button class="btn-ghost delete-user-btn" data-userid="${member.id}" style="display: inline-flex; align-items: center; gap: 0.25rem; color: #f59e0b; font-size: 0.75rem; padding: 0;" title="Archive this user">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"></path><polyline points="1 3 23 3 23 8 1 8 1 3"></polyline><path d="M10 12h4"></path></svg>
-                  Archive User
-                </button>
-              </div>
-              
-              <div style="margin-top: 1.5rem; width: 80%;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                  <span>Individual Completion</span>
-                  <span style="color: ${completionPct === 100 ? '#10b981' : 'inherit'};">${completionPct}%</span>
-                </div>
-                <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-                  <div style="height: 100%; width: ${completionPct}%; background: ${completionPct === 100 ? '#10b981' : 'var(--primary)'}; border-radius: 3px; transition: width 0.5s ease-out;"></div>
+              <img src="${member.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.full_name || member.email) + '&background=random'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
+              <div style="flex: 1; min-width: 0;">
+                <h4 style="margin: 0; display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; font-size: 1.05rem;">
+                  <span>${escapeHTML(member.full_name || member.email)}</span>
+                  ${member.full_name ? `<span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(${escapeHTML(member.email)})</span>` : ''}
+                </h4>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.35rem;">
+                  <span style="font-size: 0.7rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; color: var(--text-muted); font-weight: 500;">${escapeHTML(member.team_role) || 'member'}</span>
+                  <button class="edit-dept-btn" data-userid="${member.id}" data-dept="${escapeHTML(member.department) || ''}" style="background: ${member.department ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${member.department ? '#10b981' : 'var(--glass-border)'}; color: ${member.department ? '#10b981' : 'var(--text-muted)'}; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                    ${escapeHTML(member.department) || '+ Dept'}
+                  </button>
+                  <button class="btn-ghost delete-user-btn" data-userid="${member.id}" style="display: inline-flex; align-items: center; gap: 0.25rem; color: #f59e0b; font-size: 0.7rem; padding: 2px 6px; border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 4px; background: rgba(245, 158, 11, 0.05);" title="Archive this user">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8v13H3V8"></path><polyline points="1 3 23 3 23 8 1 8 1 3"></polyline><path d="M10 12h4"></path></svg>
+                    Archive
+                  </button>
                 </div>
               </div>
+            </div>
+
+            <div style="display: flex; gap: 1.5rem; text-align: center; background: rgba(0,0,0,0.15); padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.02);">
+              <div>
+                <div style="font-size: 1.15rem; font-weight: bold; color: var(--primary);">${totalAssignedCombined}</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Assigned</div>
+              </div>
+              <div>
+                <div style="font-size: 1.15rem; font-weight: bold; color: #f59e0b;">${totalInProgressCombined}</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Progress</div>
+              </div>
+              <div>
+                <div style="font-size: 1.15rem; font-weight: bold; color: #10b981;">${totalCompletedCombined}</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Done</div>
+              </div>
+              <div>
+                <div style="font-size: 1.15rem; font-weight: bold; color: #ef4444;">${totalOverdueCombined}</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Overdue</div>
               </div>
             </div>
             
-            <div style="display: flex; gap: 2rem; text-align: center; margin-right: 2rem; background: rgba(0,0,0,0.2); padding: 1rem 1.5rem; border-radius: var(--radius-md);">
-              <div>
-                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">${member.totalAssigned}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Assigned</div>
-              </div>
-              <div>
-                <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">${member.inProgress}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">In Progress</div>
-              </div>
-              <div>
-                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;">${member.completed}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Completed</div>
-              </div>
-              <div>
-                <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">${overdueCount}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Overdue</div>
-              </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button class="btn-ghost nudge-user-btn" data-userid="${member.id}" style="display: flex; align-items: center; gap: 0.35rem; color: #f59e0b; padding: 0.4rem 0.8rem; border: 1px solid rgba(245,158,11,0.2); border-radius: var(--radius-md); font-size: 0.8rem;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                Nudge
+              </button>
+              <button class="btn-secondary assign-user-btn" data-userid="${member.id}" data-email="${member.email}" style="display: flex; align-items: center; gap: 0.35rem; box-shadow: 0 4px 10px rgba(18,142,205,0.15); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Assign Training
+              </button>
             </div>
-            
-             <div>
-               <button class="btn-ghost nudge-user-btn" data-userid="${member.id}" style="display: flex; align-items: center; gap: 0.5rem; color: #f59e0b; margin-bottom: 0.5rem; width: 100%; justify-content: center;">
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                 Nudge
-               </button>
-               <button class="btn-secondary assign-user-btn" data-userid="${member.id}" data-email="${member.email}" style="display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 10px rgba(18,142,205,0.2); width: 100%; justify-content: center;">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                 Assign Course
-               </button>
-             </div>
           </div>
           
           ${member.progressData && member.progressData.length > 0 ? `
@@ -857,6 +1150,72 @@ export const initManagerEvents = async (effectiveUser) => {
               </details>
             </div>
           ` : ''}
+
+          ${memberPacks && memberPacks.length > 0 ? `
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+              <details>
+                <summary style="font-size: 0.85rem; font-weight: bold; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; outline: none; user-select: none; cursor: pointer; padding: 0.5rem 1rem; border-radius: var(--radius-md); background: rgba(0,0,0,0.2); transition: background 0.2s;">
+                  <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    Learning Packs (${memberPacks.length})
+                  </span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </summary>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; cursor: default;">
+                  ${memberPacks.map(pa => {
+                    const isCompleted = pa.status === 'completed';
+                    const isOverdue = pa.due_date && new Date(pa.due_date) < new Date() && !isCompleted;
+                    let statusColor = isCompleted ? '#10b981' : (pa.status === 'in-progress' ? '#f59e0b' : 'rgba(255,255,255,0.1)');
+                    let statusTxt = pa.status.toUpperCase();
+                    let badgeColor = isCompleted || pa.status === 'in-progress' ? 'black' : 'white';
+
+                    if (isOverdue) {
+                      statusColor = '#ef4444';
+                      statusTxt = 'OVERDUE';
+                      badgeColor = 'white';
+                    }
+
+                    return `
+                    <div style="display: flex; flex-direction: column; background: rgba(0,0,0,0.1); padding: 0.8rem 1rem; border-radius: var(--radius-md); border-left: 3px solid ${isOverdue ? '#ef4444' : (isCompleted ? '#10b981' : 'transparent')}; gap: 0.4rem;">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                          <span style="font-size: 0.9rem; font-weight: ${isOverdue ? 'bold' : 'normal'}; color: ${isOverdue ? '#ef4444' : 'white'};">${escapeHTML(pa.pack?.title || 'Unknown Pack')}</span>
+                          <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: ${statusColor}; color: ${badgeColor}; font-weight: bold; letter-spacing: 0.5px;">${statusTxt} (${pa.completionPct || 0}%)</span>
+                          ${pa.due_date && !isCompleted ? `<span style="font-size: 0.8rem; color: ${isOverdue ? '#ef4444' : 'var(--text-muted)'}; display: flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Due: ${new Date(pa.due_date).toLocaleDateString()}</span>` : ''}
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                          <button class="btn-ghost revoke-pack-assign-btn" data-assignid="${pa.id}" style="color: #ef4444; font-size: 0.75rem; padding: 0.2rem 0.5rem;">Revoke</button>
+                        </div>
+                      </div>
+
+                      <!-- Progress Bar -->
+                      <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+                          <div style="height: 100%; width: ${pa.completionPct || 0}%; background: ${statusColor}; border-radius: 2px;"></div>
+                        </div>
+                        <span style="font-size: 0.7rem; color: var(--text-muted); min-width: 60px; text-align: right;">${pa.completedItems || 0}/${pa.totalItems || 0} tasks</span>
+                      </div>
+
+                      <!-- Mini Items List -->
+                      <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem; padding-top: 0.25rem; border-top: 1px dashed rgba(255,255,255,0.05); font-size: 0.75rem;">
+                        ${pa.items.map(item => {
+                          const icon = item.item_type === 'course' ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px; opacity: 0.8;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>' : (item.item_type === 'guide' ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px; opacity: 0.8;"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path><path d="M13 13l6 6"></path></svg>' : (item.item_type === 'document' ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px; opacity: 0.8;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'));
+                          return `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.15rem 0;">
+                              <span style="color: rgba(255,255,255,0.6);">${icon} ${escapeHTML(item.title)}</span>
+                              <span style="color: ${item.completed ? '#10b981' : 'var(--text-muted)'}; font-weight: 600;">${item.completed ? 'Completed' : 'Pending'}</span>
+                            </div>
+                          `;
+                        }).join('')}
+                      </div>
+                    </div>
+                    `;
+                  }).join('')}
+                </div>
+              </details>
+            </div>
+          ` : ''}
+
         </div>
       `}).join('')
   }
@@ -871,14 +1230,78 @@ export const initManagerEvents = async (effectiveUser) => {
   const cancelAssignBtn = document.getElementById('cancel-assign')
 
   let currentAssignTarget = null
+  let currentAssignType = 'course'
+  let localLiveCourses = []
+  let localCourses = []
+
+  async function populateAssignSelect() {
+    const selectLabel = document.getElementById('assign-select-label')
+    const mandatoryContainer = document.getElementById('assign-mandatory-container')
+    
+    if (currentAssignType === 'course') {
+      selectLabel.innerText = 'Select Course'
+      if (mandatoryContainer) mandatoryContainer.style.display = 'flex'
+      
+      assignCourseSelect.innerHTML = '<option value="">-- Select --</option>' + localLiveCourses.map(c => {
+        const prefix = c.content_json?.is_system_simulation ? '[Guide] ' : '[Course] '
+        return `<option value="${c.id}">${prefix}${c.title}</option>`
+      }).join('')
+    } else {
+      selectLabel.innerText = 'Select Learning Pack'
+      if (mandatoryContainer) mandatoryContainer.style.display = 'none'
+      
+      assignCourseSelect.innerHTML = '<option value="">Loading packs...</option>'
+      try {
+        const packs = await getPacks()
+        assignCourseSelect.innerHTML = '<option value="">-- Select --</option>' + packs.map(p => {
+          return `<option value="${p.id}">[Pack] ${p.title}</option>`
+        }).join('')
+      } catch (err) {
+        console.error(err)
+        assignCourseSelect.innerHTML = '<option value="">Failed to load packs</option>'
+      }
+    }
+  }
+
+  const typeCourseBtn = document.getElementById('assign-type-course')
+  const typePackBtn = document.getElementById('assign-type-pack')
+
+  function setAssignType(type) {
+    currentAssignType = type
+    if (type === 'course') {
+      if (typeCourseBtn) {
+        typeCourseBtn.style.background = 'var(--primary)'
+        typeCourseBtn.style.color = 'white'
+      }
+      if (typePackBtn) {
+        typePackBtn.style.background = 'transparent'
+        typePackBtn.style.color = 'var(--text-muted)'
+      }
+    } else {
+      if (typePackBtn) {
+        typePackBtn.style.background = 'var(--primary)'
+        typePackBtn.style.color = 'white'
+      }
+      if (typeCourseBtn) {
+        typeCourseBtn.style.background = 'transparent'
+        typeCourseBtn.style.color = 'var(--text-muted)'
+      }
+    }
+    populateAssignSelect()
+  }
+
+  typeCourseBtn?.addEventListener('click', () => setAssignType('course'))
+  typePackBtn?.addEventListener('click', () => setAssignType('pack'))
 
   window.openAssignModal = (userId, email) => {
     currentAssignTarget = { type: 'user', id: userId }
-    assignModalTitle.innerText = `Assign Course to ${email}`
+    assignModalTitle.innerText = `Assign to ${email}`
     
     assignCourseSelect.value = ''
     assignDueDate.value = ''
     assignMandatory.checked = false
+    
+    setAssignType('course')
     
     assignModal.style.display = 'block'
     overlay.style.display = 'block'
@@ -895,7 +1318,6 @@ export const initManagerEvents = async (effectiveUser) => {
     } else {
       currentAssignTarget = { type: 'bulk' }
       assignModalTitle.innerText = `Bulk Assign to Team`
-      assignModalTitle.innerText = `Bulk Assign to Team`
       assignDepartmentContainer.style.display = 'block'
       
       const depts = new Set(currentTeamStats.map(s => s.department).filter(Boolean));
@@ -910,6 +1332,8 @@ export const initManagerEvents = async (effectiveUser) => {
     assignCourseSelect.value = ''
     assignDueDate.value = ''
     assignMandatory.checked = false
+    
+    setAssignType('course')
     
     assignModal.style.display = 'block'
     overlay.style.display = 'block'
@@ -929,8 +1353,10 @@ export const initManagerEvents = async (effectiveUser) => {
   })
 
   confirmAssignBtn?.addEventListener('click', async () => {
-    const courseId = assignCourseSelect.value
-    if (!courseId) return await fswAlert('Please select a course.')
+    const itemId = assignCourseSelect.value
+    if (!itemId) {
+      return await fswAlert(`Please select a ${currentAssignType === 'course' ? 'course' : 'learning pack'}.`)
+    }
     
     const dueDate = assignDueDate.value || null
     const isMandatory = assignMandatory.checked
@@ -939,19 +1365,40 @@ export const initManagerEvents = async (effectiveUser) => {
       confirmAssignBtn.innerText = 'Assigning...'
       confirmAssignBtn.disabled = true
       
-      if (currentAssignTarget.type === 'bulk') {
-        const selectedDept = assignDepartmentSelect.value;
-        let targetIds = null;
-        if (selectedDept !== 'all') {
-            targetIds = currentTeamStats.filter(s => s.department === selectedDept).map(s => s.id);
+      if (currentAssignType === 'course') {
+        if (currentAssignTarget.type === 'bulk') {
+          const selectedDept = assignDepartmentSelect.value;
+          let targetIds = null;
+          if (selectedDept !== 'all') {
+              targetIds = currentTeamStats.filter(s => s.department === selectedDept).map(s => s.id);
+          }
+          await bulkAssignCourse(itemId, dueDate, isMandatory, targetIds)
+        } else if (currentAssignTarget.type === 'selected') {
+          await bulkAssignCourse(itemId, dueDate, isMandatory, currentAssignTarget.ids)
+          selectedUserIds.clear() // Clear selection on successful assignment
+          updateBulkAssignBtnState()
+        } else {
+          await assignCourseToUser(currentAssignTarget.id, itemId, dueDate, isMandatory)
         }
-        await bulkAssignCourse(courseId, dueDate, isMandatory, targetIds)
-      } else if (currentAssignTarget.type === 'selected') {
-        await bulkAssignCourse(courseId, dueDate, isMandatory, currentAssignTarget.ids)
-        selectedUserIds.clear() // Clear selection on successful assignment
-        updateBulkAssignBtnState()
       } else {
-        await assignCourseToUser(currentAssignTarget.id, courseId, dueDate, isMandatory)
+        // Learning Pack Assignment
+        let targetUserIds = [];
+        if (currentAssignTarget.type === 'bulk') {
+          const selectedDept = assignDepartmentSelect.value;
+          if (selectedDept !== 'all') {
+            targetUserIds = currentTeamStats.filter(s => s.department === selectedDept).map(s => s.id);
+          } else {
+            targetUserIds = currentTeamStats.map(s => s.id);
+          }
+        } else if (currentAssignTarget.type === 'selected') {
+          targetUserIds = currentAssignTarget.ids;
+          selectedUserIds.clear();
+          updateBulkAssignBtnState();
+        } else {
+          targetUserIds = [currentAssignTarget.id];
+        }
+        
+        await bulkAssignPack({ packId: itemId, userIds: targetUserIds, dueDate });
       }
       
       closeAssignModal()
@@ -959,7 +1406,7 @@ export const initManagerEvents = async (effectiveUser) => {
       await fswAlert('Assignment successful!')
     } catch (e) {
       console.error(e)
-      await fswAlert('Failed to assign course:\n' + (e.message || JSON.stringify(e)))
+      await fswAlert('Failed to assign:\n' + (e.message || JSON.stringify(e)))
     } finally {
       confirmAssignBtn.innerText = 'Assign'
       confirmAssignBtn.disabled = false
@@ -972,15 +1419,20 @@ export const initManagerEvents = async (effectiveUser) => {
   loadCourses()
 
   async function loadCourses() {
-    courseList.innerHTML = '<p>Loading...</p>'
+    courseList.innerHTML = '<p>Loading courses and packs...</p>'
     try {
       const courses = await getCourses('manager')
       let courseStats = null;
       try { courseStats = await getCourseUsageStats(); } catch(e) { console.error('Failed to load course stats', e); }
-      renderCourses(courses, courseStats)
+      
+      const packs = await getPacks()
+      
+      localCourses = courses
+      await renderCourses(courses, packs, courseStats)
       
       // Populate Assign Course Dropdown (Only Live courses!)
       const liveCourses = courses.filter(c => c.status === 'live')
+      localLiveCourses = liveCourses
       const assignSelect = document.getElementById('assign-course-select')
       if (assignSelect) {
         assignSelect.innerHTML = '<option value="">-- Select --</option>' + liveCourses.map(c => {
@@ -995,16 +1447,49 @@ export const initManagerEvents = async (effectiveUser) => {
     }
   }
 
-  function renderCourses(courses, stats) {
+  function getPackIcon(title) {
+    const t = (title || '').toLowerCase();
+    
+    // 1. Finance / Money
+    if (t.includes('finance') || t.includes('money') || t.includes('budget') || t.includes('pay') || t.includes('tax')) {
+        return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2H12"></path></svg>`;
+    }
+    // 2. Onboarding / Welcome
+    if (t.includes('onboard') || t.includes('welcome') || t.includes('induction') || t.includes('new hire')) {
+        return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>`;
+    }
+    // 3. Tech / IT / Code
+    if (t.includes('tech') || t.includes('code') || t.includes('system') || t.includes('software') || t.includes('it ')) {
+        return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`;
+    }
+    // 4. Sales / Marketing
+    if (t.includes('sales') || t.includes('market') || t.includes('growth')) {
+        return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`;
+    }
+    // 5. HR / Management / People
+    if (t.includes('hr') || t.includes('people') || t.includes('culture') || t.includes('manager') || t.includes('team')) {
+        return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`;
+    }
+    // 6. Safety / Health / Legal / Compliance / Policy
+    if (t.includes('safety') || t.includes('policy') || t.includes('health') || t.includes('legal') || t.includes('compliance')) {
+        return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+    }
+    
+    // Default folder
+    return `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+  }
+
+  async function renderCourses(courses, packs, stats) {
     let statsHtml = '<p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">AI Powered</p>';
     if (stats) {
         const renewalDateStr = stats.renewalDate ? stats.renewalDate.toLocaleDateString() : 'N/A';
-        statsHtml += `<p style="margin: 0.5rem 0 0 0; color: var(--primary); font-size: 0.8rem; font-weight: bold;">${stats.used} / ${stats.total} Used</p>`;
+        const totalText = stats.total <= 0 ? 'Unlimited' : stats.total;
+        statsHtml += `<p style="margin: 0.5rem 0 0 0; color: var(--primary); font-size: 0.8rem; font-weight: bold;">${stats.used} / ${totalText} Used</p>`;
         statsHtml += `<p style="margin: 0; color: var(--text-muted); font-size: 0.7rem;">Renews: ${renewalDateStr}</p>`;
     }
 
-    const createCardHTML = `
-      <div id="create-course-card" class="glass card-hover" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; cursor: pointer; border: 2px dashed var(--glass-border); background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-lg);">
+    const createCourseCardHTML = `
+      <div id="create-course-card" class="glass card-hover" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 380px; cursor: pointer; border: 2px dashed var(--glass-border); background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-lg); height: 100%; padding: 1.5rem; box-sizing: border-box;">
         <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(18, 142, 205, 0.4);">
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -1016,15 +1501,34 @@ export const initManagerEvents = async (effectiveUser) => {
       </div>
     `
 
-    const displayCourses = courses.filter(c => !c.content_json?.is_system_simulation)
+    const createPackCardHTML = `
+      <div id="create-pack-card" class="glass card-hover" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 380px; cursor: pointer; border: 2px dashed var(--glass-border); background: rgba(255, 255, 255, 0.02); border-radius: var(--radius-lg); height: 100%; padding: 1.5rem; box-sizing: border-box;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(18, 142, 205, 0.4);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+        <h3 style="margin: 0; color: white;">Create Learning Pack</h3>
+        <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Group Materials</p>
+      </div>
+    `
 
-    const courseCardsHTML = displayCourses.map((course, index) => `
-      <div id="course-tile-${index}" class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 300px; cursor: pointer;">
+    const displayCourses = courses.filter(c => {
+        let content = c.content_json;
+        if (typeof content === 'string') {
+            try { content = JSON.parse(content); } catch (e) {}
+        }
+        return content ? (!content.is_system_simulation && content.type !== 'video_walkthrough') : true;
+    })
+
+    const courseCardsHTML = displayCourses.map((course) => `
+      <div class="glass card-hover course-tile-btn" data-id="${course.id}" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 380px; height: 100%; cursor: pointer; box-sizing: border-box;">
         <div style="height: 160px; background: #2a2a35; position: relative;">
           ${course.thumbnail_url
-        ? `<img src="${course.thumbnail_url}" onerror="this.onerror=null; this.src='https://placehold.co/800x600/128ecd/ffffff?text=Course+Image'; console.warn('Thumbnail failed to load, falling back for:', '${course.title}');" style="width: 100%; height: 100%; object-fit: cover;">`
-        : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(45deg, var(--primary), var(--aurora-2));">FSW</div>`
-      }
+            ? `<img src="${course.thumbnail_url}" onerror="this.onerror=null; this.src='https://placehold.co/800x600/128ecd/ffffff?text=Course+Image'; console.warn('Thumbnail failed to load, falling back for:', '${course.title}');" style="width: 100%; height: 100%; object-fit: cover;">`
+            : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(45deg, var(--primary), var(--aurora-2));">FSW</div>`
+          }
           <div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: ${course.status === 'live' ? '#10b981' : '#f59e0b'}; color: black;">
             ${course.status.toUpperCase()}
           </div>
@@ -1035,82 +1539,94 @@ export const initManagerEvents = async (effectiveUser) => {
           ` : ''}
         </div>
         <div style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
-          <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem;">${course.title}</h4>
+          <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: white;">${course.title}</h4>
           <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--text-muted); flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${course.description || 'No description'}</p>
-          <div style="display: flex; gap: 0.5rem;">
-            <button id="view-btn-${index}" class="btn-secondary" style="flex: 1;">View</button>
-            <button id="edit-btn-${index}" class="btn-secondary" style="flex: 1;" ${course.content_json?.is_system_simulation ? 'disabled title="Simulators cannot be edited yet"' : ''}>Edit</button>
-            <button id="delete-btn-${index}" class="btn-danger">Delete</button>
+          <div style="display: flex; gap: 0.5rem; margin-top: auto;">
+            <button class="btn-secondary view-course-btn" data-id="${course.id}" style="flex: 1;">View</button>
+            <button class="btn-secondary edit-course-btn" data-id="${course.id}" style="flex: 1;" ${course.content_json?.is_system_simulation ? 'disabled title="Simulators cannot be edited yet"' : ''}>Edit</button>
+            <button class="btn-danger delete-course-btn" data-id="${course.id}" data-title="${escapeHTML(course.title)}">Delete</button>
           </div>
         </div>
       </div>
     `).join('')
 
-    courseList.innerHTML = createCardHTML + courseCardsHTML
+    const packCardsHtml = await Promise.all(packs.map(async (pack) => {
+      let items = []
+      try {
+        const res = await getPack(pack.id)
+        items = res.items || []
+      } catch (err) {
+        console.error(err)
+      }
 
-    // Bind Create Card Event
-    document.getElementById('create-course-card').addEventListener('click', () => toggleModal(true))
+      const coursesCount = items.filter(i => i.item_type === 'course').length
+      const guidesCount = items.filter(i => i.item_type === 'guide').length
+      const docsCount = items.filter(i => i.item_type === 'document').length
+      const linksCount = items.filter(i => i.item_type === 'link').length
 
-    // Bind Tile, View, Edit, and Delete events
-    displayCourses.forEach((course, index) => {
-      document.getElementById(`course-tile-${index}`).addEventListener('click', () => {
-        renderCourseEditor(course, user)
-      })
+      const summaryParts = []
+      if (coursesCount > 0) summaryParts.push(`${coursesCount} Course${coursesCount > 1 ? 's' : ''}`)
+      if (guidesCount > 0) summaryParts.push(`${guidesCount} Guide${guidesCount > 1 ? 's' : ''}`)
+      if (docsCount > 0) summaryParts.push(`${docsCount} Document${docsCount > 1 ? 's' : ''}`)
+      if (linksCount > 0) summaryParts.push(`${linksCount} Link${linksCount > 1 ? 's' : ''}`)
 
-      document.getElementById(`view-btn-${index}`).addEventListener('click', (e) => {
-        e.stopPropagation()
-        renderCoursePlayer(course, { ...user, role: 'user' }) // Preview as normal user
-      })
+      const summaryText = summaryParts.length > 0 ? summaryParts.join(', ') : 'No items added'
 
-      document.getElementById(`edit-btn-${index}`).addEventListener('click', (e) => {
-        e.stopPropagation()
-        renderCoursePlayer(course, user) // Open with manager edit features
-      })
+      return `
+        <div class="glass card-hover" style="padding: 0; overflow: hidden; border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 380px; height: 100%; box-sizing: border-box;">
+          <div style="height: 160px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(18, 142, 205, 0.1) 100%); display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            ${getPackIcon(pack.title)}
+            <div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; background: #10b981; color: black; text-transform: uppercase; letter-spacing: 0.5px;">
+              Pack
+            </div>
+          </div>
+          
+          <div style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white;">${escapeHTML(pack.title)}</h3>
+            <p style="margin: 0 0 1rem 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex: 1;">${escapeHTML(pack.description || 'No description')}</p>
+            <div style="font-size: 0.8rem; color: var(--primary); font-weight: 500; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.35rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              <span>${summaryText}</span>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+              <button class="btn-secondary view-pack-progress-btn" data-id="${pack.id}" data-title="${escapeHTML(pack.title)}" style="flex: 1;">View</button>
+              <button class="btn-secondary edit-pack-btn" data-id="${pack.id}" style="flex: 1;">Edit</button>
+              <button class="btn-danger delete-pack-btn" data-id="${pack.id}">Delete</button>
+            </div>
+          </div>
+        </div>
+      `
+    }))
 
-      const deleteBtn = document.getElementById(`delete-btn-${index}`)
-      deleteBtn.addEventListener('click', async (e) => {
-        e.stopPropagation()
-        if (await fswConfirm(`Are you sure you want to delete "${course.title}"? This cannot be undone.`)) {
-          try {
-            console.log(`[Manager] Deleting course ${course.id} with role ${user.role}`)
-
-            // UI Feedback
-            const originalText = deleteBtn.innerText
-            deleteBtn.innerText = 'Deleting...'
-            deleteBtn.disabled = true
-            deleteBtn.style.opacity = '0.7'
-
-            const result = await deleteCourse(course.id, user.role)
-            console.log('[Manager] Delete result:', result)
-
-            // Success
-            await fswAlert('Course deleted successfully')
-            console.log('[Manager] Reloading courses...')
-            await loadCourses()
-
-          } catch (err) {
-            console.error('[Manager] Delete Error:', err)
-            await fswAlert(`Failed to delete course:\n${err.message}`)
-
-            // Reset button if failed
-            deleteBtn.innerText = 'Delete'
-            deleteBtn.disabled = false
-            deleteBtn.style.opacity = '1'
-          }
-        }
-      })
-    })
+    courseList.innerHTML = createCourseCardHTML + courseCardsHTML
+    if (packList) {
+      packList.innerHTML = createPackCardHTML + packCardsHtml.join('')
+    }
   }
 
   // File Upload Handlers
   uploadBtn?.addEventListener('click', () => fileInput.click())
 
-  fileInput?.addEventListener('change', (e) => {
+  fileInput?.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) {
       fileCount.innerText = 'No files selected'
       fileList.innerHTML = ''
       return
+    }
+
+    const allowedExtensions = ['.pdf', '.txt', '.md'];
+    const invalidFiles = files.filter(f => {
+      const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+      return !allowedExtensions.includes(ext);
+    });
+
+    if (invalidFiles.length > 0) {
+      await fswAlert(`Unsupported file format detected: ${invalidFiles.map(f => f.name).join(', ')}.\n\nOnly PDF (.pdf), Text (.txt), and Markdown (.md) files are supported. If you have a Word Document (.docx), please save it as a PDF first, then upload it!`);
+      fileInput.value = ''; // Reset
+      fileCount.innerText = 'No files selected';
+      fileList.innerHTML = '';
+      return;
     }
 
     fileCount.innerText = `${files.length} file${files.length === 1 ? '' : 's'} selected`
@@ -1162,6 +1678,8 @@ export const initManagerEvents = async (effectiveUser) => {
         const el = document.getElementById(id)
         if (el) el.value = ''
       })
+      const pretestEl = document.getElementById('course-allow-pretest')
+      if (pretestEl) pretestEl.checked = false
     }
   }
 
@@ -1175,8 +1693,12 @@ export const initManagerEvents = async (effectiveUser) => {
     const topics = document.getElementById('course-topics')?.value.trim() || ''
     const scenarios = document.getElementById('course-scenarios')?.value.trim() || ''
 
-    if (!title || (!objective && fileInput.files.length === 0)) {
-        alert("Please provide both a Course Title and Course Objective.")
+    if (!title) {
+        await fswAlert("Please enter a Course Title.")
+        return
+    }
+    if (!objective && (!fileInput || fileInput.files.length === 0)) {
+        await fswAlert("Please provide either a Course Objective or attach supporting documents so the AI knows what to cover.")
         return
     }
 
@@ -1236,11 +1758,13 @@ export const initManagerEvents = async (effectiveUser) => {
       onProgress('Saving course to database...')
 
       // 2. Create Course in DB
+      const allowPretest = document.getElementById('course-allow-pretest')?.checked || false;
       const course = await createCourse({
         title: aiData.title,
         description: aiData.description,
         content_json: aiData.modules,
         thumbnail_url: aiData.thumbnail_url, // Strict usage of AI thumbnail
+        allow_pretest: allowPretest,
         status: 'draft'
       })
       console.log('Course Created:', course)
@@ -1364,14 +1888,424 @@ export const initManagerEvents = async (effectiveUser) => {
           exportCsvBtn.innerText = origText
           exportCsvBtn.disabled = false
       } catch(e) {
+          console.error(e)
           await fswAlert('Failed to export CSV')
-          exportCsvBtn.innerText = 'Export to CSV'
+          exportCsvBtn.innerText = 'Export CSV'
           exportCsvBtn.disabled = false
       }
   })
 
+  async function openPackBuilder(packId = null) {
+    const originalCoursesHtml = viewCourses.innerHTML
+    
+    viewCourses.innerHTML = `
+      <div class="glass fade-in" style="padding: 2rem; border-radius: var(--radius-lg); max-width: 900px; margin: 0 auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <h3 style="margin-top: 0; font-size: 1.5rem; color: white;" id="pack-builder-title">${packId ? 'Edit Learning Pack' : 'Create New Learning Pack'}</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Group courses, software guides, documents, and web links into a structured journey.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 2rem;">
+          <div>
+            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white;">Pack Title *</label>
+            <input type="text" id="builder-pack-title" placeholder="e.g. New Joiner Onboarding" style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; color: white;">Description</label>
+            <textarea id="builder-pack-desc" rows="3" placeholder="e.g. Welcome to the team! Complete these materials in order during your first week." style="box-sizing: border-box; width: 100%; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); color: white; font-size: 0.95rem; resize: vertical;"></textarea>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; min-height: 400px;">
+          <!-- Left Column: Available Materials -->
+          <div style="display: flex; flex-direction: column; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1rem; overflow: hidden; max-height: 500px;">
+            <h4 style="margin: 0 0 1rem 0; color: white;">1. Add Learning Materials</h4>
+            
+            <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+              <button id="btn-avail-courses" class="btn-primary" style="font-size: 0.75rem; padding: 4px 8px; flex: 1;">Courses</button>
+              <button id="btn-avail-guides" class="btn-ghost" style="font-size: 0.75rem; padding: 4px 8px; flex: 1; border: 1px solid var(--glass-border);">Guides</button>
+              <button id="btn-avail-docs" class="btn-ghost" style="font-size: 0.75rem; padding: 4px 8px; flex: 1; border: 1px solid var(--glass-border);">Docs</button>
+              <button id="btn-avail-links" class="btn-ghost" style="font-size: 0.75rem; padding: 4px 8px; flex: 1; border: 1px solid var(--glass-border);">Links</button>
+            </div>
+
+            <div id="avail-items-list" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+              <!-- Available items list -->
+            </div>
+          </div>
+
+          <!-- Right Column: Selected Pack Items -->
+          <div style="display: flex; flex-direction: column; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1rem; overflow: hidden; max-height: 500px;">
+            <h4 style="margin: 0 0 1rem 0; color: white;">2. Pack Structure & Order</h4>
+            
+            <div id="selected-items-list" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; border: 1px dashed var(--glass-border); border-radius: var(--radius-sm); padding: 0.5rem;">
+              <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 2rem;" id="no-selected-placeholder">No items added to this pack yet. Select items from the left.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+          <button id="cancel-pack-builder" class="btn-ghost" style="border: 1px solid var(--glass-border);">Cancel</button>
+          <button id="save-pack-btn" class="btn-primary">Save Learning Pack</button>
+        </div>
+      </div>
+    `
+
+    // State for selected items
+    let selectedItems = []
+
+    // Fetch resources
+    let allCourses = []
+    let allGuides = []
+    let allDocs = []
+    let allLinks = []
+
+    try {
+      const allCoursesRaw = await getCourses('manager')
+      
+      allCourses = allCoursesRaw.filter(c => 
+        c.content_json?.is_system_simulation !== true && c.content_json?.type !== 'video_walkthrough'
+      )
+      
+      allGuides = allCoursesRaw.filter(c => 
+        c.content_json?.is_system_simulation === true || c.content_json?.type === 'video_walkthrough'
+      )
+
+      const allGuidesRaw = await fetchAllGuides()
+      allDocs = allGuidesRaw.filter(d => d.description !== 'Web Resource' && d.description !== 'YouTube Video')
+      allLinks = allGuidesRaw.filter(d => d.description === 'Web Resource' || d.description === 'YouTube Video')
+
+      if (packId) {
+        const packDetails = await getPack(packId)
+        document.getElementById('builder-pack-title').value = packDetails.title
+        document.getElementById('builder-pack-desc').value = packDetails.description || ''
+        
+        for (const item of packDetails.items) {
+          let title = ''
+          if (item.item_type === 'course' || item.item_type === 'guide') {
+            const courseObj = allCoursesRaw.find(c => c.id === item.item_id)
+            title = courseObj ? courseObj.title : 'Deleted Course'
+          } else {
+            const docObj = allGuidesRaw.find(d => d.id === item.item_id)
+            title = docObj ? docObj.title : 'Deleted Document'
+          }
+
+          selectedItems.push({
+            item_type: item.item_type,
+            item_id: item.item_id,
+            title
+          })
+        }
+        renderSelectedItems()
+      }
+
+    } catch (e) {
+      console.error(e)
+      await fswAlert('Failed to load builder resources.')
+      cancelBuilder()
+      return
+    }
+
+    let activeAvailTab = 'courses'
+    
+    const tabCoursesBtn = document.getElementById('btn-avail-courses')
+    const tabGuidesBtn = document.getElementById('btn-avail-guides')
+    const tabDocsBtn = document.getElementById('btn-avail-docs')
+    const tabLinksBtn = document.getElementById('btn-avail-links')
+
+    const switchAvailTab = (tab) => {
+      activeAvailTab = tab
+      const btns = [tabCoursesBtn, tabGuidesBtn, tabDocsBtn, tabLinksBtn]
+      btns.forEach(btn => {
+        if (btn) {
+          btn.className = 'btn-ghost'
+          btn.style.border = '1px solid var(--glass-border)'
+        }
+      })
+
+      if (tab === 'courses' && tabCoursesBtn) { tabCoursesBtn.className = 'btn-primary'; tabCoursesBtn.style.border = 'none' }
+      if (tab === 'guides' && tabGuidesBtn) { tabGuidesBtn.className = 'btn-primary'; tabGuidesBtn.style.border = 'none' }
+      if (tab === 'docs' && tabDocsBtn) { tabDocsBtn.className = 'btn-primary'; tabDocsBtn.style.border = 'none' }
+      if (tab === 'links' && tabLinksBtn) { tabLinksBtn.className = 'btn-primary'; tabLinksBtn.style.border = 'none' }
+
+      renderAvailItems()
+    }
+
+    tabCoursesBtn?.addEventListener('click', () => switchAvailTab('courses'))
+    tabGuidesBtn?.addEventListener('click', () => switchAvailTab('guides'))
+    tabDocsBtn?.addEventListener('click', () => switchAvailTab('docs'))
+    tabLinksBtn?.addEventListener('click', () => switchAvailTab('links'))
+
+    function renderAvailItems() {
+      const list = document.getElementById('avail-items-list')
+      if (!list) return
+      
+      let itemsToRender = []
+      if (activeAvailTab === 'courses') itemsToRender = allCourses.map(i => ({ id: i.id, title: i.title, type: 'course' }))
+      if (activeAvailTab === 'guides') itemsToRender = allGuides.map(i => ({ id: i.id, title: i.title, type: 'guide' }))
+      if (activeAvailTab === 'docs') itemsToRender = allDocs.map(i => ({ id: i.id, title: i.title, type: 'document' }))
+      if (activeAvailTab === 'links') itemsToRender = allLinks.map(i => ({ id: i.id, title: i.title, type: 'link' }))
+
+      if (itemsToRender.length === 0) {
+        list.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem;">No items available.</div>`
+        return
+      }
+
+      list.innerHTML = itemsToRender.map(item => {
+        const isSelected = selectedItems.some(si => si.item_id === item.id)
+        
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+            <span style="color: rgba(255,255,255,0.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span>
+            <button class="btn-primary add-to-pack-btn" data-id="${item.id}" data-title="${escapeHTML(item.title)}" data-type="${item.type}" style="padding: 2px 8px; font-size: 0.75rem;" ${isSelected ? 'disabled' : ''}>
+              ${isSelected ? 'Added' : '+ Add'}
+            </button>
+          </div>
+        `
+      }).join('')
+    }
+
+    document.getElementById('avail-items-list')?.addEventListener('click', (e) => {
+      const addBtn = e.target.closest('.add-to-pack-btn')
+      if (addBtn) {
+        const id = addBtn.dataset.id
+        const title = addBtn.dataset.title
+        const type = addBtn.dataset.type
+        
+        selectedItems.push({
+          item_type: type,
+          item_id: id,
+          title
+        })
+
+        renderSelectedItems()
+        renderAvailItems()
+      }
+    })
+
+    function renderSelectedItems() {
+      const list = document.getElementById('selected-items-list')
+      if (!list) return
+
+      if (selectedItems.length === 0) {
+        list.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 2rem;" id="no-selected-placeholder">No items added to this pack yet. Select items from the left.</div>`
+        return
+      }
+
+      list.innerHTML = selectedItems.map((item, index) => {
+        const typeIcon = item.item_type === 'course' 
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>'
+          : (item.item_type === 'guide' 
+            ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path><path d="M13 13l6 6"></path></svg>'
+            : (item.item_type === 'document' 
+              ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'
+              : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'))
+        const typeName = item.item_type.toUpperCase()
+        
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; width: 65%;">
+              <span style="display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--primary);">${typeIcon}</span>
+              <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; flex-direction: column;">
+                <span style="font-weight: 500; color: white;">${escapeHTML(item.title)}</span>
+                <span style="font-size: 0.65rem; color: var(--text-muted);">${typeName}</span>
+              </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 0.25rem;">
+              <button class="btn-ghost move-item-up" data-index="${index}" style="padding: 2px 6px; font-size: 0.8rem; border: none; color: white;" ${index === 0 ? 'disabled style="opacity:0.3;"' : ''}>▲</button>
+              <button class="btn-ghost move-item-down" data-index="${index}" style="padding: 2px 6px; font-size: 0.8rem; border: none; color: white;" ${index === selectedItems.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>▼</button>
+              <button class="btn-ghost remove-selected-item" data-index="${index}" style="padding: 2px 6px; font-size: 0.8rem; border: none; color: #ef4444; margin-left: 0.5rem;">✕</button>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    document.getElementById('selected-items-list')?.addEventListener('click', (e) => {
+      const upBtn = e.target.closest('.move-item-up')
+      if (upBtn) {
+        const idx = parseInt(upBtn.dataset.index)
+        if (idx > 0) {
+          const temp = selectedItems[idx]
+          selectedItems[idx] = selectedItems[idx - 1]
+          selectedItems[idx - 1] = temp
+          renderSelectedItems()
+          renderAvailItems()
+        }
+      }
+
+      const downBtn = e.target.closest('.move-item-down')
+      if (downBtn) {
+        const idx = parseInt(downBtn.dataset.index)
+        if (idx < selectedItems.length - 1) {
+          const temp = selectedItems[idx]
+          selectedItems[idx] = selectedItems[idx + 1]
+          selectedItems[idx + 1] = temp
+          renderSelectedItems()
+          renderAvailItems()
+        }
+      }
+
+      const removeBtn = e.target.closest('.remove-selected-item')
+      if (removeBtn) {
+        const idx = parseInt(removeBtn.dataset.index)
+        selectedItems.splice(idx, 1)
+        renderSelectedItems()
+        renderAvailItems()
+      }
+    })
+
+    function cancelBuilder() {
+      viewCourses.innerHTML = originalCoursesHtml
+      loadCourses()
+    }
+
+    document.getElementById('cancel-pack-builder')?.addEventListener('click', () => {
+      cancelBuilder()
+    })
+
+    document.getElementById('save-pack-btn')?.addEventListener('click', async () => {
+      const title = document.getElementById('builder-pack-title').value.trim()
+      const description = document.getElementById('builder-pack-desc').value.trim()
+
+      if (!title) {
+        await fswAlert('Please enter a pack title.')
+        return
+      }
+
+      if (selectedItems.length === 0) {
+        await fswAlert('Please add at least one item to the pack.')
+        return
+      }
+
+      try {
+        const saveBtn = document.getElementById('save-pack-btn')
+        saveBtn.innerText = 'Saving...'
+        saveBtn.disabled = true
+
+        if (packId) {
+          await updatePack(packId, { title, description, items: selectedItems })
+        } else {
+          await createPack({ title, description, items: selectedItems })
+        }
+
+        cancelBuilder()
+      } catch (err) {
+        console.error(err)
+        await fswAlert('Failed to save learning pack.')
+        const saveBtn = document.getElementById('save-pack-btn')
+        saveBtn.innerText = 'Save Learning Pack'
+        saveBtn.disabled = false
+      }
+    })
+
+    switchAvailTab('courses')
+  }
+
+
+
+  function openPackProgressModal(packId, packTitle) {
+    const modalDiv = document.createElement('div')
+    modalDiv.id = 'pack-progress-modal'
+    modalDiv.className = 'glass'
+    modalDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 2rem; border-radius: var(--radius-lg); z-index: 9999; width: 550px; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid var(--glass-border);'
+    
+    const overlay = document.createElement('div')
+    overlay.id = 'pack-progress-overlay'
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9998; backdrop-filter: blur(5px);'
+    
+    document.body.appendChild(overlay)
+    document.body.appendChild(modalDiv)
+
+    function closeModal() {
+      modalDiv.remove()
+      overlay.remove()
+    }
+
+    async function loadProgressList() {
+      modalDiv.innerHTML = `<h3 style="margin-top: 0; color: white;">Pack Progress</h3><p style="color: var(--primary);">Loading statistics...</p>`
+      try {
+        const stats = await getPackCompletionStats(packId)
+        
+        modalDiv.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0; color: white;">Progress: ${escapeHTML(packTitle)}</h3>
+            <button id="close-pack-progress" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;" id="progress-stats-container">
+            ${stats.length === 0 ? `
+              <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 2rem;">No assignments created for this pack yet.</div>
+            ` : stats.map(st => {
+              const userDisplay = st.user ? (st.user.full_name || st.user.email) : 'Unknown User'
+              const isCompleted = st.status === 'completed'
+              const isOverdue = st.due_date && new Date(st.due_date) < new Date() && !isCompleted
+              
+              return `
+                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                  <div style="flex: 1;">
+                    <div style="font-weight: bold; color: white; font-size: 0.95rem;">${escapeHTML(userDisplay)}</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                      <span style="font-size: 0.75rem; color: ${isCompleted ? '#10b981' : (isOverdue ? '#ef4444' : '#f59e0b')}; font-weight: bold; text-transform: uppercase;">
+                        ${isCompleted ? 'Completed' : (isOverdue ? 'Overdue' : 'In Progress')}
+                      </span>
+                      ${st.due_date ? `<span style="font-size: 0.75rem; color: var(--text-muted);">Due: ${new Date(st.due_date).toLocaleDateString()}</span>` : ''}
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; width: 90%;">
+                      <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; width: ${st.completionPct}%; background: ${isCompleted ? '#10b981' : (isOverdue ? '#ef4444' : '#f59e0b')}; border-radius: 3px;"></div>
+                      </div>
+                      <span style="font-size: 0.8rem; font-weight: bold; color: white;">${st.completionPct}%</span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <button class="btn-ghost revoke-pack-assign-btn" data-assignid="${st.id}" style="border: 1px solid var(--glass-border); color: #ef4444; font-size: 0.75rem; padding: 4px 8px;">Revoke</button>
+                  </div>
+                </div>
+              `
+            }).join('')}
+          </div>
+          
+          <div style="display: flex; justify-content: flex-end;">
+            <button id="close-pack-progress-btn" class="btn-primary">Close</button>
+          </div>
+        `
+
+        document.getElementById('close-pack-progress').addEventListener('click', closeModal)
+        document.getElementById('close-pack-progress-btn').addEventListener('click', closeModal)
+        
+        document.getElementById('progress-stats-container').addEventListener('click', async (e) => {
+          const revokeBtn = e.target.closest('.revoke-pack-assign-btn')
+          if (revokeBtn) {
+            const assignId = revokeBtn.dataset.assignid
+            if (await fswConfirm('Are you sure you want to revoke this pack assignment? This will stop tracking progress, but individual courses will remain in the users course list.')) {
+              try {
+                revokeBtn.innerText = 'Revoking...'
+                revokeBtn.disabled = true
+                await revokePackAssignment(assignId)
+                loadProgressList()
+              } catch (err) {
+                console.error(err)
+                await fswAlert('Failed to revoke assignment.')
+                revokeBtn.innerText = 'Revoke'
+                revokeBtn.disabled = false
+              }
+            }
+          }
+        })
+
+      } catch (e) {
+        console.error(e)
+        modalDiv.innerHTML = `<h3 style="color: red;">Error</h3><p>${e.message}</p><button id="err-close" class="btn-primary">Close</button>`
+        document.getElementById('err-close').addEventListener('click', closeModal)
+      }
+    }
+
+    loadProgressList()
+  }
 
   async function loadFeedbackDashboard() {
+
       const feedbackMetrics = document.getElementById('feedback-metrics');
       const feedbackList = document.getElementById('view-feedback-list');
       const loadingFeedback = document.getElementById('loading-feedback-stats');

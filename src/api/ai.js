@@ -1,4 +1,4 @@
-import { createPresentation } from './gamma.js';
+import { createPresentation, exportToPdf } from './gamma.js';
 import { supabase } from './supabase.js';
 import { generateThumbnail } from './images.js';
 import { createAudio } from './elevenlabs.js';
@@ -113,7 +113,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
     2. The "title" MUST be 50 characters or fewer for UI consistency.
     3. The "description" MUST be between 100 and 140 characters.
     
-    Ensure that any "Mandatory Topics" provided by the user are strictly included and thoroughly covered across the modules. Any "Scenarios/Activities" requested must also be deeply integrated into the lesson concepts.
+    Ensure that any "Mandatory Topics" provided by the user are strictly included in the outline, logically distributed across the modules. You MUST dedicate each mandatory topic to a single specific lesson, ensuring it is covered thoroughly once in that lesson rather than being repeated or diluted across multiple lessons. Any "Scenarios/Activities" requested must also be integrated into appropriate lessons.
 
     Make the course highly engaging and practical. Limit to 3-5 modules, 2-4 lessons per module.`;
 
@@ -261,7 +261,7 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                                    - TONE: The delivery must sound like a natural, flowing conversation with a colleague, offering valuable "behind-the-scenes" knowledge.
                                    - PRONUNCIATION / SPELLING: In the audio track scripts, if referencing 'myhrtoolkit', always write/spell it as 'my hr tool kit' so the text-to-speech engine pronounces it correctly. Keep the standard spelling ('myhrtoolkit') on the visual slides and markdown content, but use 'my hr tool kit' in the audio scripts.
                                 3. **markdown_content**: Must be UK English. DO NOT put the Interactive Activity or Quiz inside this string. Introduce them naturally, but let our system render them from the separate JSON keys.
-                                4. **quiz**: Must contain exactly 3 questions. MUST be a separate top-level key in the JSON output.
+                                4. **quiz**: Must contain exactly 3 questions. MUST be a separate top-level key in the JSON output. Ensure that each question tests a distinct aspect of the lesson's concept. DO NOT repeat the same or highly similar questions across different lessons in the course. Each question should have 4 realistic options, 1 correct index, and a brief explanation.
                                 5. **ai_component**: YOU MUST GENERATE A COMPONENT OF TYPE "${lesson.targetActivity}". CREATE A SENSIBLE ACTIVITY OF THIS TYPE THAT RELATES TO THE LESSON CONTENT. MUST be a separate top-level key in the JSON output, NOT embedded in markdown_content.
 
                                 **TERMINOLOGY RULES (CRITICAL):**
@@ -336,8 +336,41 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
 
                     // Generate Gamma Presentation
                     let gammaUrl = null;
+                    let gammaId = null;
+                    let gammaPdfUrl = null;
                     try {
-                        gammaUrl = await createPresentation(lesson.title, contentData.presentation_input);
+                        const gammaResult = await createPresentation(lesson.title, contentData.presentation_input);
+                        gammaUrl = gammaResult.url;
+                        gammaId = gammaResult.id;
+
+                        // Export to PDF
+                        if (gammaId) {
+                            onProgress(`${progressPrefix} Exporting slides to PDF for "${lesson.title}"...`);
+                            const pdfDownloadUrl = await exportToPdf(gammaId);
+                            if (pdfDownloadUrl) {
+                                onProgress(`${progressPrefix} Saving PDF to cloud...`);
+                                const pdfResponse = await fetch(pdfDownloadUrl);
+                                const pdfBlob = await pdfResponse.blob();
+                                
+                                const filePath = `slides/${gammaId}.pdf`;
+                                const { data: uploadData, error: uploadError } = await supabase.storage
+                                    .from('course_assets')
+                                    .upload(filePath, pdfBlob, {
+                                        contentType: 'application/pdf',
+                                        upsert: true
+                                    });
+
+                                if (uploadError) {
+                                    console.error("Failed to upload PDF to Supabase:", uploadError);
+                                } else {
+                                    const { data: publicUrlData } = supabase.storage
+                                        .from('course_assets')
+                                        .getPublicUrl(filePath);
+                                    gammaPdfUrl = publicUrlData.publicUrl;
+                                    console.log("PDF uploaded to:", gammaPdfUrl);
+                                }
+                            }
+                        }
                     } catch (err) {
                         console.error("[AI] Gamma failed:", err);
                     }
@@ -380,6 +413,8 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                     lesson.content = finalContent;
                     lesson.quiz = contentData.quiz;
                     lesson.gamma_url = gammaUrl;
+                    lesson.gamma_id = gammaId;
+                    lesson.gamma_pdf_url = gammaPdfUrl;
                     lesson.audio_tracks = generatedTracks;
                     lesson.audio_url = generatedTracks.length > 0 ? generatedTracks[0].url : null; // Fallback for backward compatibility
                     lesson.presentation_input = contentData.presentation_input;

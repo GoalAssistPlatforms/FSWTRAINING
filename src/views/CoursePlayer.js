@@ -6,7 +6,7 @@ import { renderToneAnalyser } from './components/ToneAnalyser.js'
 import { renderDojoChat } from './components/DojoChat.js'
 import { renderRedline } from './components/Redline.js'
 import { renderDebate } from './components/Debate.js'
-import { fswAlert } from '../utils/dialog.js'
+import { fswAlert, fswConfirm } from '../utils/dialog.js'
 import { renderDecisionSwipe } from './components/DecisionSwipe.js'
 import { renderCertificate, downloadCertificate } from './components/Certificate.js'
 import { renderSimulationPlayer } from './components/SimulationPlayer.js'
@@ -133,8 +133,6 @@ document.addEventListener('click', (e) => {
 export function renderCoursePlayer(course, user, options = {}) {
     window.currentCourseData = course;
 
-
-
     const progress = options.progress || null;
     
     let currentModuleIndex = progress?.last_module_index || 0;
@@ -148,6 +146,13 @@ export function renderCoursePlayer(course, user, options = {}) {
     // Completion State
     let isQuizComplete = false
     let isActivityComplete = false
+
+    // Diagnostic Pre-Test Tracking
+    let exemptedLessons = Array.isArray(progress?.exempted_lessons) ? progress.exempted_lessons : [];
+    let pretestState = (course.allow_pretest && (!progress || progress.status === 'assigned')) ? 'intro' : 'normal';
+    let showWelcomeSkipNotice = false;
+    let pretestAnswers = {}; // key: globalIndex, value: selectedOptionIndex
+    let pretestCurrentStep = 0;
 
 
 
@@ -167,8 +172,62 @@ export function renderCoursePlayer(course, user, options = {}) {
         ? JSON.parse(course.content_json)
         : course.content_json
 
-    if (modules && modules.is_system_simulation) {
+    if (modules && (modules.is_system_simulation || modules.type === 'video_walkthrough')) {
         return renderSimulationPlayer(course, user);
+    }
+
+    // Compile pre-test elements
+    let pretestQuestions = [];
+    let capstoneActivity = null;
+    let capstoneConfig = null;
+    let capstoneLessonTitle = '';
+    let capstoneModuleIndex = -1;
+    let capstoneLessonIndex = -1;
+
+    const compilePretest = () => {
+        pretestQuestions = [];
+        if (course.allow_pretest && modules && Array.isArray(modules)) {
+            modules.forEach((mod, mIdx) => {
+                if (mod && mod.lessons && Array.isArray(mod.lessons)) {
+                    mod.lessons.forEach((les, lIdx) => {
+                        if (les && les.quiz && Array.isArray(les.quiz)) {
+                            les.quiz.forEach((q, qIdx) => {
+                                pretestQuestions.push({
+                                    ...q,
+                                    mIdx,
+                                    lIdx,
+                                    qIdx,
+                                    lessonTitle: les.title || ''
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    };
+
+    if (course.allow_pretest && modules && Array.isArray(modules)) {
+        compilePretest();
+
+        // Find capstone activity (interactive simulation from the last lesson that has one)
+        for (let m = modules.length - 1; m >= 0; m--) {
+            const mod = modules[m];
+            if (mod && mod.lessons && Array.isArray(mod.lessons)) {
+                for (let l = mod.lessons.length - 1; l >= 0; l--) {
+                    const les = mod.lessons[l];
+                    if (les && les.ai_component && les.ai_component.type) {
+                        capstoneActivity = les.ai_component.type;
+                        capstoneConfig = les.ai_component.config;
+                        capstoneLessonTitle = les.title || '';
+                        capstoneModuleIndex = m;
+                        capstoneLessonIndex = l;
+                        break;
+                    }
+                }
+            }
+            if (capstoneActivity) break;
+        }
     }
 
     // Inject dummy data for verification if it's the specific test case
@@ -231,14 +290,16 @@ export function renderCoursePlayer(course, user, options = {}) {
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                             ${mod.lessons.map((lesson, lIdx) => {
-                                const isUnlocked = user.role === 'manager' || isCourseComplete || (mIdx < highestModuleIndex) || (mIdx === highestModuleIndex && lIdx <= highestLessonIndex);
+                                const isExempt = exemptedLessons.some(el => el.m === mIdx && el.l === lIdx);
+                                const isUnlocked = user.role === 'manager' || isCourseComplete || isExempt || (mIdx < highestModuleIndex) || (mIdx === highestModuleIndex && lIdx <= highestLessonIndex);
                                 return `
                                 <button class="lesson-btn ${mIdx === currentModuleIndex && lIdx === currentLessonIndex ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}" 
                                     data-m="${mIdx}" data-l="${lIdx}"
                                     ${!isUnlocked ? 'disabled title="You must complete the previous lessons first."' : ''}
                                     style="${!isUnlocked ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
-                                    ${mIdx === currentModuleIndex && lIdx === currentLessonIndex ? '▶' : '•'}
+                                    ${mIdx === currentModuleIndex && lIdx === currentLessonIndex ? '▶' : (isExempt ? '✓' : '•')}
                                     ${!isUnlocked ? '🔒 ' : ''}${lesson.title}
+                                    ${isExempt ? ' <span style="font-size: 0.75rem; padding: 0.1rem 0.4rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; margin-left: 0.5rem; font-weight: bold; display: inline-block; vertical-align: middle;">Exempt</span>' : ''}
                                 </button>
                             `}).join('')}
                         </div>
@@ -256,8 +317,28 @@ export function renderCoursePlayer(course, user, options = {}) {
                 <!-- Overlay to capture clicks in reading mode (to restore cinema mode) -->
                 <div id="visuals-overlay" style="position: absolute; inset: 0; z-index: 40; display: none; cursor: pointer;" title="Click to expand"></div>
 
-                ${currentLesson.gamma_url ? `
-                     <div id="gamma-scroller" style="width: 100%; height: 100%; position: relative; padding-right: ${(currentLesson.audio_tracks || currentLesson.audio_url || user.role === 'manager') ? '360px' : '0'}; padding-left: 2rem; padding-top: 2rem; padding-bottom: 2rem; box-sizing: border-box;">
+                ${currentLesson.gamma_pdf_url ? `
+                      <div id="gamma-scroller" style="width: 100%; height: 100%; position: relative; padding-right: ${(user.role === 'manager') ? '360px' : '0'}; padding-left: 2rem; padding-top: 2rem; padding-bottom: 2rem; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+                        
+                        <!-- Left Navigation Arrow (Managers Only) -->
+                        ${user.role === 'manager' ? `
+                        <button id="pdf-prev-slide-btn" class="hover-glow" style="position: absolute; left: 3rem; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; background: rgba(15,15,15,0.75); border: 1px solid rgba(255,255,255,0.1); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 50; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);" title="Previous Slide">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        ` : ''}
+
+                        <canvas id="pdf-canvas" style="max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: white;"></canvas>
+                        
+                        <!-- Right Navigation Arrow (Managers Only) -->
+                        ${user.role === 'manager' ? `
+                        <button id="pdf-next-slide-btn" class="hover-glow" style="position: absolute; right: ${(user.role === 'manager') ? '390px' : '3rem'}; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; background: rgba(15,15,15,0.75); border: 1px solid rgba(255,255,255,0.1); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 50; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);" title="Next Slide">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        ` : ''}
+
+                      </div>
+                ` : currentLesson.gamma_url ? `
+                     <div id="gamma-scroller" style="width: 100%; height: 100%; position: relative; padding-right: ${(user.role === 'manager') ? '360px' : '0'}; padding-left: 2rem; padding-top: 2rem; padding-bottom: 2rem; box-sizing: border-box;">
                         <iframe 
                             id="gamma-iframe"
                             src="${(() => {
@@ -279,11 +360,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                             allow="fullscreen; autoplay"
                             allowfullscreen>
                         </iframe>
-                        <div id="ghost-advance-banner" class="fade-in" style="display: none; position: absolute; bottom: 3rem; right: 380px; pointer-events: none; z-index: 100;">
-                            <div style="background: rgba(16, 185, 129, 0.95); color: white; padding: 1.25rem 2rem; border-radius: 16px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.6); border: 2px solid rgba(255,255,255,0.5); animation: pulse 2s infinite; backdrop-filter: blur(10px);">
-                                <span>Click here to advance slide</span>
-                            </div>
-                        </div>
                      </div>
                 ` : currentModule.slides_url ? `
                      <iframe src="${currentModule.slides_url}" style="width: 100%; height: 100%; border: none;"></iframe>
@@ -296,32 +372,70 @@ export function renderCoursePlayer(course, user, options = {}) {
                         <line x1="9" y1="3" x2="9" y2="21"></line>
                     </svg>
                 </button>
-
-                <!-- Reading Mode Toggle (Floating in Visual Area) -->
-                <button id="reading-mode-toggle" class="hover-glow" style="position: absolute; top: 2rem; right: 2rem; z-index: 50; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);" title="Switch to Reading Mode">
-                    <span style="font-size: 1.2rem;">📖</span>
-                </button>
-
-                <!-- Edit in Gamma Button (Managers Only) -->
-                ${(user.role === 'manager') ? `
-                    <button id="regenerate-gamma-btn" class="hover-glow" style="position: absolute; top: 2rem; right: ${currentLesson.gamma_url ? '14rem' : '5rem'}; z-index: 50; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Regenerate Presentation via AI">
-                        <span>🔄 Regenerate Slides</span>
+                <!-- Floating Control Toolbar (Top Right) -->
+                <div style="position: absolute; top: 2rem; right: 2rem; z-index: 100; display: flex; align-items: center; gap: 0.75rem;">
+                    
+                    <!-- Reading Mode Toggle -->
+                    <button id="reading-mode-toggle" class="hover-glow" style="background: rgba(15,15,15,0.65); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.85); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 30px rgba(0,0,0,0.4);" title="Switch to Reading Mode">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                     </button>
-                    ${currentLesson.gamma_url ? `
-                    <button id="edit-gamma-btn" onclick="window.open('${currentLesson.gamma_url}', '_blank')" class="hover-glow" style="position: absolute; top: 2rem; right: 5rem; z-index: 50; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: white; padding: 0 1rem; height: 40px; border-radius: 20px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; backdrop-filter: blur(10px); font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" title="Edit Presentation">
-                        <span>✏️ Edit Slides</span>
-                    </button>
+
+                    <!-- Manager Slide Operations Toolbar -->
+                    ${(user.role === 'manager') ? `
+                        <div class="glass" style="display: flex; align-items: center; gap: 0.25rem; background: rgba(15,15,15,0.65); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); padding: 0.25rem 0.5rem; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); height: 48px; box-sizing: border-box;">
+                            
+                            <button id="regenerate-gamma-btn" class="hover-glow" style="background: transparent; border: none; color: rgba(255,255,255,0.85); padding: 0 1rem; height: 36px; border-radius: 18px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s;" title="Regenerate Presentation via AI">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                <span>Regenerate Slides</span>
+                            </button>
+
+                            ${currentLesson.gamma_url ? `
+                                <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.15); margin: 0 0.25rem;"></div>
+                                
+                                <button id="update-gamma-btn" class="hover-glow" style="background: transparent; border: none; color: rgba(255,255,255,0.85); padding: 0 1rem; height: 36px; border-radius: 18px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s;" title="Sync Latest Changes from Gamma">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f59e0b;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                    <span>Update Slides</span>
+                                </button>
+
+                                <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.15); margin: 0 0.25rem;"></div>
+
+                                <button id="edit-gamma-btn" onclick="window.open('${currentLesson.gamma_url}', '_blank')" class="hover-glow" style="background: transparent; border: none; color: rgba(255,255,255,0.85); padding: 0 1rem; height: 36px; border-radius: 18px; display: flex; align-items: center; gap: 0.5rem; justify-content: center; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s;" title="Edit Presentation">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    <span>Edit Slides</span>
+                                </button>
+                            ` : ''}
+
+                        </div>
                     ` : ''}
 
-                ` : ''}
+                </div>
                 
+                <!-- User Floating Audio Control Bar (Non-Managers Only) -->
+                ${(user.role !== 'manager' && (currentLesson.audio_tracks || currentLesson.audio_url)) ? `
+                    <div id="user-audio-controls" style="position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 1.5rem; background: rgba(15,15,15,0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); padding: 0.75rem 2rem; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); min-width: 480px; width: 60%; max-width: 800px; transition: all 0.3s ease;">
+                        <button id="user-play-pause-btn" style="background: var(--primary, #3b82f6); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; box-shadow: 0 4px 12px rgba(59,130,246,0.3);">
+                            <span style="font-size: 0.95rem; margin-left: 2px;">▶</span>
+                        </button>
+                        <div id="user-slide-number" style="color: rgba(255,255,255,0.6); font-size: 0.85rem; font-weight: 500; font-family: monospace; white-space: nowrap; flex-shrink: 0;">
+                            Slide 1 / 1
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-grow: 1;">
+                            <span id="user-current-time" style="color: white; font-size: 0.8rem; font-family: monospace; flex-shrink: 0;">0:00</span>
+                            <div id="user-progress-container" style="flex-grow: 1; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; cursor: pointer; position: relative; transition: height 0.2s;">
+                                <div id="user-progress-bar" style="width: 0%; height: 100%; background: var(--primary, #3b82f6); border-radius: 3px; position: absolute; top: 0; left: 0; transition: width 0.1s linear;"></div>
+                            </div>
+                            <span id="user-total-time" style="color: rgba(255,255,255,0.5); font-size: 0.8rem; font-family: monospace; flex-shrink: 0;">0:00</span>
+                        </div>
+                    </div>
+                ` : ''}
+
                 <!-- Interactive Sidebar Curriculum (Right) -->
                 ${(currentLesson.audio_tracks || currentLesson.audio_url || user.role === 'manager') ? `
-                    <div class="interactive-sidebar fade-in" style="position: absolute; top: 6rem; bottom: 2rem; right: 2rem; width: 320px; z-index: 60; display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="interactive-sidebar fade-in" style="position: absolute; top: 6rem; bottom: 2rem; right: 2rem; width: 320px; z-index: 60; display: ${user.role === 'manager' ? 'flex' : 'none'}; flex-direction: column; gap: 1rem;">
                         <div class="glass" style="padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.1); background: rgba(10,10,10,0.75); backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); flex: 1; display: flex; flex-direction: column; overflow: hidden;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                                 <h4 style="margin: 0; font-size: 1rem; color: white; display: flex; align-items: center; gap: 0.5rem;"><span style="color: var(--primary);">🔊</span> Course Audio</h4>
-                                ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" class="hover-glow" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">✏️ Edit</button>` : ''}
+                                ${user.role === 'manager' ? `<button id="inline-edit-audio-btn" class="hover-glow" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.25rem;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Edit</span></button>` : ''}
                             </div>
                             
                             <div class="audio-tracks-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.5rem;">
@@ -333,7 +447,7 @@ export function renderCoursePlayer(course, user, options = {}) {
                                     return tracks.map((track, idx) => `
                                         <div class="audio-track-item ${idx === 0 ? 'active' : ''}" data-track-idx="${idx}" style="padding: 1rem; border-radius: var(--radius-md); background: ${idx === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${idx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: all 0.2s; position: relative;">
                                             <div style="font-size: 0.85rem; font-weight: 600; color: ${idx === 0 ? 'white' : 'var(--text-muted)'}; margin-bottom: 0.5rem;">${track.title || `Slide ${idx + 1}`}</div>
-                                            <audio class="track-audio" controls src="${track.url}" preload="metadata" style="width: 100%; height: 28px; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.9; outline: none;"></audio>
+                                            <audio ${idx === 0 ? 'id="lesson-audio"' : ''} class="track-audio" controls src="${track.url}" preload="metadata" style="width: 100%; height: 28px; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.9; outline: none;"></audio>
                                             <div class="next-prompt fade-in" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; color: #10b981; font-weight: bold; text-align: center; background: rgba(16, 185, 129, 0.15); padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
                                                 Advance slide ➔ Play ▶
                                             </div>
@@ -345,19 +459,25 @@ export function renderCoursePlayer(course, user, options = {}) {
 
                         <!-- Hidden Audio Editor -->
                         ${user.role === 'manager' ? `
-                        <div id="audio-edit-mode" style="display: none; position: absolute; top: 0; right: 105%; width: 650px; max-height: 100%; overflow-y: auto; background: rgba(10, 10, 10, 0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-lg); padding: 2rem; backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
-                            <h4 style="margin: 0 0 1rem 0; font-size: 1.25rem; color: white;">Manage Audio Tracks</h4>
-                            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem;">Add multiple tracks to correspond to slides.</p>
+                        <div id="audio-edit-mode" style="display: none; position: absolute; top: 0; bottom: 0; right: 105%; width: 650px; background: rgba(10, 10, 10, 0.96); border: 1px solid rgba(255,255,255,0.2); border-radius: var(--radius-lg); backdrop-filter: blur(20px); box-shadow: 0 20px 40px rgba(0,0,0,0.8); flex-direction: column; overflow: hidden; z-index: 100;">
+                            <!-- Sticky Header -->
+                            <div style="padding: 2rem 2rem 1rem 2rem; flex-shrink: 0;">
+                                <h4 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white;">Manage Audio Tracks</h4>
+                                <p style="font-size: 0.95rem; color: var(--text-muted); margin: 0;">Add multiple tracks to correspond to slides.</p>
+                            </div>
                             
-                            <div id="audio-tracks-editor" style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 1.5rem;">
-                                <!-- Populated by JS -->
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto; padding: 0 2rem 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+                                <div id="audio-tracks-editor" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                                    <!-- Populated by JS -->
+                                </div>
+                                <button id="add-audio-track-btn" class="btn-secondary" style="width: 100%; font-size: 1rem; padding: 0.8rem; margin: 0;">+ Add Track</button>
                             </div>
 
-                            <button id="add-audio-track-btn" class="btn-secondary" style="width: 100%; margin-bottom: 1.5rem; font-size: 1rem; padding: 0.8rem;">+ Add Track</button>
-
-                            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem;">
-                                <button id="cancel-audio-edit" class="btn-ghost" style="padding: 0.6rem 1.2rem; font-size: 0.95rem;">Cancel</button>
-                                <button id="save-audio-edit" class="btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">💾 Save Changes</button>
+                            <!-- Sticky Footer -->
+                            <div style="padding: 1.25rem 2rem 1.5rem 2rem; border-top: 1px solid rgba(255,255,255,0.1); background: rgba(15, 15, 15, 0.98); display: flex; justify-content: flex-end; gap: 1rem; flex-shrink: 0; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg);">
+                                <button id="cancel-audio-edit" class="btn-ghost" style="height: 42px; padding: 0 1.5rem; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; border-radius: 21px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); cursor: pointer; transition: all 0.2s;">Cancel</button>
+                                <button id="save-audio-edit" class="btn-primary" style="height: 42px; padding: 0 1.5rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 21px; box-sizing: border-box; cursor: pointer; transition: all 0.2s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>Save Changes</span></button>
                             </div>
                         </div>
                         ` : ''}
@@ -373,7 +493,8 @@ export function renderCoursePlayer(course, user, options = {}) {
                 <div class="cp-text-panel" id="text-panel" style="position: relative;">
                     ${user.role === 'manager' ? `
                     <button id="inline-edit-btn" class="hover-glow" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; font-size: 0.8rem; border-radius: 4px; padding: 0.4rem 0.8rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.2s;">
-                        <span>✏️ Edit Content</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        <span>Edit Content</span>
                     </button>
                     ` : ''}
 
@@ -452,7 +573,7 @@ export function renderCoursePlayer(course, user, options = {}) {
       
       <!-- Intro Overlay -->
       <div id="intro-overlay">
-          <video id="intro-video" autoplay playsinline class="intro-video">
+          <video id="intro-video" playsinline class="intro-video">
               <source src="/FSWlogoanimation.mp4" type="video/mp4">
           </video>
       </div>
@@ -466,7 +587,8 @@ export function renderCoursePlayer(course, user, options = {}) {
                 <h3 style="color: white; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: var(--primary);">Knowledge Check</h3>
                 ${user.role === 'manager' ? `
                 <button id="inline-edit-quiz-btn" class="hover-glow" style="font-size: 0.8rem; border-radius: 4px; padding: 0.3rem 0.6rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.2s;">
-                    <span>✏️ Edit Quiz</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    <span>Edit Quiz</span>
                 </button>
                 ` : ''}
             </div>
@@ -520,6 +642,586 @@ export function renderCoursePlayer(course, user, options = {}) {
       `
     }
 
+    const renderPretestIntro = () => {
+        document.body.style.overflow = 'hidden';
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="cp-grid" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; box-sizing: border-box; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); position: fixed; inset: 0; z-index: 1000; overflow-y: auto;">
+                <div class="glass fade-in" style="max-width: 600px; width: 100%; padding: 3rem; border-radius: var(--radius-lg); text-align: center; border: 1px solid var(--glass-border); box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    <div style="margin-bottom: 2rem;">
+                        <div class="logo-badge" style="padding: 0.5rem 1.25rem; border-radius: 12px; background: white; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            <img src="/fsw_logo_brand.png" alt="FSW Logo" style="height: 36px; width: auto; object-fit: contain;">
+                        </div>
+                    </div>
+                    <h2 class="text-gradient-silver" style="font-size: 2.2rem; margin: 0 0 1rem 0; font-weight: 800; line-height: 1.2;">Diagnostic Pre-Test</h2>
+                    <p style="color: rgba(255,255,255,0.85); line-height: 1.6; font-size: 1.05rem; margin-bottom: 2.5rem;">
+                        Prove your knowledge upfront to save time. If you pass the diagnostic test for any lesson, you will be exempted from its slides, audio, and activities.
+                    </p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 1rem; align-items: stretch;">
+                        <button id="start-pretest-btn" class="btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem; font-weight: bold; border-radius: var(--radius-md); cursor: pointer; border: none;">
+                            Take Diagnostic Pre-Test
+                        </button>
+                        <button id="skip-pretest-btn" class="btn-ghost" style="padding: 1rem 2rem; font-size: 1rem; border: 1px solid var(--glass-border); border-radius: var(--radius-md); cursor: pointer; color: white;">
+                            Skip and Do Full Course
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 2rem;">
+                        <button id="exit-pretest-btn" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--text-muted)'">
+                            ← Exit Course
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('start-pretest-btn').addEventListener('click', () => {
+            pretestState = 'testing';
+            isActivityComplete = false; // Reset capstone activity state
+            mount();
+        });
+
+        document.getElementById('skip-pretest-btn').addEventListener('click', async () => {
+            if (await fswConfirm('Are you sure you want to skip the pre-test? You will have to sit the full course.')) {
+                // Update status in DB to in-progress
+                import('../api/courses.js').then(({ saveExemptedLessons }) => {
+                    saveExemptedLessons(user.id, course.id, [], 'in-progress');
+                });
+                pretestState = 'normal';
+                mount();
+            }
+        });
+
+        document.getElementById('exit-pretest-btn').addEventListener('click', () => {
+            import('../main').then(m => m.renderMainLayout(user));
+        });
+    };
+
+    const renderPretestTesting = () => {
+        document.body.style.overflow = 'auto';
+        const app = document.getElementById('app');
+
+        const totalMCQs = pretestQuestions.length;
+        const totalSteps = totalMCQs + (capstoneActivity ? 1 : 0);
+        const isOnCapstone = pretestCurrentStep === totalMCQs;
+        const progressPct = Math.round((pretestCurrentStep / totalSteps) * 100);
+
+        let stepContentHTML = "";
+
+        if (!isOnCapstone) {
+            // Render the single MCQ for the current step
+            const q = pretestQuestions[pretestCurrentStep];
+            const isSelected = pretestAnswers[pretestCurrentStep] !== undefined;
+
+            stepContentHTML = `
+                <div class="pretest-question-card" data-step="${pretestCurrentStep}" style="padding: 2.5rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="font-size: 0.8rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold;">
+                            Module ${q.mIdx + 1} • Lesson: ${q.lessonTitle}
+                        </div>
+                        ${user.role === 'manager' ? `
+                        <button id="inline-edit-pretest-q-btn" class="hover-glow" style="font-size: 0.8rem; border-radius: 4px; padding: 0.3rem 0.6rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.2s;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            <span>Edit Question</span>
+                        </button>
+                        ` : ''}
+                    </div>
+                    
+                    <div id="pretest-q-view-mode">
+                        <div style="font-size: 1.25rem; font-weight: bold; color: white; margin-bottom: 2rem; line-height: 1.4;">
+                            ${pretestCurrentStep + 1}. ${q.question}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.95rem;">
+                            ${q.options.map((opt, oIdx) => {
+                                const active = pretestAnswers[pretestCurrentStep] === oIdx;
+                                return `
+                                    <label style="display: flex; align-items: center; gap: 0.85rem; padding: 1rem 1.25rem; background: ${active ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.3)'}; border: 1px solid ${active ? 'var(--primary)' : 'rgba(255,255,255,0.05)'}; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;" class="pretest-option-label" data-o-idx="${oIdx}">
+                                        <input type="radio" name="pretest-q-${pretestCurrentStep}" value="${oIdx}" ${active ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer; accent-color: var(--primary);">
+                                        <span style="color: ${active ? 'white' : 'rgba(255,255,255,0.85)'}; font-size: 0.95rem;">${opt}</span>
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <div id="pretest-q-edit-mode" style="display: none;">
+                        <div class="pretest-q-edit-item" style="padding-top: 1rem;">
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Question Text</label>
+                                <input type="text" class="edit-pretest-q-text" value="${q.question.replace(/"/g, '&quot;')}" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none;">
+                            </div>
+                            <div style="margin-bottom: 1rem; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1);">
+                                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Answers</label>
+                                ${q.options.map((opt, oIdx) => `
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <span style="font-size: 0.8rem; color: ${q.correct_index === oIdx ? '#10b981' : 'var(--text-muted)'}; font-weight: bold; width: 20px;">${String.fromCharCode(65 + oIdx)}.</span>
+                                        <input type="text" class="edit-pretest-opt-text" data-oidx="${oIdx}" value="${opt.replace(/"/g, '&quot;')}" style="flex: 1; box-sizing: border-box; padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none; border-left-color: ${q.correct_index === oIdx ? '#10b981' : 'rgba(255,255,255,0.2)'}; border-left-width: ${q.correct_index === oIdx ? '4px' : '1px'};">
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                 <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">Explanation (Feedback)</label>
+                                 <textarea class="edit-pretest-q-exp" style="width: 100%; box-sizing: border-box; padding: 0.75rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: white; outline: none; min-height: 60px; font-family: inherit;">${(q.explanation || '').replace(/"/g, '&quot;')}</textarea>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                                <button id="inline-edit-pretest-q-cancel" class="btn-ghost" style="padding: 0.5rem 1rem;">Cancel</button>
+                                <button id="inline-edit-pretest-q-save" class="btn-primary" style="padding: 0.5rem 1rem;">Save Question</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Render the capstone simulation
+            stepContentHTML = `
+                <div style="margin-bottom: 2rem; animation: fadeIn 0.3s ease;">
+                    <h3 style="color: white; margin: 0 0 0.5rem 0; font-size: 1.35rem; font-weight: 700;">Capstone Simulation Challenge</h3>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">
+                        Complete the interactive simulation below to demonstrate your practical application skills. This verifies competency across the entire course.
+                    </p>
+                    <div class="activity-wrapper" id="pretest-capstone-wrapper" style="margin: 0; background: rgba(0,0,0,0.4); border-radius: var(--radius-md); border: 1px solid var(--glass-border); padding: 1.5rem; min-height: 300px;">
+                        <div id="pretest-capstone-container" class="ai-component-container" data-type="${capstoneActivity}" style="margin: 0;"></div>
+                        <script type="application/json" id="config-pretest-capstone-container">${JSON.stringify(capstoneConfig)}</script>
+                    </div>
+                    <div id="capstone-status-badge" style="margin-top: 1.25rem; display: flex; align-items: center; gap: 0.5rem; color: ${isActivityComplete ? '#10b981' : '#ef4444'}; font-weight: bold; font-size: 0.95rem; background: ${isActivityComplete ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; padding: 0.75rem 1.25rem; border-radius: 8px; border: 1px solid ${isActivityComplete ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'};">
+                        ${isActivityComplete 
+                            ? `<span style="font-size: 1.2rem;">✓</span> Simulation Complete! You can now submit your test.`
+                            : `<span style="font-size: 1.2rem;">✗</span> Simulation Pending (Complete the interactive simulation above to unlock pre-test submission)`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render Wizard Layout
+        app.innerHTML = `
+            <div style="min-height: 100vh; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); padding: 3rem 2rem; box-sizing: border-box;">
+                <div class="glass fade-in" style="max-width: 800px; width: 100%; margin: 0 auto; padding: 3rem; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.85rem;">
+                            <div class="logo-badge" style="padding: 0.35rem 0.85rem; border-radius: 8px; background: white; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                                <img src="/fsw_logo_brand.png" alt="FSW Logo" style="height: 24px; width: auto; object-fit: contain;">
+                            </div>
+                            <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.15);"></div>
+                            <h2 style="margin: 0; color: white; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.5px;">Diagnostic Pre-Test</h2>
+                        </div>
+                        <button id="cancel-test-btn" class="btn-ghost" style="padding: 0.5rem 1.25rem; font-size: 0.9rem; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: white; cursor: pointer;">Cancel</button>
+                    </div>
+
+                    <!-- Progress Header -->
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); font-weight: bold; margin-top: 1.5rem;">
+                        <span>
+                            ${isOnCapstone 
+                                ? 'Final Part: Capstone Practical Simulation' 
+                                : `Question ${pretestCurrentStep + 1} of ${totalMCQs}`
+                            }
+                        </span>
+                        <span>${progressPct}% Complete</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 0.5rem 0 2.5rem 0; overflow: hidden;">
+                        <div style="width: ${progressPct}%; height: 100%; background: var(--primary); transition: width 0.3s ease;"></div>
+                    </div>
+
+                    <!-- Step Content -->
+                    <div id="wizard-step-body">
+                        ${stepContentHTML}
+                    </div>
+
+                    <!-- Navigation Footer -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 2rem; margin-top: 1rem;">
+                        <button id="pretest-prev-btn" class="btn-ghost" style="padding: 0.75rem 1.5rem; border: 1px solid var(--glass-border); color: white; cursor: pointer; opacity: ${pretestCurrentStep > 0 ? '1' : '0.3'};" ${pretestCurrentStep > 0 ? '' : 'disabled'}>
+                            ← Previous
+                        </button>
+                        
+                        <div>
+                            ${isOnCapstone 
+                                ? `
+                                <button id="submit-pretest-btn" class="btn-primary" style="padding: 0.75rem 2.5rem; font-weight: bold; border-radius: var(--radius-md); border: none; cursor: ${isActivityComplete ? 'pointer' : 'not-allowed'}; opacity: ${isActivityComplete ? '1' : '0.5'};" ${isActivityComplete ? '' : 'disabled'}>
+                                    Submit Pre-Test
+                                </button>
+                                `
+                                : `
+                                <button id="pretest-next-btn" class="btn-primary" style="padding: 0.75rem 2.5rem; font-weight: bold; border-radius: var(--radius-md); border: none; cursor: pointer;">
+                                    ${pretestCurrentStep === totalMCQs - 1 ? (capstoneActivity ? 'Proceed to Capstone →' : 'Submit Pre-Test') : 'Next Question →'}
+                                </button>
+                                `
+                            }
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        // MCQ step interaction listeners
+        if (!isOnCapstone) {
+            document.querySelectorAll('.pretest-option-label').forEach(label => {
+                label.addEventListener('click', () => {
+                    const oIdx = parseInt(label.dataset.oIdx);
+                    pretestAnswers[pretestCurrentStep] = oIdx;
+
+                    // Update styling instantly
+                    const container = label.closest('.pretest-question-card');
+                    container.querySelectorAll('.pretest-option-label').forEach((lbl, index) => {
+                        const radio = lbl.querySelector('input[type="radio"]');
+                        const isSelected = index === oIdx;
+                        radio.checked = isSelected;
+                        lbl.style.background = isSelected ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.3)';
+                        lbl.style.borderColor = isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.05)';
+                        lbl.querySelector('span').style.color = isSelected ? 'white' : 'rgba(255,255,255,0.85)';
+                    });
+                });
+            });
+
+            // Next button click
+            document.getElementById('pretest-next-btn').addEventListener('click', async () => {
+                if (user?.role !== 'manager' && pretestAnswers[pretestCurrentStep] === undefined) {
+                    await fswAlert('Please select an answer to proceed.');
+                    return;
+                }
+
+                if (pretestCurrentStep < totalMCQs - 1) {
+                    pretestCurrentStep++;
+                    renderPretestTesting();
+                } else if (pretestCurrentStep === totalMCQs - 1) {
+                    if (capstoneActivity) {
+                        pretestCurrentStep++;
+                        renderPretestTesting();
+                    } else {
+                        submitTest();
+                    }
+                }
+            });
+
+            // Inline Edit Pretest Question Listeners
+            const editBtn = document.getElementById('inline-edit-pretest-q-btn');
+            if (editBtn) {
+                const viewMode = document.getElementById('pretest-q-view-mode');
+                const editMode = document.getElementById('pretest-q-edit-mode');
+                const cancelBtn = document.getElementById('inline-edit-pretest-q-cancel');
+                const saveBtn = document.getElementById('inline-edit-pretest-q-save');
+
+                // Cache navigation elements we want to disable during edit
+                const prevBtn = document.getElementById('pretest-prev-btn');
+                const nextBtn = document.getElementById('pretest-next-btn');
+                const cancelTestBtn = document.getElementById('cancel-test-btn');
+
+                editBtn.addEventListener('click', () => {
+                    viewMode.style.display = 'none';
+                    editBtn.style.display = 'none';
+                    editMode.style.display = 'block';
+                    if (prevBtn) prevBtn.disabled = true;
+                    if (nextBtn) nextBtn.disabled = true;
+                    if (cancelTestBtn) cancelTestBtn.style.display = 'none';
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    editMode.style.display = 'none';
+                    viewMode.style.display = 'block';
+                    editBtn.style.display = 'flex';
+                    if (prevBtn) prevBtn.disabled = pretestCurrentStep === 0;
+                    if (nextBtn) nextBtn.disabled = false;
+                    if (cancelTestBtn) cancelTestBtn.style.display = 'block';
+                });
+
+                saveBtn.addEventListener('click', async () => {
+                    const q = pretestQuestions[pretestCurrentStep];
+                    
+                    const qInput = editMode.querySelector('.edit-pretest-q-text');
+                    const expInput = editMode.querySelector('.edit-pretest-q-exp');
+                    const optInputs = editMode.querySelectorAll('.edit-pretest-opt-text');
+
+                    if (qInput) q.question = qInput.value;
+                    if (expInput) q.explanation = expInput.value;
+                    optInputs.forEach(optInput => {
+                        const oIdx = parseInt(optInput.dataset.oidx);
+                        q.options[oIdx] = optInput.value;
+                    });
+
+                    // Sync to original modules array
+                    const originalQuiz = modules[q.mIdx].lessons[q.lIdx].quiz[q.qIdx];
+                    if (originalQuiz) {
+                        originalQuiz.question = q.question;
+                        originalQuiz.explanation = q.explanation;
+                        originalQuiz.options = [...q.options];
+                    }
+
+                    const originalText = saveBtn.innerText;
+                    saveBtn.innerText = 'Saving...';
+                    saveBtn.disabled = true;
+
+                    try {
+                        const { updateCourse } = await import('../api/courses');
+                        await updateCourse(course.id, {
+                            content_json: modules,
+                            updated_at: new Date()
+                        });
+                        
+                        mount(); // Re-render
+                    } catch(e) {
+                        console.error('Failed to save pretest question edit:', e);
+                        await fswAlert("Failed to save changes.");
+                        saveBtn.innerText = originalText;
+                        saveBtn.disabled = false;
+                    }
+                });
+            }
+        } else {
+            // Capstone step render
+            try {
+                if (capstoneActivity === 'ai-tone') renderToneAnalyser('pretest-capstone-container', capstoneConfig);
+                if (capstoneActivity === 'ai-dojo') renderDojoChat('pretest-capstone-container', capstoneConfig);
+                if (capstoneActivity === 'ai-redline') renderRedline('pretest-capstone-container', capstoneConfig);
+                if (capstoneActivity === 'ai-debate') renderDebate('pretest-capstone-container', capstoneConfig);
+                if (capstoneActivity === 'ai-swipe') renderDecisionSwipe('pretest-capstone-container', capstoneConfig);
+            } catch (e) {
+                console.error("Failed to render pretest capstone activity", e);
+                const container = document.getElementById('pretest-capstone-container');
+                if (container) {
+                    container.innerHTML = `<div style="color:red; border:1px solid red; padding:1rem;">Error rendering capstone activity: ${e.message}</div>`;
+                }
+            }
+
+            // Listen for completion
+            if (window.currentActivityListener) {
+                document.removeEventListener('lesson-activity-complete', window.currentActivityListener);
+            }
+
+            window.currentActivityListener = () => {
+                console.log('Capstone Activity Completed!');
+                isActivityComplete = true;
+
+                // Update badge and enable button
+                const badge = document.getElementById('capstone-status-badge');
+                if (badge) {
+                    badge.innerHTML = `<span style="font-size: 1.2rem;">✓</span> Simulation Complete! You can now submit your test.`;
+                    badge.style.color = '#10b981';
+                    badge.style.background = 'rgba(16, 185, 129, 0.1)';
+                    badge.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                }
+
+                const submitBtn = document.getElementById('submit-pretest-btn');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.cursor = 'pointer';
+                    submitBtn.style.opacity = '1';
+                }
+            };
+            document.addEventListener('lesson-activity-complete', window.currentActivityListener, { once: true });
+
+            document.getElementById('submit-pretest-btn').addEventListener('click', submitTest);
+        }
+
+        // Common Navigation buttons
+        document.getElementById('pretest-prev-btn').addEventListener('click', () => {
+            if (pretestCurrentStep > 0) {
+                pretestCurrentStep--;
+                renderPretestTesting();
+            }
+        });
+
+        document.getElementById('cancel-test-btn').addEventListener('click', () => {
+            pretestState = 'intro';
+            pretestCurrentStep = 0;
+            mount();
+        });
+
+        // Test Submission grading
+        function submitTest() {
+            let totalCorrect = 0;
+            const lessonCorrectMap = {};
+            const lessonTotalMap = {};
+
+            pretestQuestions.forEach((q, idx) => {
+                const key = `${q.mIdx}_${q.lIdx}`;
+                if (!lessonTotalMap[key]) {
+                    lessonTotalMap[key] = 0;
+                    lessonCorrectMap[key] = 0;
+                }
+                lessonTotalMap[key]++;
+
+                const selected = pretestAnswers[idx];
+                if (selected !== undefined && parseInt(selected) === q.correct_index) {
+                    totalCorrect++;
+                    lessonCorrectMap[key]++;
+                }
+            });
+
+            // Calculate exempted lessons
+            exemptedLessons = [];
+            modules.forEach((mod, mIdx) => {
+                mod.lessons.forEach((les, lIdx) => {
+                    const key = `${mIdx}_${lIdx}`;
+                    const correct = lessonCorrectMap[key] || 0;
+                    const total = lessonTotalMap[key] || 0;
+                    
+                    if (total > 0 && correct === total) {
+                        exemptedLessons.push({ m: mIdx, l: lIdx });
+                    }
+                });
+            });
+
+            window.pretestResults = {
+                totalCorrect,
+                totalQuestions: totalMCQs,
+                lessonCorrectMap,
+                lessonTotalMap
+            };
+
+            pretestState = 'results';
+            mount();
+        }
+    };
+
+    const renderPretestResults = () => {
+        document.body.style.overflow = 'hidden';
+        const app = document.getElementById('app');
+        const results = window.pretestResults;
+
+        const totalCorrect = results?.totalCorrect || 0;
+        const totalQuestions = results?.totalQuestions || 0;
+        const lessonCorrectMap = results?.lessonCorrectMap || {};
+        const lessonTotalMap = results?.lessonTotalMap || {};
+
+        const totalLessonsCount = modules && Array.isArray(modules)
+            ? modules.reduce((acc, m) => acc + (m && m.lessons && Array.isArray(m.lessons) ? m.lessons.length : 0), 0)
+            : 0;
+        const exemptedCount = exemptedLessons.length;
+
+        // Compile breakdown HTML
+        const breakdownHTML = modules.map((mod, mIdx) => {
+            return `
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="font-weight: bold; color: white; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; opacity: 0.8;">
+                        ${mod.title}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        ${mod.lessons.map((les, lIdx) => {
+                            const key = `${mIdx}_${lIdx}`;
+                            const correct = lessonCorrectMap[key] || 0;
+                            const total = lessonTotalMap[key] || 0;
+                            const isExempt = exemptedLessons.some(el => el.m === mIdx && el.l === lIdx);
+
+                            return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: rgba(0,0,0,0.25); border-radius: var(--radius-sm); border: 1px solid ${isExempt ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'};">
+                                    <div style="font-size: 0.95rem; color: ${isExempt ? '#10b981' : 'rgba(255,255,255,0.85)'}; display: flex; align-items: center; gap: 0.5rem;">
+                                        <span>${isExempt ? '✅' : '📖'}</span>
+                                        <span>${les.title}</span>
+                                    </div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: ${isExempt ? '#10b981' : 'var(--text-muted)'};">
+                                        ${isExempt ? 'Exempt' : `${correct}/${total} correct`}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        app.innerHTML = `
+            <div class="cp-grid" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; box-sizing: border-box; background: radial-gradient(circle at center, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); position: fixed; inset: 0; z-index: 1000; overflow-y: auto;">
+                <div class="glass fade-in" style="max-width: 650px; width: 100%; padding: 3rem; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); box-shadow: 0 20px 50px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <div class="logo-badge" style="padding: 0.5rem 1.25rem; border-radius: 12px; background: white; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            <img src="/fsw_logo_brand.png" alt="FSW Logo" style="height: 36px; width: auto; object-fit: contain;">
+                        </div>
+                    </div>
+                    <h2 class="text-gradient-silver" style="font-size: 2.2rem; margin: 0 0 0.5rem 0; font-weight: 800; text-align: center;">Pre-Test Results</h2>
+                    <p style="color: var(--text-muted); text-align: center; margin-bottom: 2rem; font-size: 1.05rem;">
+                        Here is your upfront knowledge diagnostic breakdown:
+                    </p>
+
+                    <!-- Summary Statistics -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2.5rem; text-align: center;">
+                        <div class="glass" style="padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem;">Total Score</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: white;">${totalCorrect} / ${totalQuestions}</div>
+                        </div>
+                        <div class="glass" style="padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem;">Exempted Lessons</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #10b981;">${exemptedCount} / ${totalLessonsCount}</div>
+                        </div>
+                    </div>
+
+                    <!-- Detail Breakdown list -->
+                    <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.5rem; margin-bottom: 2.5rem;">
+                        ${breakdownHTML}
+                    </div>
+
+                    <!-- Action button -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <button id="proceed-to-course-btn" class="btn-primary" style="padding: 1rem; font-size: 1.1rem; font-weight: bold; border-radius: var(--radius-md); border: none; cursor: pointer;">
+                            ${exemptedCount === totalLessonsCount ? 'Claim Certification' : 'Proceed to Course'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('proceed-to-course-btn').addEventListener('click', async () => {
+            const isAllExempt = exemptedCount === totalLessonsCount;
+            const newStatus = isAllExempt ? 'completed' : 'in-progress';
+
+            let certId = null;
+            let expiresAt = null;
+            if (isAllExempt) {
+                certId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+                if (course.expiry_months && course.expiry_months > 0) {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() + parseInt(course.expiry_months));
+                    expiresAt = d.toISOString();
+                }
+            }
+
+            // Save exemptions and status to DB
+            try {
+                const { saveExemptedLessons } = await import('../api/courses.js');
+                await saveExemptedLessons(user.id, course.id, exemptedLessons, newStatus, certId, expiresAt);
+            } catch (err) {
+                console.error("Failed to save exempted progress:", err);
+            }
+
+            if (isAllExempt) {
+                // If all lessons were exempted, complete course and issue cert immediately
+                completeCourse(true);
+            } else {
+                // Find first non-exempted lesson
+                let firstM = -1;
+                let firstL = -1;
+                for (let m = 0; m < modules.length; m++) {
+                    const mod = modules[m];
+                    for (let l = 0; l < mod.lessons.length; l++) {
+                        const isExempt = exemptedLessons.some(el => el.m === m && el.l === l);
+                        if (!isExempt) {
+                            firstM = m;
+                            firstL = l;
+                            break;
+                        }
+                    }
+                    if (firstM !== -1) break;
+                }
+
+                currentModuleIndex = firstM;
+                currentLessonIndex = firstL;
+                highestModuleIndex = firstM;
+                highestLessonIndex = firstL;
+
+                // Show welcome skips toast notification if skipped starting lessons
+                if (firstM > 0 || firstL > 0) {
+                    showWelcomeSkipNotice = true;
+                }
+
+                pretestState = 'normal';
+                mount();
+            }
+        });
+    };
+
     function isLastLesson() {
         return currentModuleIndex === modules.length - 1 &&
             currentLessonIndex === modules[currentModuleIndex].lessons.length - 1
@@ -533,6 +1235,21 @@ export function renderCoursePlayer(course, user, options = {}) {
     const mount = () => {
         activeCharts.forEach(chart => chart.destroy())
         activeCharts = []
+
+        // Re-compile pre-test questions to ensure they are up to date with any edits
+        compilePretest();
+
+        // Pre-test rendering check
+        if (pretestState === 'intro') {
+            renderPretestIntro();
+            return;
+        } else if (pretestState === 'testing') {
+            renderPretestTesting();
+            return;
+        } else if (pretestState === 'results') {
+            renderPretestResults();
+            return;
+        }
 
         // Reset Completion State for new lesson
         const currentMod = modules[currentModuleIndex]
@@ -644,53 +1361,85 @@ export function renderCoursePlayer(course, user, options = {}) {
 
         if (overlay && video) {
             const finishIntro = () => {
-                if (overlay.classList.contains('fade-out')) return
-
-                overlay.classList.add('fade-out')
-                setTimeout(() => overlay.remove(), 1000)
+                if (overlay.classList.contains('fade-out')) return;
+                overlay.classList.add('fade-out');
+                setTimeout(() => overlay.remove(), 1000);
                 if (audio) {
-                    audio.play().catch(e => console.log('Audio autoplay blocked:', e))
+                    audio.play().catch(e => console.log('Audio autoplay blocked:', e));
                 }
-            }
+            };
 
-            video.addEventListener('ended', finishIntro)
-
-            // Attempt to play intro video
-            video.play().catch(() => {
-                // Autoplay blocked: Show manual start button
-                const btn = document.createElement('button')
-                btn.innerText = "Start Experience"
-                btn.style.cssText = "position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; padding: 1rem 3rem; font-size:1.2rem; background:white; color:black; border:none; border-radius:50px; cursor:pointer; font-weight:bold; box-shadow:0 0 30px rgba(0,0,0,0.5);"
-                btn.onclick = () => {
-                    video.play()
-                    btn.remove()
-                }
-                overlay.appendChild(btn)
-            })
-
-            // Fallback safety (only if video is actually playing)
-            setTimeout(() => {
-                if (!video.paused) {
-                    finishIntro()
-                }
-            }, 6000)
+            // Play the intro video automatically.
+            // If the browser blocks it, skip the intro and start the lesson immediately.
+            video.play()
+                .then(() => {
+                    video.addEventListener('ended', finishIntro);
+                    setTimeout(() => {
+                        if (!video.paused) {
+                            finishIntro();
+                        }
+                    }, 6000);
+                })
+                .catch(e => {
+                    console.log('Video autoplay blocked, skipping intro:', e);
+                    finishIntro();
+                });
 
         } else if (overlay) {
-            // Fallback for missing video element
-            setTimeout(() => {
-                overlay.classList.add('fade-out')
-                setTimeout(() => overlay.remove(), 1000)
-                if (audio) audio.play().catch(e => console.log('Audio play error:', e))
-                if (currentLesson.gamma_url) console.log('Lesson loaded')
-            }, 2500)
+            overlay.classList.add('fade-out');
+            setTimeout(() => overlay.remove(), 1000);
+            if (audio) audio.play().catch(e => console.log('Audio play error:', e));
         } else {
             // No intro (e.g. next lesson), play audio immediately
             if (audio) audio.play().catch(e => console.log('Audio play error:', e))
             if (currentLesson.gamma_url) console.log('Lesson loaded')
         }
 
-        attachEvents()
+        attachEvents(currentLes)
         updateNextButtonState()
+
+        // Show welcome skips toast notification if skipped starting lessons
+        if (showWelcomeSkipNotice) {
+            showWelcomeSkipNotice = false;
+            const initialExemptLessons = [];
+            modules.forEach((m, mIdx) => {
+                m.lessons.forEach((l, lIdx) => {
+                    const isExempt = exemptedLessons.some(el => el.m === mIdx && el.l === lIdx);
+                    if (isExempt && (mIdx < currentModuleIndex || (mIdx === currentModuleIndex && lIdx < currentLessonIndex))) {
+                        initialExemptLessons.push(l.title);
+                    }
+                });
+            });
+
+            if (initialExemptLessons.length > 0) {
+                const listStr = initialExemptLessons.length === 1 
+                    ? `Lesson "${initialExemptLessons[0]}"`
+                    : `Lessons (${initialExemptLessons.join(', ')})`;
+                
+                setTimeout(() => {
+                    const notice = document.createElement('div');
+                    notice.className = 'fade-in';
+                    notice.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.95); color: white; padding: 1.25rem 2rem; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); font-weight: bold; max-width: 500px; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(10px); cursor: pointer;">
+                            <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                                <span style="font-size: 1.2rem;">⚡</span>
+                                <div>
+                                    <div style="font-size: 1rem; margin-bottom: 0.25rem;">Welcome to the course!</div>
+                                    <div style="font-size: 0.85rem; font-weight: normal; opacity: 0.9; line-height: 1.4;">
+                                        Since you passed the pre-test for ${listStr}, you have been exempted and we started you straight on <strong>${modules[currentModuleIndex].lessons[currentLessonIndex].title}</strong>.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    notice.style.cssText = "position: fixed; top: 30px; left: 50%; transform: translateX(-50%); z-index: 1100; transition: all 0.5s ease;";
+                    document.body.appendChild(notice);
+                    
+                    notice.addEventListener('click', () => notice.remove());
+                    setTimeout(() => { if (notice.parentNode) notice.remove(); }, 8000);
+                }, 1200);
+            }
+        }
         
         // Save progress to DB automatically when mounting a new lesson
         if (!isCourseComplete) {
@@ -731,7 +1480,252 @@ export function renderCoursePlayer(course, user, options = {}) {
         }
     }
 
-    const attachEvents = () => {
+    const attachEvents = (currentLesson) => {
+        let pdfDoc = null;
+        let currentPdfPage = 1;
+        let pdfCanvas = document.getElementById('pdf-canvas');
+        
+        if (pdfCanvas && currentLesson.gamma_pdf_url) {
+            const initPdf = async () => {
+                try {
+                    const pdfjsLib = await import('pdfjs-dist');
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+                    const loadingTask = pdfjsLib.getDocument(currentLesson.gamma_pdf_url);
+                    pdfDoc = await loadingTask.promise;
+                    renderPdfPage(currentPdfPage);
+                } catch (e) {
+                    console.error("Failed to load PDF:", e);
+                }
+            };
+
+            const renderPdfPage = async (num) => {
+                if (!pdfDoc) return;
+                const page = await pdfDoc.getPage(num);
+                // Adjust scale for higher resolution
+                const viewport = page.getViewport({ scale: 2.0 });
+                const ctx = pdfCanvas.getContext('2d');
+                pdfCanvas.height = viewport.height;
+                pdfCanvas.width = viewport.width;
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                updatePdfArrowVisibility();
+            };
+
+            const goToNextPdfPage = () => {
+                if (!pdfDoc || currentPdfPage >= pdfDoc.numPages) return false;
+                currentPdfPage++;
+                renderPdfPage(currentPdfPage);
+                return true;
+            };
+
+            const goToPrevPdfPage = () => {
+                if (!pdfDoc || currentPdfPage <= 1) return false;
+                currentPdfPage--;
+                renderPdfPage(currentPdfPage);
+                return true;
+            };
+
+            const pdfPrevBtn = document.getElementById('pdf-prev-slide-btn');
+            const pdfNextBtn = document.getElementById('pdf-next-slide-btn');
+
+            const updatePdfArrowVisibility = () => {
+                if (!pdfDoc) return;
+                if (pdfPrevBtn) {
+                    if (currentPdfPage <= 1) {
+                        pdfPrevBtn.style.opacity = '0.15';
+                        pdfPrevBtn.style.pointerEvents = 'none';
+                    } else {
+                        pdfPrevBtn.style.opacity = '1';
+                        pdfPrevBtn.style.pointerEvents = 'auto';
+                    }
+                }
+                if (pdfNextBtn) {
+                    if (currentPdfPage >= pdfDoc.numPages) {
+                        pdfNextBtn.style.opacity = '0.15';
+                        pdfNextBtn.style.pointerEvents = 'none';
+                    } else {
+                        pdfNextBtn.style.opacity = '1';
+                        pdfNextBtn.style.pointerEvents = 'auto';
+                    }
+                }
+            };
+
+            initPdf();
+
+            // Link audio track ending to next PDF page
+            const audioElements = document.querySelectorAll('.track-audio');
+            audioElements.forEach((audio, idx) => {
+                audio.addEventListener('ended', () => {
+                    const didAdvance = goToNextPdfPage();
+                    if (didAdvance && idx + 1 < audioElements.length) {
+                        const nextAudio = audioElements[idx + 1];
+                        nextAudio.play();
+                        document.querySelectorAll('.audio-track-item').forEach(el => el.classList.remove('active'));
+                        audioElements[idx + 1].closest('.audio-track-item').classList.add('active');
+                    }
+                });
+                
+                audio.addEventListener('play', () => {
+                     if (pdfDoc && idx + 1 !== currentPdfPage) {
+                          currentPdfPage = idx + 1;
+                          renderPdfPage(currentPdfPage);
+                     }
+                });
+            });
+
+            // Slide Navigation Arrows Click Events
+            if (pdfPrevBtn) {
+                pdfPrevBtn.addEventListener('click', () => {
+                    let playingIdx = -1;
+                    audioElements.forEach((a, i) => { if (!a.paused && !a.ended) playingIdx = i; });
+                    
+                    const didRegress = goToPrevPdfPage();
+                    if (didRegress) {
+                        const targetIdx = currentPdfPage - 1;
+                        if (playingIdx >= 0) {
+                            audioElements[playingIdx].pause();
+                            audioElements[playingIdx].currentTime = 0;
+                        }
+                        if (targetIdx >= 0 && targetIdx < audioElements.length) {
+                            if (playingIdx >= 0) {
+                                audioElements[targetIdx].play().catch(e => console.log(e));
+                            }
+                            document.querySelectorAll('.audio-track-item').forEach(el => el.classList.remove('active'));
+                            const activeItem = audioElements[targetIdx].closest('.audio-track-item');
+                            if (activeItem) activeItem.classList.add('active');
+                        }
+                    }
+                });
+            }
+
+            if (pdfNextBtn) {
+                pdfNextBtn.addEventListener('click', () => {
+                    let playingIdx = -1;
+                    audioElements.forEach((a, i) => { if (!a.paused && !a.ended) playingIdx = i; });
+                    
+                    const didAdvance = goToNextPdfPage();
+                    if (didAdvance) {
+                        const targetIdx = currentPdfPage - 1;
+                        if (playingIdx >= 0) {
+                            audioElements[playingIdx].pause();
+                            audioElements[playingIdx].currentTime = 0;
+                        }
+                        if (targetIdx >= 0 && targetIdx < audioElements.length) {
+                            if (playingIdx >= 0) {
+                                audioElements[targetIdx].play().catch(e => console.log(e));
+                            }
+                            document.querySelectorAll('.audio-track-item').forEach(el => el.classList.remove('active'));
+                            const activeItem = audioElements[targetIdx].closest('.audio-track-item');
+                            if (activeItem) activeItem.classList.add('active');
+                        }
+                    }
+                });
+            }
+
+
+            // User Floating Audio Controls Logic
+            const userControls = document.getElementById('user-audio-controls');
+            if (userControls) {
+                const userPlayBtn = document.getElementById('user-play-pause-btn');
+                const userSlideNum = document.getElementById('user-slide-number');
+                const userCurTime = document.getElementById('user-current-time');
+                const userTotTime = document.getElementById('user-total-time');
+                const userProgBar = document.getElementById('user-progress-bar');
+                const userProgCont = document.getElementById('user-progress-container');
+
+                let activeAudio = audioElements[0];
+
+                const formatTime = (secs) => {
+                    if (isNaN(secs)) return '0:00';
+                    const m = Math.floor(secs / 60);
+                    const s = Math.floor(secs % 60).toString().padStart(2, '0');
+                    return `${m}:${s}`;
+                };
+
+                const updateControlsState = () => {
+                    if (!activeAudio) return;
+                    
+                    const currentIdx = Array.from(audioElements).indexOf(activeAudio);
+                    userSlideNum.innerText = `Slide ${currentIdx + 1} / ${audioElements.length}`;
+                    
+                    if (activeAudio.paused) {
+                        userPlayBtn.innerHTML = '<span style="font-size: 0.95rem; margin-left: 2px;">▶</span>';
+                    } else {
+                        userPlayBtn.innerHTML = '<span style="font-size: 0.95rem;">||</span>';
+                    }
+                    
+                    userCurTime.innerText = formatTime(activeAudio.currentTime);
+                    userTotTime.innerText = formatTime(activeAudio.duration || (activeAudio.buffered.length ? activeAudio.duration : 0));
+                    
+                    if (activeAudio.duration) {
+                        const pct = (activeAudio.currentTime / activeAudio.duration) * 100;
+                        userProgBar.style.width = `${pct}%`;
+                    }
+                };
+
+                userPlayBtn.addEventListener('click', () => {
+                    if (!activeAudio) return;
+                    if (activeAudio.paused) {
+                        activeAudio.play().catch(e => console.log(e));
+                    } else {
+                        activeAudio.pause();
+                    }
+                    updateControlsState();
+                });
+
+                userProgCont.addEventListener('click', (e) => {
+                    if (!activeAudio || !activeAudio.duration) return;
+                    const rect = userProgCont.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const width = rect.width;
+                    const pct = Math.max(0, Math.min(1, clickX / width));
+                    activeAudio.currentTime = pct * activeAudio.duration;
+                    updateControlsState();
+                });
+
+                userProgCont.addEventListener('mouseenter', () => {
+                    userProgCont.style.height = '8px';
+                });
+                userProgCont.addEventListener('mouseleave', () => {
+                    userProgCont.style.height = '6px';
+                });
+
+                audioElements.forEach((audio, idx) => {
+                    audio.addEventListener('play', () => {
+                        activeAudio = audio;
+                        updateControlsState();
+                    });
+                    
+                    audio.addEventListener('pause', () => {
+                        if (activeAudio === audio) updateControlsState();
+                    });
+                    
+                    audio.addEventListener('timeupdate', () => {
+                        if (activeAudio === audio) {
+                            userCurTime.innerText = formatTime(audio.currentTime);
+                            if (audio.duration) {
+                                const pct = (audio.currentTime / audio.duration) * 100;
+                                userProgBar.style.width = `${pct}%`;
+                            }
+                        }
+                    });
+                    
+                    audio.addEventListener('durationchange', () => {
+                        if (activeAudio === audio) {
+                            userTotTime.innerText = formatTime(audio.duration);
+                        }
+                    });
+                    
+                    audio.addEventListener('loadedmetadata', () => {
+                        if (activeAudio === audio) {
+                            userTotTime.innerText = formatTime(audio.duration);
+                        }
+                    });
+                });
+
+                updateControlsState();
+            }
+        }
+
         // Inline Editor Logic
         const inlineEditBtn = document.getElementById('inline-edit-btn');
         if (inlineEditBtn) {
@@ -922,7 +1916,7 @@ export function renderCoursePlayer(course, user, options = {}) {
                         </div>
                         <textarea class="edit-track-script" style="width: 100%; height: 120px; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 0.75rem; font-family: inherit; font-size: 1rem; outline: none; resize: vertical; line-height: 1.5;">${track.script || ''}</textarea>
                         ${track.url ? `<audio controls src="${track.url}" style="width: 100%; height: 32px; filter: invert(1); margin-top: 0.5rem;"></audio>` : ''}
-                        <button class="btn-secondary generate-single-track-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-top: 0.5rem;">🎙️ Generate Audio</button>
+                        <button class="btn-secondary generate-single-track-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem; align-self: flex-start; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg><span>Generate Audio</span></button>
                     `;
 
                     // Remove track
@@ -970,7 +1964,7 @@ export function renderCoursePlayer(course, user, options = {}) {
                 }
                 
                 renderTracksEditor();
-                audioEditMode.style.display = 'block';
+                audioEditMode.style.display = 'flex';
             });
 
             addTrackBtn.addEventListener('click', () => {
@@ -984,7 +1978,7 @@ export function renderCoursePlayer(course, user, options = {}) {
 
             saveAudioBtn.addEventListener('click', async () => {
                 const originalText = saveAudioBtn.innerHTML;
-                saveAudioBtn.innerHTML = '💾 Saving...';
+                saveAudioBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>Saving...</span>';
                 saveAudioBtn.disabled = true;
 
                 try {
@@ -1021,12 +2015,21 @@ export function renderCoursePlayer(course, user, options = {}) {
                     regenGammaBtn.querySelector('span').innerText = '🔄 Generating...';
                     regenGammaBtn.disabled = true;
                     try {
-                        const { createPresentation } = await import('../api/gamma.js?t=' + Date.now());
+                        const { createPresentation, exportAndUploadPdf } = await import('../api/gamma.js?t=' + Date.now());
                         const l = modules[currentModuleIndex].lessons[currentLessonIndex];
                         const input = l.presentation_input || l.audio_script || l.content;
-                        const newUrl = await createPresentation(l.title, input);
-                        if (newUrl) {
-                            l.gamma_url = newUrl;
+                        
+                        regenGammaBtn.querySelector('span').innerText = '🔄 Generating slides...';
+                        const gammaResult = await createPresentation(l.title, input);
+                        
+                        if (gammaResult && gammaResult.id) {
+                            l.gamma_url = gammaResult.url;
+                            l.gamma_id = gammaResult.id;
+                            
+                            regenGammaBtn.querySelector('span').innerText = '🔄 Downloading PDF...';
+                            const pdfUrl = await exportAndUploadPdf(gammaResult.id);
+                            l.gamma_pdf_url = pdfUrl;
+
                             const { updateCourse } = await import('../api/courses.js');
                             await updateCourse(course.id, { content_json: modules, updated_at: new Date() });
                             mount();
@@ -1040,6 +2043,39 @@ export function renderCoursePlayer(course, user, options = {}) {
                         if (document.getElementById('regenerate-gamma-btn')) {
                             document.getElementById('regenerate-gamma-btn').querySelector('span').innerText = '🔄 Regenerate Slides';
                             document.getElementById('regenerate-gamma-btn').disabled = false;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update Gamma Logic
+        const updateGammaBtn = document.getElementById('update-gamma-btn');
+        if (updateGammaBtn) {
+            updateGammaBtn.addEventListener('click', async () => {
+                const { fswConfirm, fswAlert } = await import('../utils/dialog.js');
+                if (await fswConfirm("Sync the latest changes from Gamma into the course? This will download the latest version as a PDF.")) {
+                    updateGammaBtn.querySelector('span').innerText = '⬇️ Syncing...';
+                    updateGammaBtn.disabled = true;
+                    try {
+                        const { exportAndUploadPdf } = await import('../api/gamma.js?t=' + Date.now());
+                        const l = modules[currentModuleIndex].lessons[currentLessonIndex];
+                        
+                        if (!l.gamma_id) throw new Error("No Gamma ID found. Please regenerate slides first.");
+
+                        const pdfUrl = await exportAndUploadPdf(l.gamma_id);
+                        l.gamma_pdf_url = pdfUrl;
+
+                        const { updateCourse } = await import('../api/courses.js');
+                        await updateCourse(course.id, { content_json: modules, updated_at: new Date() });
+                        mount();
+                    } catch (e) {
+                         console.error('Failed to update presentation:', e);
+                         await fswAlert("Failed to update presentation: " + e.message);
+                    } finally {
+                        if (document.getElementById('update-gamma-btn')) {
+                            document.getElementById('update-gamma-btn').querySelector('span').innerText = '⬇️ Update Slides';
+                            document.getElementById('update-gamma-btn').disabled = false;
                         }
                     }
                 }
@@ -1184,40 +2220,97 @@ export function renderCoursePlayer(course, user, options = {}) {
         const nextBtn = document.getElementById('next-btn')
         const prevBtn = document.getElementById('prev-btn')
 
+        const moveToNextLesson = async () => {
+            let nextM = currentModuleIndex;
+            let nextL = currentLessonIndex;
+            let skippedList = [];
+
+            while (true) {
+                if (nextL < modules[nextM].lessons.length - 1) {
+                    nextL++;
+                } else if (nextM < modules.length - 1) {
+                    nextM++;
+                    nextL = 0;
+                } else {
+                    // No more lessons
+                    await completeCourse();
+                    return;
+                }
+
+                const isExempt = exemptedLessons.some(el => el.m === nextM && el.l === nextL);
+                if (isExempt) {
+                    skippedList.push(modules[nextM].lessons[nextL].title);
+                } else {
+                    break;
+                }
+            }
+
+            // Update indices
+            currentModuleIndex = nextM;
+            currentLessonIndex = nextL;
+
+            if (currentModuleIndex > highestModuleIndex || (currentModuleIndex === highestModuleIndex && currentLessonIndex > highestLessonIndex)) {
+                highestModuleIndex = currentModuleIndex;
+                highestLessonIndex = currentLessonIndex;
+            }
+
+            // If we skipped any lessons, show a toast notification
+            if (skippedList.length > 0) {
+                const skippedNames = skippedList.length === 1 
+                    ? `Lesson "${skippedList[0]}"` 
+                    : `Lessons (${skippedList.join(', ')})`;
+                
+                const toast = document.createElement('div');
+                toast.className = 'fade-in';
+                toast.innerHTML = `<div style="background: rgba(16, 185, 129, 0.9); color: white; padding: 0.75rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.15);">⚡ Skipping ${skippedNames} (Exempt upfront)</div>`;
+                toast.style.cssText = "position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1000;";
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 4000);
+            }
+
+            mount();
+        };
+
+        const moveToPrevLesson = () => {
+            let prevM = currentModuleIndex;
+            let prevL = currentLessonIndex;
+
+            while (true) {
+                if (prevL > 0) {
+                    prevL--;
+                } else if (prevM > 0) {
+                    prevM--;
+                    prevL = modules[prevM].lessons.length - 1;
+                } else {
+                    // No previous lessons
+                    return;
+                }
+
+                const isExempt = exemptedLessons.some(el => el.m === prevM && el.l === prevL);
+                if (!isExempt) {
+                    break;
+                }
+            }
+
+            currentModuleIndex = prevM;
+            currentLessonIndex = prevL;
+            mount();
+        };
+
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
-                const currentMod = modules[currentModuleIndex]
-                if (currentLessonIndex > 0) {
-                    currentLessonIndex--
-                } else if (currentModuleIndex > 0) {
-                    currentModuleIndex--
-                    currentLessonIndex = modules[currentModuleIndex].lessons.length - 1
-                }
-                mount()
+                moveToPrevLesson();
             })
         }
 
         if (nextBtn) {
             nextBtn.addEventListener('click', async () => {
                 if (!isQuizComplete || !isActivityComplete) return; // double check
-
+                
                 if (isLastLesson()) {
-                    await completeCourse()
+                    await completeCourse();
                 } else {
-                    const currentMod = modules[currentModuleIndex]
-                    if (currentLessonIndex < currentMod.lessons.length - 1) {
-                        currentLessonIndex++
-                    } else if (currentModuleIndex < modules.length - 1) {
-                        currentModuleIndex++
-                        currentLessonIndex = 0
-                    }
-                    
-                    if (currentModuleIndex > highestModuleIndex || (currentModuleIndex === highestModuleIndex && currentLessonIndex > highestLessonIndex)) {
-                        highestModuleIndex = currentModuleIndex;
-                        highestLessonIndex = currentLessonIndex;
-                    }
-
-                    mount()
+                    await moveToNextLesson();
                 }
             })
         }
@@ -1259,9 +2352,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                 item.style.borderColor = 'rgba(255,255,255,0.2)';
                 item.style.animation = 'none';
                 item.querySelector('div').style.color = 'white';
-                
-                const ghostBanner = document.getElementById('ghost-advance-banner');
-                if (ghostBanner) ghostBanner.style.display = 'none';
             });
 
             audioEl.addEventListener('ended', () => {
@@ -1275,11 +2365,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                     nextItem.style.borderColor = 'rgba(16, 185, 129, 0.5)';
                     nextItem.style.animation = 'pulse 2s infinite';
                     nextItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    
-                    const ghostBanner = document.getElementById('ghost-advance-banner');
-                    if (ghostBanner) {
-                        ghostBanner.style.display = 'flex';
-                    }
                 } else {
                     // All audio finished, switch to reading mode
                     const grid = document.querySelector('.cp-grid');
@@ -1296,13 +2381,15 @@ export function renderCoursePlayer(course, user, options = {}) {
 
     }
 
-    const completeCourse = async () => {
-        const main = document.querySelector('main')
+    async function completeCourse(skipDBSave = false) {
+        let container = document.querySelector('main') || document.getElementById('app')
         // Use a formatted date
         const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
         // Render Certificate
-        main.innerHTML = renderCertificate(course.title, user.full_name || user.email.split('@')[0], date) 
+        if (container) {
+            container.innerHTML = renderCertificate(course.title, user.full_name || user.email.split('@')[0], date) 
+        }
 
         // Add event listeners for the new DOM elements
         setTimeout(() => {
@@ -1331,40 +2418,42 @@ export function renderCoursePlayer(course, user, options = {}) {
             }
         }, 100)
 
-        try {
-            const certId = crypto.randomUUID();
-            let expiresAt = null;
-            if (course.expiry_months && course.expiry_months > 0) {
-                const d = new Date();
-                d.setMonth(d.getMonth() + parseInt(course.expiry_months));
-                expiresAt = d.toISOString();
-            }
+        if (!skipDBSave) {
+            try {
+                const certId = crypto.randomUUID();
+                let expiresAt = null;
+                if (course.expiry_months && course.expiry_months > 0) {
+                    const d = new Date();
+                    d.setMonth(d.getMonth() + parseInt(course.expiry_months));
+                    expiresAt = d.toISOString();
+                }
 
-            const { data: existing } = await supabase
-                .from('user_progress')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('course_id', course.id)
-                .maybeSingle();
+                const { data: existing } = await supabase
+                    .from('user_progress')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('course_id', course.id)
+                    .maybeSingle();
 
-            if (existing) {
-                await supabase.from('user_progress').update({
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                    certificate_id: certId,
-                    expires_at: expiresAt
-                }).eq('id', existing.id);
-            } else {
-                await supabase.from('user_progress').insert({
-                    user_id: user.id,
-                    course_id: course.id,
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                    certificate_id: certId,
-                    expires_at: expiresAt
-                });
-            }
-        } catch (e) { console.error('Error saving progress:', e) }
+                if (existing) {
+                    await supabase.from('user_progress').update({
+                        status: 'completed',
+                        completed_at: new Date().toISOString(),
+                        certificate_id: certId,
+                        expires_at: expiresAt
+                    }).eq('id', existing.id);
+                } else {
+                    await supabase.from('user_progress').insert({
+                        user_id: user.id,
+                        course_id: course.id,
+                        status: 'completed',
+                        completed_at: new Date().toISOString(),
+                        certificate_id: certId,
+                        expires_at: expiresAt
+                    });
+                }
+            } catch (e) { console.error('Error saving progress:', e) }
+        }
     }
 
     mount()

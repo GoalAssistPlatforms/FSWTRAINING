@@ -56,6 +56,10 @@ export const renderCourseEditor = (course, user) => {
                         <option value="24" ${course.expiry_months === 24 ? 'selected' : ''}>2 Years</option>
                     </select>
                 </div>
+                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="edit-pretest" ${course.allow_pretest ? 'checked' : ''} style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                    <label for="edit-pretest" style="color: white; font-size: 0.9rem; cursor: pointer; margin: 0; font-weight: bold;">Allow Diagnostic Pre-Test</label>
+                </div>
 
 
             </div>
@@ -209,6 +213,7 @@ export const renderCourseEditor = (course, user) => {
             const thumb = document.getElementById('edit-thumb').value
             const expiryRaw = document.getElementById('edit-expiry').value
             const expiry = expiryRaw ? parseInt(expiryRaw) : null
+            const allowPretest = document.getElementById('edit-pretest')?.checked || false
 
             if (title.length > 50) {
                 await fswAlert('Course Title must be 50 characters or fewer for a consistent look.');
@@ -227,8 +232,10 @@ export const renderCourseEditor = (course, user) => {
                     thumbnail_url: thumb,
                     content_json: modules,
                     expiry_months: expiry,
+                    allow_pretest: allowPretest,
                     updated_at: new Date()
                 })
+                course.allow_pretest = allowPretest
                 await fswAlert('Changes saved successfully!')
             } catch (e) {
                 console.error(e)

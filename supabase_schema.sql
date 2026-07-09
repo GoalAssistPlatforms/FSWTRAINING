@@ -39,6 +39,7 @@ create table if not exists public.courses (
   content_json jsonb,
   status text default 'draft', -- 'draft', 'live', 'archived'
   expiry_months integer, -- Number of months before this course's certificate expires (null = never)
+  allow_pretest boolean default false not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -59,6 +60,7 @@ create table if not exists public.user_progress (
   last_lesson_index integer default 0,
   highest_module_index integer default 0,
   highest_lesson_index integer default 0,
+  exempted_lessons jsonb default '[]'::jsonb not null,
   created_at timestamptz default now(),
   unique(user_id, course_id)
 );

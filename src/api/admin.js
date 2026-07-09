@@ -15,11 +15,18 @@ export const getPlatformSettings = async () => {
         throw error
     }
 
-    return data || {
+    if (data) {
+        if (!data.subscription_start_date) {
+            data.subscription_start_date = '2024-01-01T00:00:00.000Z';
+        }
+        return data;
+    }
+
+    return {
         max_users: 10,
         max_courses_per_period: 12,
         max_guides_per_period: 12,
-        subscription_start_date: new Date().toISOString(),
+        subscription_start_date: '2024-01-01T00:00:00.000Z',
         renewal_period_months: 12
     }
 }

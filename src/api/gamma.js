@@ -89,7 +89,13 @@ export const createPresentation = async (topic, detailed_input) => {
                 if (checkData.status === 'COMPLETED' || checkData.status === 'SUCCESS' || checkData.status === 'completed') {
                     // Gamma's API might return 'gammaUrl' or 'url' depending on the endpoint version,
                     // but based on docs and user scenario, we expect a URL.
-                    return checkData.gammaUrl || checkData.url;
+                    let gammaUrl = checkData.gammaUrl || checkData.url;
+                    let gammaId = checkData.gammaId;
+                    if (!gammaId && gammaUrl) {
+                        const match = gammaUrl.split('/');
+                        gammaId = match.pop();
+                    }
+                    return { url: gammaUrl, id: gammaId };
                 }
                 if (checkData.status === 'FAILED' || checkData.status === 'failed') {
                     throw new Error("Gamma generation failed: " + JSON.stringify(checkData));
@@ -103,6 +109,82 @@ export const createPresentation = async (topic, detailed_input) => {
     } catch (error) {
         console.error("Gamma Generation Failed:", error);
         throw error;
+    }
+};
+
+export const exportToPdf = async (gammaId) => {
+    console.log(`Triggering export for Gamma ID: ${gammaId}`);
+    try {
+        const exportRes = await fetch(`/api/gamma/gammas/${gammaId}/export`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ exportAs: 'pdf' })
+        });
+
+        if (!exportRes.ok) {
+            const text = await exportRes.text();
+            throw new Error(`Export API error: ${exportRes.status} - ${text}`);
+        }
+
+        const exportData = await exportRes.json();
+        const exportId = exportData.exportId || exportData.id;
+
+        if (!exportId) throw new Error("No exportId returned from API");
+
+        // Poll for export status
+        let attempts = 0;
+        while (attempts < 60) { // 3 minutes timeout
+            await new Promise(r => setTimeout(r, 3000));
+            const pollRes = await fetch(`/api/gamma/exports/${exportId}`);
+            
+            if (pollRes.ok) {
+                const pollData = await pollRes.json();
+                if (pollData.status === 'COMPLETED' || pollData.status === 'SUCCESS' || pollData.status === 'completed') {
+                    return pollData.exportUrl || pollData.url || pollData.downloadUrl;
+                } else if (pollData.status === 'FAILED' || pollData.status === 'failed') {
+                    throw new Error("PDF Export failed on Gamma server");
+                }
+            }
+            attempts++;
+        }
+        throw new Error("Gamma PDF export timed out");
+    } catch (err) {
+        console.error("Gamma PDF Export Failed:", err);
+        throw err;
+    }
+};
+
+export const exportAndUploadPdf = async (gammaId) => {
+    console.log(`Starting PDF export and upload for Gamma ID: ${gammaId}`);
+    try {
+        const pdfDownloadUrl = await exportToPdf(gammaId);
+        if (!pdfDownloadUrl) throw new Error("No PDF URL returned from exportToPdf");
+
+        // Use the local/production proxied route to prevent CORS errors in browser fetch
+        const proxiedUrl = pdfDownloadUrl.replace('https://assets.api.gamma.app', '/api/gamma-assets');
+        const pdfResponse = await fetch(proxiedUrl);
+        const pdfBlob = await pdfResponse.blob();
+        
+        const filePath = `slides/${gammaId}.pdf`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('course_assets')
+            .upload(filePath, pdfBlob, {
+                contentType: 'application/pdf',
+                upsert: true
+            });
+
+        if (uploadError) {
+            throw new Error(`Failed to upload PDF to Supabase: ${uploadError.message}`);
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+            .from('course_assets')
+            .getPublicUrl(filePath);
+            
+        return publicUrlData.publicUrl;
+    } catch (err) {
+        console.error("exportAndUploadPdf Failed:", err);
+        throw err;
     }
 };
 

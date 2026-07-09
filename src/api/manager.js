@@ -54,7 +54,7 @@ export const getTeamProgress = async () => {
             due_date,
             expires_at,
             certificate_id,
-            courses!inner ( id, title, thumbnail_url, status )
+            courses!inner ( id, title, thumbnail_url, status, content_json )
         `)
         .neq('courses.status', 'archived')
 
@@ -76,15 +76,34 @@ export const getTeamStats = async (includeArchived = false) => {
     // Aggregate stats per user
     const userStats = members.map(member => {
         const userProgress = progressData.filter(p => p.user_id === member.id)
-        const completed = userProgress.filter(p => p.status === 'completed').length
-        const inProgress = userProgress.filter(p => p.status === 'in-progress').length
+        
+        // Differentiate courses and guides
+        const coursesProgress = userProgress.filter(p => {
+            let content = p.courses?.content_json;
+            if (typeof content === 'string') {
+                try { content = JSON.parse(content); } catch (e) {}
+            }
+            return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
+        })
+        
+        const guidesProgress = userProgress.filter(p => {
+            let content = p.courses?.content_json;
+            if (typeof content === 'string') {
+                try { content = JSON.parse(content); } catch (e) {}
+            }
+            return content?.is_system_simulation === true || content?.type === 'video_walkthrough';
+        })
+
+        const completed = coursesProgress.filter(p => p.status === 'completed').length
+        const inProgress = coursesProgress.filter(p => p.status === 'in-progress').length
         
         return {
             ...member,
-            totalAssigned: userProgress.length,
+            totalAssigned: coursesProgress.length,
             completed,
             inProgress,
-            progressData: userProgress
+            progressData: coursesProgress,
+            guidesProgress: guidesProgress
         }
     })
 

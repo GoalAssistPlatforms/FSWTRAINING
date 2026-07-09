@@ -66,6 +66,35 @@ export function renderToneAnalyser(containerId, config = {}) {
 
     const initialText = "";
 
+    // 3. Parse sender from email body if not specified in config
+    let senderName = config.sender || "Dave";
+    let senderAvatar = "D";
+
+    if (!config.sender && incomingEmail) {
+        const lines = incomingEmail.trim().split('\n');
+        if (lines.length > 1) {
+            const lastLine = lines[lines.length - 1].trim();
+            const secondLastLine = lines[lines.length - 2].trim().toLowerCase();
+            if (
+                lastLine && 
+                lastLine.length < 30 && 
+                !lastLine.includes('.') && 
+                (secondLastLine.includes('thanks') || 
+                 secondLastLine.includes('regards') || 
+                 secondLastLine.includes('best') || 
+                 secondLastLine.includes('sincerely') || 
+                 secondLastLine.includes('cheers') || 
+                 secondLastLine.includes('from') ||
+                 secondLastLine.includes('respectfully'))
+            ) {
+                senderName = lastLine.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+            }
+        }
+    }
+    if (senderName) {
+        senderAvatar = senderName.charAt(0).toUpperCase();
+    }
+
     // Internal State
     let currentScore = 0;
     let isAnalyzing = false;
@@ -94,9 +123,9 @@ export function renderToneAnalyser(containerId, config = {}) {
         <!-- Message Pane (Incoming) -->
         <div class="email-message-pane">
             <div class="email-meta-row">
-                <div class="avatar-circle">D</div>
+                <div class="avatar-circle">${senderAvatar}</div>
                 <div class="sender-info">
-                    <span class="sender-name">Dave (Stakeholder)</span>
+                    <span class="sender-name">${senderName}</span>
                     <span class="sender-details">To: You &bull; Today, 10:23 AM</span>
                 </div>
             </div>
@@ -112,7 +141,7 @@ export function renderToneAnalyser(containerId, config = {}) {
         <div class="email-reply-area">
             <div class="reply-container">
                 <div class="reply-header">
-                    <span>Replying to: <strong>Dave</strong></span>
+                    <span>Replying to: <strong>${senderName.split(' ')[0]}</strong></span>
                 </div>
                 <!-- Fake Toolbar -->
                 <div class="fake-toolbar">

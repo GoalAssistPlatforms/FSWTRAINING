@@ -14,11 +14,11 @@ export const renderAdminDashboard = (user) => {
           </div>
         </div>
 
-        <!-- Top Navigation Tabs -->
-        <div style="display: flex; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 5px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); width: 100%; box-sizing: border-box;">
-            <button id="admin-tab-settings" class="btn-primary" style="flex: 1; padding: 0.8rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">⚙️ Platform Settings</button>
-            <button id="admin-tab-feedback" class="btn-ghost" style="flex: 1; padding: 0.8rem; border: 1px solid transparent; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white;">💬 User Feedback & Bugs</button>
-        </div>
+         <!-- Top Navigation Tabs -->
+         <div style="display: flex; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 5px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); width: 100%; box-sizing: border-box;">
+             <button id="admin-tab-settings" class="btn-primary" style="flex: 1; padding: 0.8rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Platform Settings</button>
+             <button id="admin-tab-feedback" class="btn-ghost" style="flex: 1; padding: 0.8rem; border: 1px solid transparent; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: white;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> User Feedback & Bugs</button>
+         </div>
 
         <!-- View 1: Settings Content -->
         <div id="admin-view-settings" style="display: block;">
@@ -27,8 +27,8 @@ export const renderAdminDashboard = (user) => {
                 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="font-weight: 600; color: var(--text-muted);">Maximum Total Users</label>
-                    <input type="number" id="setting-max-users" class="input-base" min="1" required placeholder="e.g. 50" />
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Absolute cap on how many active user profiles can exist at one time.</small>
+                    <input type="number" id="setting-max-users" class="input-base" min="0" required placeholder="e.g. 50 (0 for unlimited)" />
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Absolute cap on how many active user profiles can exist at one time. Set to 0 for unlimited.</small>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -45,14 +45,14 @@ export const renderAdminDashboard = (user) => {
 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="font-weight: 600; color: var(--text-muted);">Max Courses Per Period</label>
-                    <input type="number" id="setting-max-courses" class="input-base" min="1" required placeholder="e.g. 12" />
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Limit on how many courses can be produced within the current billing period.</small>
+                    <input type="number" id="setting-max-courses" class="input-base" min="0" required placeholder="e.g. 12 (0 for unlimited)" />
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Limit on how many courses can be produced within the current billing period. Set to 0 for unlimited.</small>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="font-weight: 600; color: var(--text-muted);">Max Interactive Guides Per Period</label>
-                    <input type="number" id="setting-max-guides" class="input-base" min="1" required placeholder="e.g. 12" />
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Limit on how many interactive guides can be produced within the current billing period.</small>
+                    <input type="number" id="setting-max-guides" class="input-base" min="0" required placeholder="e.g. 12 (0 for unlimited)" />
+                    <small style="color: var(--text-muted); font-size: 0.8rem;">Limit on how many interactive guides can be produced within the current billing period. Set to 0 for unlimited.</small>
                 </div>
       
                 <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">

@@ -59,37 +59,10 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: var(--bg-dark);
+  background-color: #0b0f19;
   color: var(--text-main);
   overflow-x: hidden;
   min-height: 100vh;
-}
-
-/* Aurora Background Animation */
-body::before {
-  content: '';
-  position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at center, var(--aurora-1), transparent 50%),
-    radial-gradient(circle at top left, var(--aurora-2), transparent 50%),
-    radial-gradient(circle at bottom right, var(--aurora-3), transparent 50%);
-  filter: blur(100px);
-  opacity: 0.15;
-  z-index: -1;
-  animation: aurora-spin 20s linear infinite;
-}
-
-@keyframes aurora-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* Glassmorphism Utility */

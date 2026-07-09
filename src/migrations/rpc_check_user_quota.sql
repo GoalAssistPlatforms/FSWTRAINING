@@ -25,6 +25,6 @@ BEGIN
   FROM profiles;
 
   -- Return true if limit is reached or exceeded
-  RETURN v_current_users >= v_max_users;
+  RETURN v_max_users > 0 AND v_current_users >= v_max_users;
 END;
 $$;
