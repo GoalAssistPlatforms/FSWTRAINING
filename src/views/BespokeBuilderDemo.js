@@ -1,7 +1,7 @@
 import { mockCourseManifest, recalculateSlideAudio } from '../data/mockCourseManifest.js';
 import { renderBespokePlayerDemo } from './BespokePlayerDemo.js';
 import { generateThumbnail, uploadToCloudinary } from '../api/images.js';
-import { generateBespokeSlides } from '../api/bespoke-ai.js';
+import { generateBespokeSlides, generateBespokeSlidesTrial } from '../api/bespoke-ai.js';
 import '../styles/bespoke-builder.css';
 
 // We create a mutable clone of the manifest to act as our live state
@@ -93,6 +93,9 @@ export const renderBespokeBuilderDemo = () => {
                     <button id="generate-ai-btn" class="btn-primary" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
                         <span>Generate Deck</span>
                     </button>
+                    <button id="generate-fsw-trial-btn" class="btn-primary" style="width: 100%; margin-top: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #128ECD, #00843B); border: none;">
+                        <span>✨ Generate Brand Trial</span>
+                    </button>
                 </div>
                 <div id="builder-nav-list"></div>
                 <button id="add-slide-btn" class="btn-primary" style="width: 100%; margin-top: 1rem;">+ Add Slide</button>
@@ -170,6 +173,55 @@ export const renderBespokeBuilderDemo = () => {
             } finally {
                 aiBtn.innerHTML = originalText;
                 aiBtn.disabled = false;
+            }
+        });
+    }
+
+    // AI Trial Generation Listener
+    const trialBtn = document.getElementById('generate-fsw-trial-btn');
+    if (trialBtn) {
+        trialBtn.addEventListener('click', async () => {
+            const topicInput = document.getElementById('ai-topic-input');
+            const topic = topicInput.value.trim();
+            if (!topic) {
+                alert("Please enter a topic.");
+                return;
+            }
+
+            const originalText = trialBtn.innerHTML;
+            trialBtn.innerHTML = `<span>Drafting...</span>`;
+            trialBtn.disabled = true;
+            try {
+                const newSlides = await generateBespokeSlidesTrial(topic, (status) => {
+                    trialBtn.innerHTML = `<span>${status}</span>`;
+                });
+                
+                // Post-process the slides to ensure player compatibility
+                newSlides.forEach(slide => {
+                    if (slide.narrationScript) {
+                        slide.narration = slide.narrationScript;
+                    }
+                    recalculateSlideAudio(slide);
+                    if (slide.elements) {
+                        slide.elements.forEach(el => {
+                            if (!el.type) el.type = 'text';
+                            if (!el.animation) el.animation = 'fade-in';
+                        });
+                    }
+                });
+
+                builderState.slides = newSlides;
+                activeSlideIndex = 0;
+                
+                updatePlayerManifest();
+                renderNavigator();
+                renderInspector();
+                renderBespokePlayerDemo(activeSlideIndex);
+            } catch (err) {
+                alert("AI Brand Trial Generation failed: " + err.message);
+            } finally {
+                trialBtn.innerHTML = originalText;
+                trialBtn.disabled = false;
             }
         });
     }

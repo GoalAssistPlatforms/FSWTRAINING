@@ -1,3 +1,5 @@
+import { uploadToCloudinary } from './images.js';
+
 const openrouter = {
     chat: {
         completions: {
@@ -152,3 +154,101 @@ async function enhanceBespokeSlidesWithImages(slides, onProgress) {
     if (onProgress) onProgress("Finalizing deck...");
     return slides;
 }
+
+async function generateDalleImage(prompt) {
+    const randomSeed = Math.floor(Math.random() * 100000);
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux&seed=${randomSeed}`;
+}
+
+export async function generateBespokeSlidesTrial(topic, onProgress) {
+    try {
+        if (onProgress) onProgress("Drafting structure with AI (Trial)...");
+        const completion = await openrouter.chat.completions.create({
+            model: "openai/gpt-4o",
+            response_format: { type: "json_object" },
+            messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: `Create a comprehensive, 5-7 slide presentation on the following topic: ${topic}` }
+            ]
+        });
+
+        const rawJson = completion.choices[0].message.content;
+        const presentation = JSON.parse(rawJson);
+
+        if (onProgress) onProgress("AI structure complete. Generating FSW DALL-E images...");
+        return await enhanceBespokeSlidesWithImagesTrial(presentation.slides, onProgress);
+    } catch (err) {
+        console.error("AI Trial Generation Error:", err);
+        throw err;
+    }
+}
+
+async function enhanceBespokeSlidesWithImagesTrial(slides, onProgress) {
+    const processImagePrompt = async (prompt) => {
+        if (!prompt || prompt.trim() === "") return "";
+        
+        const stylePrefix = "A beautifully clean, modern, flat 2D vector graphic illustration of";
+        const styleSuffix = ". The aesthetic is premium corporate minimalist, similar to Stripe or Duolingo marketing assets. Use the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Solid colors, crisp clean lines, no shading, strictly flat 2D graphic design style. CRITICAL: Do not make it photorealistic or 3D. It must look like a high-end vector illustration. No text.";
+        const fullPrompt = `${stylePrefix} ${prompt}${styleSuffix}`;
+        
+        const tempUrl = await generateDalleImage(fullPrompt);
+        const persistentUrl = await uploadToCloudinary(tempUrl, "slide_image");
+        return persistentUrl;
+    };
+
+    let totalImages = 0;
+    let loadedImages = 0;
+
+    for (let slide of slides) {
+        if (slide.slideImagePrompt) totalImages++;
+        if (slide.elements) {
+            for (let el of slide.elements) {
+                if (el.type === 'bento-grid' && el.items) {
+                    for (let item of el.items) {
+                        if (item.imagePrompt) totalImages++;
+                    }
+                }
+            }
+        }
+    }
+
+    if (totalImages === 0) {
+        if (onProgress) onProgress("Finalizing deck...");
+        return slides;
+    }
+
+    for (let slide of slides) {
+        if (slide.slideImagePrompt) {
+            try {
+                if (onProgress) onProgress(`Generating FSW DALL-E asset (${loadedImages + 1}/${totalImages})...`);
+                const url = await processImagePrompt(slide.slideImagePrompt);
+                slide.background = `url('${url}')`;
+                loadedImages++;
+            } catch (err) {
+                console.error("Failed to generate slide image, falling back:", err);
+            }
+        }
+
+        if (slide.elements) {
+            for (let el of slide.elements) {
+                if (el.type === 'bento-grid' && el.items) {
+                    for (let item of el.items) {
+                        if (item.imagePrompt) {
+                            try {
+                                if (onProgress) onProgress(`Generating FSW DALL-E asset (${loadedImages + 1}/${totalImages})...`);
+                                item.bgImage = await processImagePrompt(item.imagePrompt);
+                                loadedImages++;
+                            } catch (err) {
+                                console.error("Failed to generate bento image:", err);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (onProgress) onProgress("Finalizing deck...");
+    return slides;
+}
+
