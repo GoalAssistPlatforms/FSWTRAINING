@@ -438,8 +438,6 @@ export async function chatWithGuides(userQuestion, conversationHistory = []) {
     let contextStr = matchedChunks.map((chunk, i) => `[Source ${i+1}: ${chunk.document_title}]\n${chunk.content}`).join('\n\n');
     if (interactiveGuidesContext) {
         contextStr += `\n\n=== INTERACTIVE GUIDES SYSTEM KNOWLEDGE ===\n\n${interactiveGuidesContext}`;
-        // We push interactive guides into matchedChunks so they appear in sources in the UI
-        interactiveSources.forEach(src => matchedChunks.push(src));
     }
     
     // 4. Prompt AI
@@ -471,11 +469,22 @@ INSTRUCTIONS:
 
     const answerText = completion.choices[0].message.content;
 
-    // Return all retrieved chunks as sources so the user can explore them, 
-    // rather than relying on strict string matching against the AI's answer.
+    // Only return interactive guides as sources if they are actually mentioned/cited in the AI's generated response.
+    const finalSources = [...matchedChunks];
+    if (interactiveSources.length > 0) {
+        interactiveSources.forEach(src => {
+            const guideTitle = src.courseData.title;
+            const titleEscaped = guideTitle.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(titleEscaped, 'i');
+            if (regex.test(answerText)) {
+                finalSources.push(src);
+            }
+        });
+    }
+
     return {
         answer: answerText,
-        sources: matchedChunks
+        sources: finalSources
     };
 }
 
