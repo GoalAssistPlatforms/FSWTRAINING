@@ -10,6 +10,9 @@ import { fswAlert, fswConfirm } from '../utils/dialog.js'
 import { renderDecisionSwipe } from './components/DecisionSwipe.js'
 import { renderCertificate, downloadCertificate } from './components/Certificate.js'
 import { renderSimulationPlayer } from './components/SimulationPlayer.js'
+import { saveExemptedLessons, updateCourse, saveLessonProgress } from '../api/courses.js'
+import { createAudio } from '../api/elevenlabs.js'
+import { createPresentation, exportAndUploadPdf } from '../api/gamma.js'
 
 // Initialize Mermaid
 mermaid.initialize({ startOnLoad: false, theme: 'dark' })
@@ -685,9 +688,7 @@ export function renderCoursePlayer(course, user, options = {}) {
         document.getElementById('skip-pretest-btn').addEventListener('click', async () => {
             if (await fswConfirm('Are you sure you want to skip the pre-test? You will have to sit the full course.')) {
                 // Update status in DB to in-progress
-                import('../api/courses.js').then(({ saveExemptedLessons }) => {
-                    saveExemptedLessons(user.id, course.id, [], 'in-progress');
-                });
+                saveExemptedLessons(user.id, course.id, [], 'in-progress');
                 pretestState = 'normal';
                 mount();
             }
@@ -955,7 +956,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                     saveBtn.disabled = true;
 
                     try {
-                        const { updateCourse } = await import('../api/courses');
                         await updateCourse(course.id, {
                             content_json: modules,
                             updated_at: new Date()
@@ -1180,7 +1180,6 @@ export function renderCoursePlayer(course, user, options = {}) {
 
             // Save exemptions and status to DB
             try {
-                const { saveExemptedLessons } = await import('../api/courses.js');
                 await saveExemptedLessons(user.id, course.id, exemptedLessons, newStatus, certId, expiresAt);
             } catch (err) {
                 console.error("Failed to save exempted progress:", err);
@@ -1443,9 +1442,8 @@ export function renderCoursePlayer(course, user, options = {}) {
         
         // Save progress to DB automatically when mounting a new lesson
         if (!isCourseComplete) {
-            import('../api/courses.js').then(({ saveLessonProgress }) => {
-                saveLessonProgress(user.id, course.id, currentModuleIndex, currentLessonIndex, highestModuleIndex, highestLessonIndex);
-            }).catch(e => console.error('Error importing courses API:', e));
+            saveLessonProgress(user.id, course.id, currentModuleIndex, currentLessonIndex, highestModuleIndex, highestLessonIndex)
+                .catch(e => console.error('Error saving lesson progress:', e));
         }
     }
 
@@ -1483,13 +1481,69 @@ export function renderCoursePlayer(course, user, options = {}) {
     const attachEvents = (currentLesson) => {
         let pdfDoc = null;
         let currentPdfPage = 1;
-        let pdfCanvas = document.getElementById('pdf-canvas');
-        
+        const pdfCanvas = document.getElementById('pdf-canvas');
+        const pdfPrevBtn = document.getElementById('pdf-prev-slide-btn');
+        const pdfNextBtn = document.getElementById('pdf-next-slide-btn');
+        const audioElements = document.querySelectorAll('.track-audio');
+
+        const renderPdfPage = async (num) => {
+            if (!pdfDoc) return;
+            const page = await pdfDoc.getPage(num);
+            // Adjust scale for higher resolution
+            const viewport = page.getViewport({ scale: 2.0 });
+            const ctx = pdfCanvas.getContext('2d');
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            updatePdfArrowVisibility();
+        };
+
+        const goToNextPdfPage = () => {
+            const totalPages = pdfDoc ? pdfDoc.numPages : audioElements.length;
+            if (currentPdfPage >= totalPages) return false;
+            currentPdfPage++;
+            if (pdfDoc) {
+                renderPdfPage(currentPdfPage);
+            }
+            return true;
+        };
+
+        const goToPrevPdfPage = () => {
+            if (currentPdfPage <= 1) return false;
+            currentPdfPage--;
+            if (pdfDoc) {
+                renderPdfPage(currentPdfPage);
+            }
+            return true;
+        };
+
+        const updatePdfArrowVisibility = () => {
+            if (!pdfDoc) return;
+            if (pdfPrevBtn) {
+                if (currentPdfPage <= 1) {
+                    pdfPrevBtn.style.opacity = '0.15';
+                    pdfPrevBtn.style.pointerEvents = 'none';
+                } else {
+                    pdfPrevBtn.style.opacity = '1';
+                    pdfPrevBtn.style.pointerEvents = 'auto';
+                }
+            }
+            if (pdfNextBtn) {
+                if (currentPdfPage >= pdfDoc.numPages) {
+                    pdfNextBtn.style.opacity = '0.15';
+                    pdfNextBtn.style.pointerEvents = 'none';
+                } else {
+                    pdfNextBtn.style.opacity = '1';
+                    pdfNextBtn.style.pointerEvents = 'auto';
+                }
+            }
+        };
+
         if (pdfCanvas && currentLesson.gamma_pdf_url) {
             const initPdf = async () => {
                 try {
                     const pdfjsLib = await import('pdfjs-dist');
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '5.4.530'}/build/pdf.worker.min.mjs`;
                     const loadingTask = pdfjsLib.getDocument(currentLesson.gamma_pdf_url);
                     pdfDoc = await loadingTask.promise;
                     renderPdfPage(currentPdfPage);
@@ -1498,61 +1552,12 @@ export function renderCoursePlayer(course, user, options = {}) {
                 }
             };
 
-            const renderPdfPage = async (num) => {
-                if (!pdfDoc) return;
-                const page = await pdfDoc.getPage(num);
-                // Adjust scale for higher resolution
-                const viewport = page.getViewport({ scale: 2.0 });
-                const ctx = pdfCanvas.getContext('2d');
-                pdfCanvas.height = viewport.height;
-                pdfCanvas.width = viewport.width;
-                await page.render({ canvasContext: ctx, viewport }).promise;
-                updatePdfArrowVisibility();
-            };
-
-            const goToNextPdfPage = () => {
-                if (!pdfDoc || currentPdfPage >= pdfDoc.numPages) return false;
-                currentPdfPage++;
-                renderPdfPage(currentPdfPage);
-                return true;
-            };
-
-            const goToPrevPdfPage = () => {
-                if (!pdfDoc || currentPdfPage <= 1) return false;
-                currentPdfPage--;
-                renderPdfPage(currentPdfPage);
-                return true;
-            };
-
-            const pdfPrevBtn = document.getElementById('pdf-prev-slide-btn');
-            const pdfNextBtn = document.getElementById('pdf-next-slide-btn');
-
-            const updatePdfArrowVisibility = () => {
-                if (!pdfDoc) return;
-                if (pdfPrevBtn) {
-                    if (currentPdfPage <= 1) {
-                        pdfPrevBtn.style.opacity = '0.15';
-                        pdfPrevBtn.style.pointerEvents = 'none';
-                    } else {
-                        pdfPrevBtn.style.opacity = '1';
-                        pdfPrevBtn.style.pointerEvents = 'auto';
-                    }
-                }
-                if (pdfNextBtn) {
-                    if (currentPdfPage >= pdfDoc.numPages) {
-                        pdfNextBtn.style.opacity = '0.15';
-                        pdfNextBtn.style.pointerEvents = 'none';
-                    } else {
-                        pdfNextBtn.style.opacity = '1';
-                        pdfNextBtn.style.pointerEvents = 'auto';
-                    }
-                }
-            };
-
             initPdf();
+        }
 
-            // Link audio track ending to next PDF page
-            const audioElements = document.querySelectorAll('.track-audio');
+        // Extracted Audio Track & Floating Control Bar Logic: runs regardless of PDF status
+        if (audioElements && audioElements.length > 0) {
+            // Link audio track ending to next page/audio
             audioElements.forEach((audio, idx) => {
                 audio.addEventListener('ended', () => {
                     const didAdvance = goToNextPdfPage();
@@ -1620,7 +1625,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                     }
                 });
             }
-
 
             // User Floating Audio Controls Logic
             const userControls = document.getElementById('user-audio-controls');
@@ -1808,7 +1812,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                 saveBtn.disabled = true;
 
                 try {
-                    const { updateCourse } = await import('../api/courses');
                     await updateCourse(course.id, {
                         content_json: modules,
                         updated_at: new Date()
@@ -1873,7 +1876,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                 saveQuizBtn.disabled = true;
 
                 try {
-                    const { updateCourse } = await import('../api/courses');
                     await updateCourse(course.id, {
                         content_json: modules,
                         updated_at: new Date()
@@ -1937,7 +1939,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                         generateBtn.innerHTML = 'Generating...';
                         generateBtn.disabled = true;
                         try {
-                            const { createAudio } = await import('../api/elevenlabs.js');
                             const url = await createAudio(track.script);
                             track.url = url;
                             renderTracksEditor(); // Re-render to show new audio player
@@ -1989,7 +1990,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                     }
 
                     // Update DB
-                    const { updateCourse } = await import('../api/courses');
                     await updateCourse(course.id, {
                         content_json: modules,
                         updated_at: new Date()
@@ -1998,7 +1998,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                     mount(); // Re-render
                 } catch(e) {
                     console.error('Failed to save audio:', e);
-                    const { fswAlert } = await import('../utils/dialog.js');
                     await fswAlert("Failed to save changes.");
                     saveAudioBtn.innerHTML = originalText;
                     saveAudioBtn.disabled = false;
@@ -2010,12 +2009,10 @@ export function renderCoursePlayer(course, user, options = {}) {
         const regenGammaBtn = document.getElementById('regenerate-gamma-btn');
         if (regenGammaBtn) {
             regenGammaBtn.addEventListener('click', async () => {
-                const { fswConfirm, fswAlert } = await import('../utils/dialog.js');
                 if (await fswConfirm("Regenerate the presentation via AI? This may take up to a minute.")) {
                     regenGammaBtn.querySelector('span').innerText = '🔄 Generating...';
                     regenGammaBtn.disabled = true;
                     try {
-                        const { createPresentation, exportAndUploadPdf } = await import('../api/gamma.js?t=' + Date.now());
                         const l = modules[currentModuleIndex].lessons[currentLessonIndex];
                         const input = l.presentation_input || l.audio_script || l.content;
                         
@@ -2030,7 +2027,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                             const pdfUrl = await exportAndUploadPdf(gammaResult.id);
                             l.gamma_pdf_url = pdfUrl;
 
-                            const { updateCourse } = await import('../api/courses.js');
                             await updateCourse(course.id, { content_json: modules, updated_at: new Date() });
                             mount();
                         } else {
@@ -2053,12 +2049,10 @@ export function renderCoursePlayer(course, user, options = {}) {
         const updateGammaBtn = document.getElementById('update-gamma-btn');
         if (updateGammaBtn) {
             updateGammaBtn.addEventListener('click', async () => {
-                const { fswConfirm, fswAlert } = await import('../utils/dialog.js');
                 if (await fswConfirm("Sync the latest changes from Gamma into the course? This will download the latest version as a PDF.")) {
                     updateGammaBtn.querySelector('span').innerText = '⬇️ Syncing...';
                     updateGammaBtn.disabled = true;
                     try {
-                        const { exportAndUploadPdf } = await import('../api/gamma.js?t=' + Date.now());
                         const l = modules[currentModuleIndex].lessons[currentLessonIndex];
                         
                         if (!l.gamma_id) throw new Error("No Gamma ID found. Please regenerate slides first.");
@@ -2066,7 +2060,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                         const pdfUrl = await exportAndUploadPdf(l.gamma_id);
                         l.gamma_pdf_url = pdfUrl;
 
-                        const { updateCourse } = await import('../api/courses.js');
                         await updateCourse(course.id, { content_json: modules, updated_at: new Date() });
                         mount();
                     } catch (e) {

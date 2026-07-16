@@ -30,3 +30,18 @@ USING (
   AND auth.role() = 'authenticated'
   AND (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('manager', 'admin')
 );
+
+-- 5. Allow Managers and Admins to Update (for Overwriting Slides)
+CREATE POLICY "Manager and Admin Update"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'course_assets'
+  AND auth.role() = 'authenticated'
+  AND (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('manager', 'admin')
+)
+WITH CHECK (
+  bucket_id = 'course_assets'
+  AND auth.role() = 'authenticated'
+  AND (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('manager', 'admin')
+);
+

@@ -43,11 +43,12 @@ export const createPresentation = async (topic, detailed_input) => {
             textOptions: {
                 tone: "Professional",
                 amount: "medium",
-                audience: "FSW Staff",
-                language: "en"
+                audience: "FSW Staff (UK spelling)",
+                language: "en-gb"
             },
             imageOptions: {
-                source: "aiGenerated"
+                source: "aiGenerated",
+                model: "gpt-image-2-mini"
             },
             sharingOptions: {
                 externalAccess: "view",
@@ -115,11 +116,21 @@ export const createPresentation = async (topic, detailed_input) => {
 export const exportToPdf = async (gammaId) => {
     console.log(`Triggering export for Gamma ID: ${gammaId}`);
     try {
-        const exportRes = await fetch(`/api/gamma/gammas/${gammaId}/export`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ exportAs: 'pdf' })
-        });
+        const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        let exportRes;
+        if (isLocalDev) {
+            exportRes = await fetch(`/api/gamma/gammas/${gammaId}/export`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ exportAs: 'pdf' })
+            });
+        } else {
+            exportRes = await fetch(`/api/gamma/export`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gammaId })
+            });
+        }
 
         if (!exportRes.ok) {
             const text = await exportRes.text();
