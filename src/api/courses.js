@@ -16,6 +16,27 @@ export const getCourses = async (role) => {
 
     const { data, error } = await query
     if (error) throw error
+
+    if (role !== 'manager') {
+        return (data || []).filter(course => {
+            let content = course.content_json;
+            if (typeof content === 'string') {
+                try {
+                    content = JSON.parse(content);
+                } catch (error) {
+                    return true;
+                }
+            }
+
+            if (content?.type === 'video_walkthrough') {
+                const renderStatus = content.renderStatus || 'ready';
+                return renderStatus === 'ready' || renderStatus === 'notRequired';
+            }
+
+            return true;
+        });
+    }
+
     return data
 }
 
@@ -40,7 +61,7 @@ export const getCourseUsageStats = async () => {
         .select('content_json')
         .gte('created_at', dates.periodStart.toISOString())
         .neq('status', 'archived');
-        
+
     if (error) throw error;
 
     const actualCoursesCount = (courses || []).filter(c => {
@@ -50,7 +71,7 @@ export const getCourseUsageStats = async () => {
         }
         return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
     }).length;
-    
+
     return {
         used: actualCoursesCount,
         total: settings.max_courses_per_period,
@@ -73,7 +94,7 @@ export const createCourse = async (courseData) => {
                         .select('content_json')
                         .gte('created_at', dates.periodStart.toISOString())
                         .neq('status', 'archived');
-                        
+
                     if (countError) throw countError;
 
                     const actualCoursesCount = (courses || []).filter(c => {
@@ -83,7 +104,7 @@ export const createCourse = async (courseData) => {
                         }
                         return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
                     }).length;
-                    
+
                     if (settings.max_courses_per_period > 0 && actualCoursesCount >= settings.max_courses_per_period) {
                         throw new Error(`Limit Reached: You have created ${actualCoursesCount} courses in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
                     }
@@ -167,7 +188,7 @@ export const saveLessonProgress = async (userId, courseId, moduleIndex, lessonIn
         if (existing) {
             let status = existing.status;
             if (status === 'assigned') status = 'in-progress';
-            
+
             await supabase.from('user_progress').update({
                 status,
                 last_module_index: moduleIndex,
@@ -226,4 +247,3 @@ export const saveExemptedLessons = async (userId, courseId, exemptedLessons, sta
         console.error('Error saving exempted lessons:', e);
     }
 }
-
