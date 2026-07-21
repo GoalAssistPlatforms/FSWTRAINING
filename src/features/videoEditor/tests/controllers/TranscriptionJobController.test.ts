@@ -81,6 +81,20 @@ describe("TranscriptionJobController State Flow", () => {
     expect(lastState.canApprove).toBe(false);
   });
 
+  it("exposes the current state required by the publish guard", async () => {
+    const controller = new TranscriptionJobController(mockService as any, guideId, sourceAssetId, onStateChange);
+
+    expect(controller.getState().status).toBe("idle");
+    await controller.init();
+
+    const state = controller.getState();
+    expect(state.status).toBe("ready");
+    expect(state.job).toBeNull();
+
+    state.status = "failed";
+    expect(controller.getState().status).toBe("ready");
+  });
+
   it("subscribes and maps to processing state when active job exists", async () => {
     const activeJob = createMockJob("queued");
     mockService.listJobs.mockResolvedValueOnce([activeJob]);

@@ -57,6 +57,10 @@ export class TranscriptionJobController {
     this.onStateChange = onStateChange;
   }
 
+  public getState(): TranscriptionJobControllerState {
+    return { ...this.state };
+  }
+
   private assertNotDisposed() {
     if (this.isDisposed) {
       throw new TranscriptionDisposedError();

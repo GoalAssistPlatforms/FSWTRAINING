@@ -88,7 +88,12 @@ describe("Guide publishing integration", () => {
     HTMLVideoElement.prototype.play = vi.fn(async () => {});
     HTMLVideoElement.prototype.pause = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      drawImage: vi.fn()
+      drawImage: vi.fn(),
+      clearRect: vi.fn(),
+      createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+      beginPath: vi.fn(),
+      roundRect: vi.fn(),
+      fill: vi.fn()
     } as any);
     vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/jpeg;base64,AAAA");
     vi.spyOn(console, "log").mockImplementation(() => {});
@@ -99,6 +104,7 @@ describe("Guide publishing integration", () => {
       const query: any = {
         select: vi.fn(() => query),
         eq: vi.fn(() => query),
+        order: vi.fn(async () => ({ data: [], error: null })),
         single: vi.fn(async () => ({ data: null, error: null })),
         maybeSingle: vi.fn(async () => {
           if (table === "courses") {
@@ -118,6 +124,8 @@ describe("Guide publishing integration", () => {
   });
 
   afterEach(() => {
+    (window as any).transcriptionUIController?.dispose();
+    delete (window as any).transcriptionUIController;
     document.body.innerHTML = "";
     vi.restoreAllMocks();
   });
@@ -177,5 +185,28 @@ describe("Guide publishing integration", () => {
     await vi.waitFor(() => expect(fswAlert).toHaveBeenCalledWith("Database update failed"));
     expect(publishButton.innerText).toBe("Publish Guide");
     expect(publishButton.disabled).toBe(false);
+  });
+
+  it("publishes when the active transcription controller is ready", async () => {
+    vi.mocked(updateCourse).mockImplementation(async (id, updates) => ({
+      ...structuredClone(guide),
+      ...updates,
+      id
+    }) as any);
+
+    const publishButton = await initialiseBuilder();
+    const editorVideo = document.getElementById("sys-editor-video") as HTMLVideoElement;
+    editorVideo.dispatchEvent(new Event("loadedmetadata"));
+
+    await vi.waitFor(() => {
+      const controller = (window as any).transcriptionUIController?.transcriptionJobController;
+      expect(controller?.getState().status).toBe("ready");
+    });
+
+    publishButton.click();
+
+    await vi.waitFor(() => expect(publishButton.innerText).toBe("Success!"));
+    expect(vi.mocked(updateCourse).mock.calls.at(-1)?.[1]).toMatchObject({ status: "live" });
+    expect(fswAlert).not.toHaveBeenCalled();
   });
 });
