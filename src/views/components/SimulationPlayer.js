@@ -5,12 +5,12 @@ const logDebug = (msg) => console.log("[DEBUG]", msg);
 
 
 export const renderSimulationPlayer = (course, user, embeddedContainerId = null) => {
-    
+
     const isEmbedded = !!embeddedContainerId;
 
     // Parse content
-    const content = typeof course.content_json === 'string' 
-        ? JSON.parse(course.content_json) 
+    const content = typeof course.content_json === 'string'
+        ? JSON.parse(course.content_json)
         : course.content_json;
 
     // Use specific container or take over the app screen
@@ -119,10 +119,10 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
         }
 
         const slide = slides[currentSlide];
-        
+
         let html = `
             <div id="sim-container" style="${isEmbedded ? 'position: relative; width: 100%; min-height: 480px; aspect-ratio: 16/9; background: #000; overflow: hidden; display: flex; flex-direction: column; border-radius: 12px; margin-top: 20px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);' : 'position: fixed; inset: 0; background: #000; z-index: 1000; overflow: hidden; display: flex; flex-direction: column;'}">
-                
+
                 <!-- HUD -->
                 <div style="background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.1); padding: ${isEmbedded ? '0.5rem 1rem' : '1rem 2rem'}; display: flex; justify-content: space-between; align-items: center; z-index: 10; position: relative;">
                     <!-- Progress Bar Background -->
@@ -131,8 +131,8 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
                     <div style="position: absolute; top: 0; left: 0; height: 3px; background: #10b981; width: ${((currentSlide + 1) / slides.length) * 100}%; transition: width 0.3s ease;"></div>
 
                     <div style="display: flex; align-items: center; gap: ${isEmbedded ? '0.5rem' : '1rem'};">
-                        ${isEmbedded 
-                            ? `<button id="sim-fullscreen-btn" class="btn-ghost" style="padding: 0.3rem 0.6rem; color: #34a853; border: 1px solid rgba(52, 168, 83, 0.3); font-size: 0.8rem; border-radius: 4px;">⛶ Fullscreen</button>` 
+                        ${isEmbedded
+                            ? `<button id="sim-fullscreen-btn" class="btn-ghost" style="padding: 0.3rem 0.6rem; color: #34a853; border: 1px solid rgba(52, 168, 83, 0.3); font-size: 0.8rem; border-radius: 4px;">⛶ Fullscreen</button>`
                             : `<button id="sim-exit-btn" class="btn-ghost" style="padding: 0.5rem; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Exit</button>`}
                         ${currentSlide > 0 ? `<button id="sim-back-btn" class="btn-ghost" style="padding: 0.4rem 0.8rem; color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.2); font-size: ${isEmbedded ? '0.8rem' : '0.9rem'};">Back</button>` : ''}
                         <h3 style="margin: 0; color: white; font-size: ${isEmbedded ? '0.9rem' : '1.2rem'};">${course.title}</h3>
@@ -159,7 +159,7 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
                      </div>` : ''}
                 </div>
             </div>
-            
+
             <style>
                 @keyframes simPulse {
                     0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
@@ -194,16 +194,16 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
         if (exitBtn) {
             exitBtn.addEventListener('click', () => {
                 document.body.style.overflow = '';
-                window.location.href = '/?tab=guides'; 
+                window.location.href = '/?tab=guides';
             });
         }
-        
+
         if (fsBtn) {
             fsBtn.addEventListener('click', async () => {
                 // Kill embedded instance
                 window.removeEventListener('resize', positionHotspot);
                 appEl.innerHTML = ``;
-                
+
                 // Launch global course player override
                 const { renderCoursePlayer } = await import('../CoursePlayer.js');
                 renderCoursePlayer(course, user);
@@ -229,14 +229,14 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
              const imgRect = imgEl.getBoundingClientRect();
              const viewportRect = simViewport.getBoundingClientRect();
              const b = slide.box;
-             
+
              // Calculate true scale ratio of the image
              const scale = Math.min(imgRect.width / imgEl.naturalWidth, imgRect.height / imgEl.naturalHeight);
-             
+
              // Visual dimensions of the image pixel data
              const renderedWidth = imgEl.naturalWidth * scale;
              const renderedHeight = imgEl.naturalHeight * scale;
-             
+
              // Calculate empty letterbox padding
              const padLeft = (imgRect.width - renderedWidth) / 2;
              const padTop = (imgRect.height - renderedHeight) / 2;
@@ -260,7 +260,7 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
              if (popupEl) {
                  const screenWidth = viewportRect.width;
                  const screenHeight = viewportRect.height;
-                 
+
                  // Smart lateral positioning: try to place right of the hotspot, otherwise left.
                  if (hotLeft + hotWidth + 300 < screenWidth) {
                      // Plenty of room on the right
@@ -298,12 +298,12 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
              // Did they hit the hotspot?
              const clickX = e.clientX;
              const clickY = e.clientY;
-             
+
              const spotRect = hotspotEl.getBoundingClientRect();
 
              if (clickX >= spotRect.left && clickX <= spotRect.right &&
                  clickY >= spotRect.top && clickY <= spotRect.bottom) {
-                 
+
                  // SUCCESS
                  // Visual spark indicator over cursor
                  const spark = document.createElement('div');
@@ -318,7 +318,7 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
 
                  playSuccessChime();
                  window.removeEventListener('resize', positionHotspot);
-                 
+
                  setTimeout(() => {
                      currentSlide++;
                      renderSlide();
@@ -327,12 +327,12 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
              } else {
                  // FAIL
                  playErrorBeep();
-                 
+
                  // Shake Animation
                  simViewport.classList.remove('shake');
                  void simViewport.offsetWidth; // trigger reflow
                  simViewport.classList.add('shake');
-                 
+
                  // Show simple toast locally
                  const existingToast = document.getElementById('sim-toast');
                  if (existingToast) existingToast.remove();
@@ -376,6 +376,20 @@ export const renderSimulationPlayer = (course, user, embeddedContainerId = null)
 const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, finishSimulation) => {
     const steps = content.steps || [];
     const videoUrl = content.videoUrl;
+    const shouldApplyDynamicEdits = content.renderStatus !== 'ready';
+    const videoEdits = shouldApplyDynamicEdits
+        ? (content.videoEdits || { trimStart: 0, trimEnd: null, cuts: [] })
+        : { trimStart: 0, trimEnd: null, cuts: [] };
+    const trimStart = Number.isFinite(Number(videoEdits.trimStart)) ? Number(videoEdits.trimStart) : 0;
+    const configuredTrimEnd = videoEdits.trimEnd === null || videoEdits.trimEnd === undefined
+        ? null
+        : Number(videoEdits.trimEnd);
+    const orderedCuts = Array.isArray(videoEdits.cuts)
+        ? videoEdits.cuts
+            .map(cut => ({ start: Number(cut.start), end: Number(cut.end) }))
+            .filter(cut => Number.isFinite(cut.start) && Number.isFinite(cut.end) && cut.start < cut.end)
+            .sort((a, b) => a.start - b.start)
+        : [];
 
     const formatTime = (sec) => {
         const m = Math.floor(sec / 60);
@@ -385,12 +399,12 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
 
     let html = `
         <div id="sim-container" style="${isEmbedded ? 'position: relative; width: 100%; min-height: 520px; background: #000; overflow: hidden; display: flex; flex-direction: column; border-radius: 12px; margin-top: 20px; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);' : 'position: fixed; inset: 0; background: #000; z-index: 1000; overflow: hidden; display: flex; flex-direction: column;'}">
-            
+
             <!-- HUD -->
             <div style="background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 10; position: relative;">
                 <div style="display: flex; align-items: center; gap: 1rem;">
-                    ${isEmbedded 
-                        ? `<button id="sim-fullscreen-btn" class="btn-ghost" style="padding: 0.3rem 0.6rem; color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.8rem; border-radius: 4px; cursor: pointer;">⛶ Fullscreen</button>` 
+                    ${isEmbedded
+                        ? `<button id="sim-fullscreen-btn" class="btn-ghost" style="padding: 0.3rem 0.6rem; color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.8rem; border-radius: 4px; cursor: pointer;">⛶ Fullscreen</button>`
                         : `<button id="sim-exit-btn" class="btn-ghost" style="padding: 0.5rem 1rem; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer; border-radius: 4px;">Exit Guide</button>`}
                     <h3 style="margin: 0; color: white; font-size: ${isEmbedded ? '0.9rem' : '1.2rem'};">${course.title}</h3>
                 </div>
@@ -404,11 +418,11 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
 
             <!-- Split Viewport -->
             <div id="sim-split-viewport" style="display: flex; flex: 1; overflow: hidden; flex-direction: ${isEmbedded ? 'column' : 'row'};">
-                
+
                 <!-- Left Pane: Video walkthrough player -->
                 <div style="flex: 3; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border-right: ${isEmbedded ? 'none' : '1px solid rgba(255,255,255,0.1)'}; border-bottom: ${isEmbedded ? '1px solid rgba(255,255,255,0.1)' : 'none'};">
                     <video id="walkthrough-video" src="${videoUrl}" controls style="width: 100%; height: 100%; object-fit: contain; max-height: ${isEmbedded ? '360px' : 'none'};"></video>
-                    
+
                     <!-- Caption overlay -->
                     <div id="walkthrough-caption" class="caption-pill">
                         <div class="caption-header">
@@ -430,14 +444,14 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
                     </div>
                     <div id="timeline-list" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
                         ${steps.map((s, idx) => `
-                            <div class="timeline-card" data-index="${idx}" data-time="${s.timestamp}" style="padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.25); cursor: pointer; transition: all 0.2s ease; position: relative;">
+                            <div class="timeline-card" data-index="${idx}" data-time="${s.sourceTimestamp ?? s.timestamp}" style="padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.25); cursor: pointer; transition: all 0.2s ease; position: relative;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
                                     <span class="step-num" style="font-weight: bold; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Step ${idx + 1}</span>
                                     <span style="font-family: monospace; font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: var(--text-muted);">${formatTime(s.timestamp)}</span>
                                 </div>
                                 <div class="step-instruction" style="font-weight: 600; color: white; font-size: 0.9rem; margin-bottom: 0.25rem;">${s.instruction}</div>
                                 <div class="step-desc" style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">${s.teachingText.replace(/\n/g, '<br>')}</div>
-                                
+
                                 <div class="active-indicator" style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #10b981; border-top-left-radius: 8px; border-bottom-left-radius: 8px; opacity: 0; transition: opacity 0.2s;"></div>
                             </div>
                         `).join('')}
@@ -651,6 +665,63 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
     const exitBtn = document.getElementById('sim-exit-btn');
     const fsBtn = document.getElementById('sim-fullscreen-btn');
 
+    let playbackCompletionStarted = false;
+
+    const completePlayback = () => {
+        if (playbackCompletionStarted) return;
+        playbackCompletionStarted = true;
+        video.pause();
+        finishSimulation();
+    };
+
+    const getTrimEnd = () => {
+        const mediaDuration = Number.isFinite(video.duration) ? video.duration : Infinity;
+        if (configuredTrimEnd === null || !Number.isFinite(configuredTrimEnd)) {
+            return mediaDuration;
+        }
+        return Math.min(configuredTrimEnd, mediaDuration);
+    };
+
+    const enforceVideoEdits = () => {
+        if (!shouldApplyDynamicEdits || !Number.isFinite(video.currentTime)) return false;
+
+        const endBoundary = getTrimEnd();
+        if (video.currentTime >= endBoundary - 0.01) {
+            completePlayback();
+            return true;
+        }
+
+        if (video.currentTime < trimStart - 0.01) {
+            video.currentTime = trimStart;
+            return true;
+        }
+
+        const activeCut = orderedCuts.find(cut =>
+            video.currentTime >= cut.start - 0.01 && video.currentTime < cut.end - 0.01
+        );
+        if (activeCut) {
+            const nextTime = Math.min(activeCut.end, endBoundary);
+            if (nextTime >= endBoundary - 0.01) {
+                completePlayback();
+            } else {
+                video.currentTime = nextTime;
+            }
+            return true;
+        }
+
+        return false;
+    };
+
+    video.addEventListener('loadedmetadata', () => {
+        if (shouldApplyDynamicEdits && trimStart > 0 && video.currentTime < trimStart) {
+            video.currentTime = trimStart;
+        }
+    });
+
+    video.addEventListener('seeking', () => {
+        enforceVideoEdits();
+    });
+
     // Click to seek
     cards.forEach(card => {
         card.addEventListener('click', () => {
@@ -662,13 +733,16 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
 
     // Time update highlights
     video.addEventListener('timeupdate', () => {
+        if (enforceVideoEdits()) return;
         const curTime = video.currentTime;
         let activeIdx = -1;
 
         // Find current step active based on timestamp range
         for (let i = 0; i < steps.length; i++) {
-            const stepTime = steps[i].timestamp;
-            const nextStepTime = steps[i + 1] ? steps[i + 1].timestamp : Infinity;
+            const stepTime = steps[i].sourceTimestamp ?? steps[i].timestamp;
+            const nextStepTime = steps[i + 1]
+                ? (steps[i + 1].sourceTimestamp ?? steps[i + 1].timestamp)
+                : Infinity;
 
             if (curTime >= stepTime && curTime < nextStepTime) {
                 activeIdx = i;
@@ -682,7 +756,7 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
                 if (!card.classList.contains('active')) {
                     card.classList.add('active');
                     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    
+
                     // Show overlaid caption on video
                     captionText.innerText = steps[idx].instruction;
                     const stepNumEl = document.getElementById('caption-step-number');
@@ -713,14 +787,14 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
 
     // Handle end of video to finish progression
     video.addEventListener('ended', () => {
-        finishSimulation();
+        completePlayback();
     });
 
     // Navigation buttons
     if (exitBtn) {
         exitBtn.addEventListener('click', () => {
             document.body.style.overflow = '';
-            window.location.href = '/?tab=guides'; 
+            window.location.href = '/?tab=guides';
         });
     }
 
@@ -766,7 +840,7 @@ const renderVideoTimelinePlayer = (content, course, user, appEl, isEmbedded, fin
             .eq('user_id', user.id)
             .eq('course_id', course.id)
             .maybeSingle();
-        
+
         const container = document.getElementById('guide-complete-status-container');
         if (!container) return;
 
