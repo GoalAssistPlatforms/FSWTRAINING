@@ -42,9 +42,9 @@ export const renderSystemBuilder = () => {
                 <span id="sys-save-status" style="font-size: 0.85rem; display: none;"></span>
                 <button id="sys-toggle-meta-btn" class="btn-ghost" style="display: none; border: 1px solid var(--glass-border); padding: 0.5rem 1rem; border-radius: var(--radius-md); color: var(--text-main); cursor: pointer; font-size: 0.85rem; align-items: center; gap: 0.5rem;">Guide Details <span style="font-size: 0.7rem;">▼</span></button>
                 <button id="sys-replace-video-btn" class="btn-ghost" style="display: none; border: 1px solid rgba(239, 68, 68, 0.5); padding: 0.5rem 1rem; border-radius: var(--radius-md); color: #ef4444; cursor: pointer; font-size: 0.85rem;">Replace Recording</button>
-                <button id="sys-cancel-btn" class="btn-ghost">Cancel</button>
-                <button id="sys-draft-btn" class="btn-ghost" style="border: 1px solid var(--glass-border); padding: 0.6rem 1.2rem; border-radius: var(--radius-md); color: var(--text-main); cursor: pointer;" disabled>Save Draft</button>
-                <button id="sys-save-btn" class="btn-primary" disabled>Publish Guide</button>
+                <button type="button" id="sys-cancel-btn" class="btn-ghost">Cancel</button>
+                <button type="button" id="sys-draft-btn" class="btn-ghost" style="border: 1px solid var(--glass-border); padding: 0.6rem 1.2rem; border-radius: var(--radius-md); color: var(--text-main); cursor: pointer;" disabled>Save Draft</button>
+                <button type="button" id="sys-save-btn" class="btn-primary" disabled>Publish Guide</button>
             </div>
         </div>
 
@@ -965,6 +965,7 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
     let videoEdits = { schemaVersion: 1, trimStart: 0.0, trimEnd: null, cuts: [] };
     let renderStatus = "notRequired";
     let publicationStatus = "draft";
+    let guideSaveInProgress = false;
     let playbackCoordinator = null;
     let autosaveController = null;
     let timelineEditorController = null;
@@ -5524,6 +5525,8 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
     };
 
     const saveGuide = async (targetStatus) => {
+        if (guideSaveInProgress) return;
+
         const title = titleInput.value.trim();
         if (!title) {
             await fswAlert('Please enter a Guide Title');
@@ -5533,16 +5536,6 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
         if (steps.length === 0) {
             await fswAlert('Please add at least one step to your walkthrough timeline.');
             return;
-        }
-
-        await flushStepAutosave();
-
-        if (isTimelineSeqEditing && autosaveController) {
-            if (autosaveController.getStatus() === 'conflict') {
-                await fswAlert("Cannot save guide due to a version conflict. Please resolve the conflict first.");
-                return;
-            }
-            await autosaveController.flush();
         }
 
         const isPublish = targetStatus === 'live';
@@ -5558,11 +5551,30 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
         const primaryBtn = isPublish ? saveBtn : draftBtn;
         const secondaryBtn = isPublish ? draftBtn : saveBtn;
         const originalText = isPublish ? 'Publish Guide' : 'Save Draft';
+        let saveSucceeded = false;
 
         try {
+            guideSaveInProgress = true;
             primaryBtn.innerText = isPublish ? 'Publishing...' : 'Saving...';
             primaryBtn.disabled = true;
             secondaryBtn.disabled = true;
+
+            try {
+                await flushStepAutosave();
+            } catch (autosaveError) {
+                console.warn('Step autosave failed before the final guide save. Retrying in the final save:', autosaveError);
+            }
+
+            if (isTimelineSeqEditing && autosaveController) {
+                await autosaveController.flush();
+                const autosaveStatus = autosaveController.getStatus();
+                if (autosaveStatus === 'conflict') {
+                    throw new Error('Cannot save guide due to a version conflict. Please reopen the guide and try again.');
+                }
+                if (autosaveStatus === 'error' || autosaveStatus === 'retrying' || autosaveStatus === 'dirty' || autosaveStatus === 'saving') {
+                    throw new Error('The latest video edits could not be saved. Please try again before publishing.');
+                }
+            }
 
             let finalVideoUrl = videoUrl;
             if (recordedVideoBlob) {
@@ -5641,12 +5653,19 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
                 });
             }
 
-            if (existingGuide && savedGuide) {
+            if (!savedGuide?.id) {
+                throw new Error('The database did not confirm that the guide was saved. Please try again.');
+            }
+
+            if (existingGuide) {
                 Object.assign(existingGuide, savedGuide, {
-                    content_json: finalContent
+                    content_json: finalContent,
+                    status: targetStatus
                 });
             }
 
+            publicationStatus = targetStatus;
+            saveSucceeded = true;
             primaryBtn.innerText = 'Success!';
             hasUnsavedChanges = false;
             updateSaveStatusIndicator();
@@ -5656,12 +5675,22 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
         } catch (err) {
             console.error('Saving failed:', err);
             await fswAlert(err.message || 'Failed to save software guide.');
-            primaryBtn.innerText = originalText;
-            primaryBtn.disabled = false;
-            secondaryBtn.disabled = false;
+        } finally {
+            guideSaveInProgress = false;
+            if (!saveSucceeded) {
+                primaryBtn.innerText = originalText;
+                primaryBtn.disabled = false;
+                secondaryBtn.disabled = false;
+            }
         }
     };
 
-    draftBtn.addEventListener('click', () => saveGuide('draft'));
-    saveBtn.addEventListener('click', () => saveGuide('live'));
+    draftBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        void saveGuide('draft');
+    });
+    saveBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        void saveGuide('live');
+    });
 };
