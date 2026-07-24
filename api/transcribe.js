@@ -12,6 +12,8 @@ const ALLOWED_MIMES = ['audio/wav', 'audio/wave', 'video/webm', 'audio/webm'];
 
 const MAX_SOURCE_FILE_BYTES = 24 * 1024 * 1024;
 const PROVIDER_TIMEOUT_MS = 50000;
+const MAX_BATCH_CHUNKS = 30;
+const BATCH_TOKEN_TTL_MS = 15 * 60 * 1000;
 const SOURCE_MIME_CONFIGURATION = new Map([
   ['audio/mpeg', 'mp3'],
   ['audio/mp3', 'mp3'],
@@ -39,6 +41,54 @@ class TranscribeError extends Error {
     this.stage = stage;
   }
 }
+
+const createBatchToken = (secret, payload) => {
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update(encodedPayload)
+    .digest('base64url');
+  return `${encodedPayload}.${signature}`;
+};
+
+const verifyBatchToken = (secret, token) => {
+  if (typeof token !== 'string' || token.length > 2048) {
+    throw new TranscribeError('INVALID_BATCH', 'The transcription batch is invalid.', 400, 'batch_token_format');
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 2) {
+    throw new TranscribeError('INVALID_BATCH', 'The transcription batch is invalid.', 400, 'batch_token_format');
+  }
+
+  const [encodedPayload, suppliedSignature] = parts;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(encodedPayload)
+    .digest('base64url');
+  const suppliedBuffer = Buffer.from(suppliedSignature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+
+  if (
+    suppliedBuffer.length !== expectedBuffer.length
+    || !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)
+  ) {
+    throw new TranscribeError('INVALID_BATCH', 'The transcription batch is invalid.', 400, 'batch_token_signature');
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+  } catch {
+    throw new TranscribeError('INVALID_BATCH', 'The transcription batch is invalid.', 400, 'batch_token_payload');
+  }
+
+  if (!Number.isFinite(payload?.expiresAt) || payload.expiresAt < Date.now()) {
+    throw new TranscribeError('BATCH_EXPIRED', 'The transcription batch has expired. Please try again.', 401, 'batch_token_expiry');
+  }
+
+  return payload;
+};
 
 class ByteCounterStream extends Transform {
   constructor(maxBytes, onLimitExceeded) {
@@ -95,7 +145,7 @@ const parseMultipart = (req, correlationId) => {
 
     let limitExceeded = false;
     let fileReceived = null;
-    let guideIdReceived = null;
+    const fieldsReceived = Object.create(null);
     let partsCount = 0;
     let isFinished = false;
 
@@ -113,8 +163,10 @@ const parseMultipart = (req, correlationId) => {
         headers: req.headers,
         limits: {
           files: 1,
-          fields: 1,
-          parts: 3,
+          fields: 5,
+          // Busboy emits partsLimit when the configured limit is reached.
+          // Six is the valid maximum: five security fields and one audio file.
+          parts: 7,
           fileSize: MAX_FILE_BYTES,
           fieldSize: 1024,
           fieldNameSize: 64,
@@ -143,7 +195,7 @@ const parseMultipart = (req, correlationId) => {
 
     bb.on('file', (name, fileStream, info) => {
       partsCount++;
-      if (partsCount > 2) {
+      if (partsCount > 6) {
         fileStream.resume();
         return safeReject(new TranscribeError('INVALID_REQUEST', 'Excessive parts in request', 400, 'busboy_parts_limit'));
       }
@@ -194,18 +246,20 @@ const parseMultipart = (req, correlationId) => {
       });
     });
 
-    bb.on('field', (name, val, info) => {
+    bb.on('field', (name, val) => {
       partsCount++;
-      if (partsCount > 2) {
+      if (partsCount > 6) {
         return safeReject(new TranscribeError('INVALID_REQUEST', 'Excessive parts in request', 400, 'busboy_field_parts_limit'));
       }
-      if (name !== 'guideId') {
+
+      const allowedFields = new Set(['guideId', 'batchId', 'batchToken', 'chunkIndex', 'chunkCount']);
+      if (!allowedFields.has(name)) {
         return safeReject(new TranscribeError('INVALID_REQUEST', `Unexpected field name: ${name}`, 400, 'busboy_field_name'));
       }
-      if (guideIdReceived !== null) {
-        return safeReject(new TranscribeError('INVALID_REQUEST', 'Duplicate guide fields detected', 400, 'busboy_duplicate_field'));
+      if (Object.prototype.hasOwnProperty.call(fieldsReceived, name)) {
+        return safeReject(new TranscribeError('INVALID_REQUEST', `Duplicate field detected: ${name}`, 400, 'busboy_duplicate_field'));
       }
-      guideIdReceived = val;
+      fieldsReceived[name] = val;
     });
 
     bb.on('filesLimit', () => {
@@ -228,7 +282,7 @@ const parseMultipart = (req, correlationId) => {
       if (limitExceeded || isFinished || hasFinished) return;
       isFinished = true;
 
-      if (!guideIdReceived) {
+      if (!fieldsReceived.guideId) {
         return safeReject(new TranscribeError('INVALID_REQUEST', 'Missing guideId parameter', 400, 'busboy_missing_field'));
       }
       if (!fileReceived) {
@@ -236,7 +290,11 @@ const parseMultipart = (req, correlationId) => {
       }
 
       safeResolve({
-        guideId: guideIdReceived,
+        guideId: fieldsReceived.guideId,
+        batchId: fieldsReceived.batchId || null,
+        batchToken: fieldsReceived.batchToken || null,
+        chunkIndex: fieldsReceived.chunkIndex || null,
+        chunkCount: fieldsReceived.chunkCount || null,
         file: fileReceived
       });
     });
@@ -342,6 +400,49 @@ export default async function handler(req, res) {
 
     const contentType = String(req.headers['content-type'] || '').toLowerCase();
     if (contentType.startsWith('application/json')) {
+      if (req.body?.action === 'start_transcription_batch') {
+        const guideId = requireUuid(req.body?.guideId, 'guide identifier');
+        const batchId = requireUuid(req.body?.batchId, 'batch identifier');
+        const chunkCount = Number(req.body?.chunkCount);
+        if (!Number.isInteger(chunkCount) || chunkCount < 2 || chunkCount > MAX_BATCH_CHUNKS) {
+          throw new TranscribeError('INVALID_REQUEST', 'Invalid transcription chunk count.', 400, 'batch_chunk_count');
+        }
+
+        const { data: hasEditAccess, error: accessErr } = await userSupabase.rpc('can_edit_video_editor_guide', {
+          p_guide_id: guideId
+        });
+        if (accessErr || !hasEditAccess) {
+          throw new TranscribeError('PERMISSION_DENIED', 'You do not have permission to transcribe this guide.', 403, 'batch_permission_check');
+        }
+
+        const { data: quotaResult, error: quotaErr } = await userSupabase.rpc('check_and_record_transcription_rate_limit', {
+          p_guide_id: guideId,
+          p_request_id: batchId
+        });
+        if (quotaErr || !quotaResult) {
+          throw new TranscribeError('INTERNAL_ERROR', 'Transcription is temporarily unavailable.', 503, 'batch_quota_service');
+        }
+        if (!quotaResult.allowed) {
+          throw new TranscribeError('RATE_LIMITED', 'Please wait before generating another transcript.', 429, 'batch_quota_limit');
+        }
+
+        const expiresAt = Date.now() + BATCH_TOKEN_TTL_MS;
+        const batchToken = createBatchToken(openaiApiKey, {
+          version: 1,
+          userId: user.id,
+          guideId,
+          batchId,
+          chunkCount,
+          expiresAt
+        });
+
+        return res.status(200).json({
+          batchId,
+          batchToken,
+          expiresAt
+        });
+      }
+
       const guideId = requireUuid(req.body?.guideId, 'guide identifier');
       const sourceAssetId = requireUuid(req.body?.sourceAssetId, 'source asset identifier');
 
@@ -457,7 +558,14 @@ export default async function handler(req, res) {
     }
 
     // 9. Parse bounded multipart stream
-    const { guideId, file: fileData } = await parseMultipart(req, correlationId);
+    const {
+      guideId,
+      file: fileData,
+      batchId,
+      batchToken,
+      chunkIndex,
+      chunkCount
+    } = await parseMultipart(req, correlationId);
 
     // 10. Validate guide identifier
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -488,19 +596,54 @@ export default async function handler(req, res) {
       throw new TranscribeError('PERMISSION_DENIED', 'Permission denied: User cannot edit this guide', 403, 'permission_check');
     }
 
-    // 13. Check and record durable quota
-    const { data: quotaResult, error: quotaErr } = await userSupabase.rpc('check_and_record_transcription_rate_limit', {
-      p_guide_id: guideId,
-      p_request_id: correlationId
-    });
+    // 13. Check the recording quota once, then authenticate every part of a chunked batch.
+    const suppliedBatchValues = [batchId, batchToken, chunkIndex, chunkCount];
+    const hasBatchMetadata = suppliedBatchValues.some(value => value !== null && value !== '');
+    let parsedChunkIndex = null;
 
-    if (quotaErr || !quotaResult) {
-      throw new TranscribeError('INTERNAL_ERROR', 'Quota service is currently unavailable', 500, 'quota_service_call');
-    }
+    if (hasBatchMetadata) {
+      if (suppliedBatchValues.some(value => value === null || value === '')) {
+        throw new TranscribeError('INVALID_BATCH', 'Incomplete transcription batch details.', 400, 'batch_fields');
+      }
 
-    if (!quotaResult.allowed) {
-      const errorMsg = `Rate limit exceeded. Please try again in ${quotaResult.retry_after_seconds} seconds.`;
-      throw new TranscribeError('RATE_LIMITED', errorMsg, 429, 'quota_limit_check');
+      requireUuid(batchId, 'batch identifier');
+      parsedChunkIndex = Number(chunkIndex);
+      const parsedChunkCount = Number(chunkCount);
+      if (
+        !Number.isInteger(parsedChunkIndex)
+        || !Number.isInteger(parsedChunkCount)
+        || parsedChunkIndex < 0
+        || parsedChunkCount < 2
+        || parsedChunkIndex >= parsedChunkCount
+        || parsedChunkCount > MAX_BATCH_CHUNKS
+      ) {
+        throw new TranscribeError('INVALID_BATCH', 'Invalid transcription chunk details.', 400, 'batch_chunk_validation');
+      }
+
+      const batchPayload = verifyBatchToken(openaiApiKey, batchToken);
+      if (
+        batchPayload.version !== 1
+        || batchPayload.userId !== user.id
+        || batchPayload.guideId !== guideId
+        || batchPayload.batchId !== batchId
+        || batchPayload.chunkCount !== parsedChunkCount
+      ) {
+        throw new TranscribeError('INVALID_BATCH', 'The transcription batch does not match this request.', 403, 'batch_claims');
+      }
+    } else {
+      const { data: quotaResult, error: quotaErr } = await userSupabase.rpc('check_and_record_transcription_rate_limit', {
+        p_guide_id: guideId,
+        p_request_id: correlationId
+      });
+
+      if (quotaErr || !quotaResult) {
+        throw new TranscribeError('INTERNAL_ERROR', 'Quota service is currently unavailable', 500, 'quota_service_call');
+      }
+
+      if (!quotaResult.allowed) {
+        const errorMsg = `Rate limit exceeded. Please try again in ${quotaResult.retry_after_seconds} seconds.`;
+        throw new TranscribeError('RATE_LIMITED', errorMsg, 429, 'quota_limit_check');
+      }
     }
 
     // 14. Call OpenAI Whisper-1 API
