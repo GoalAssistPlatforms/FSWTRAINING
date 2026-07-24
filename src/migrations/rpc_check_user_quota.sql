@@ -1,30 +1,31 @@
 -- Run this script in the Supabase SQL Editor
--- This function allows anonymous users (during signup) to check if the platform has reached its user quota limit without exposing the actual profiles data or platform settings.
+-- Anonymous callers can check whether the active seat quota is full without reading profile or platform setting rows.
 
-CREATE OR REPLACE FUNCTION check_user_quota()
+CREATE OR REPLACE FUNCTION public.check_user_quota()
 RETURNS boolean
 LANGUAGE plpgsql
-SECURITY DEFINER -- Runs with the privileges of the creator (postgres/admin), bypassing RLS
+SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
-  v_max_users int;
-  v_current_users int;
+  v_max_users integer;
+  v_current_users bigint;
 BEGIN
-  -- Get the global max users limit
-  SELECT max_users INTO v_max_users
-  FROM platform_settings
+  SELECT max_users
+  INTO v_max_users
+  FROM public.platform_settings
   WHERE id = 1;
 
-  -- Default to a safe limit if setting is missing
-  IF v_max_users IS NULL THEN
-    v_max_users := 10;
-  END IF;
+  v_max_users := COALESCE(v_max_users, 10);
 
-  -- Count current users
-  SELECT count(*) INTO v_current_users
-  FROM profiles;
+  SELECT count(*)
+  INTO v_current_users
+  FROM public.profiles
+  WHERE role IN ('user', 'manager');
 
-  -- Return true if limit is reached or exceeded
   RETURN v_max_users > 0 AND v_current_users >= v_max_users;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.check_user_quota() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.check_user_quota() TO anon, authenticated;
