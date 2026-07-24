@@ -94,7 +94,7 @@ export const createCourse = async (courseData) => {
                         .select('content_json')
                         .gte('created_at', dates.periodStart.toISOString())
                         .neq('status', 'archived');
-
+                        
                     if (countError) throw countError;
 
                     const actualCoursesCount = (courses || []).filter(c => {
@@ -104,11 +104,54 @@ export const createCourse = async (courseData) => {
                         }
                         return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
                     }).length;
-
+                    
                     if (settings.max_courses_per_period > 0 && actualCoursesCount >= settings.max_courses_per_period) {
                         throw new Error(`Limit Reached: You have created ${actualCoursesCount} courses in the current billing period, which is your maximum limit. Please contact your administrator to upgrade your plan.`);
                     }
                 }
+            }
+        }
+
+        // Resolve the tenant before inserting. Some legacy FSW profiles were
+        // created before account memberships were introduced.
+        if (!courseData.account_id) {
+            const { data: profileWithAccount, error: profileAccountError } = await supabase
+                .from('profiles')
+                .select('account_id')
+                .eq('id', userAuth.user.id)
+                .maybeSingle();
+
+            if (!profileAccountError && profileWithAccount?.account_id) {
+                courseData.account_id = profileWithAccount.account_id;
+            }
+
+            if (!courseData.account_id) {
+                const { data: memberships, error: membershipError } = await supabase
+                    .from('account_memberships')
+                    .select('account_id')
+                    .eq('user_id', userAuth.user.id)
+                    .limit(2);
+
+                if (!membershipError && memberships?.length === 1) {
+                    courseData.account_id = memberships[0].account_id;
+                }
+            }
+
+            // FSW is a single-account deployment. For legacy users without either
+            // mapping, recover the account only when RLS exposes exactly one account.
+            if (!courseData.account_id) {
+                const { data: accessibleAccounts, error: accountsError } = await supabase
+                    .from('accounts')
+                    .select('id')
+                    .limit(2);
+
+                if (!accountsError && accessibleAccounts?.length === 1) {
+                    courseData.account_id = accessibleAccounts[0].id;
+                }
+            }
+
+            if (!courseData.account_id) {
+                throw new Error('Your user account is not linked to the FSW workspace. Please ask an administrator to restore the account link before creating a guide.');
             }
         }
     }
