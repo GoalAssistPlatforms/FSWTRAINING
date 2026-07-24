@@ -28,6 +28,16 @@ import {
     PAUSE_RETAIN_SECONDS,
     PAUSE_THRESHOLD_SECONDS
 } from '../features/videoEditor/services/pauseEditingService.ts';
+import {
+    buildSelectedWordRanges,
+    isTranscriptDeleteKey,
+    mergeVisibleSelectionRanges,
+    updateTranscriptSelectionControls
+} from '../features/videoEditor/services/transcriptSelectionControls.ts';
+import {
+    createTranscriptionChunkPlan,
+    stitchTranscriptionChunks
+} from '../features/videoEditor/services/chunkedTranscription.ts';
 
 export const renderSystemBuilder = () => {
     return `
@@ -235,7 +245,7 @@ export const renderSystemBuilder = () => {
                       </div>
                   </div>
 
-                  <!-- Read-only Transcript Panel -->
+                  <!-- Transcript Editor Panel -->
                   <div id="sys-transcript-panel" class="glass sys-transcript-panel" style="display: flex; flex: 1; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); flex-direction: column; box-sizing: border-box; overflow-y: auto; background: rgba(10,10,12,0.5);" role="region" aria-label="Audio Transcript">
                       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
                           <h4 style="margin: 0; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
@@ -243,14 +253,14 @@ export const renderSystemBuilder = () => {
                               <span id="sys-transcript-lang" style="font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--text-muted); font-weight: normal; display: none;"></span>
                           </h4>
                           <div style="display: flex; gap: 0.5rem;">
-                              <button id="sys-shorten-pauses-btn" class="btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border: 1px solid rgba(167, 201, 70, 0.4); border-radius: 4px; color: var(--primary); cursor: pointer; display: none; align-items: center; gap: 0.3rem; white-space: nowrap;">
+                              <button id="sys-shorten-pauses-btn" class="btn-ghost" type="button" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border: 1px solid rgba(167, 201, 70, 0.4); border-radius: 4px; color: var(--primary); cursor: pointer; display: none; align-items: center; gap: 0.3rem; white-space: nowrap;">
                                   Shorten Pauses
                               </button>
-
-                              <button id="sys-transcript-restore-all-btn" class="btn-ghost" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; color: #10b981; cursor: pointer; display: none; align-items: center; gap: 0.3rem;">
+                              
+                              <button id="sys-transcript-restore-all-btn" class="btn-ghost" type="button" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; color: #10b981; cursor: pointer; display: none; align-items: center; gap: 0.3rem;">
                                   Restore all removed sections
                               </button>
-
+                              
                               <label id="sys-transcript-follow-label" style="display: none; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8rem; color: var(--text-main);">
                                   <div class="toggle-switch">
                                       <input type="checkbox" id="sys-transcript-follow-btn" checked>
@@ -263,20 +273,20 @@ export const renderSystemBuilder = () => {
                       </div>
                       <div id="sys-transcript-announcer" class="sr-only" aria-live="polite" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;"></div>
                       <div id="sys-removed-word-desc" class="sr-only" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Removed from playback</div>
-
+                      
                       <!-- Transcript Selection Action Bar -->
-                      <div id="sys-transcript-selection-bar" style="display: none; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.8rem;">
+                      <div id="sys-transcript-selection-bar" aria-hidden="true" style="display: none; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.8rem;">
                           <span id="sys-transcript-selection-duration" style="font-size: 0.85rem; font-weight: bold; color: #ef4444;">Selected: 0.0 seconds</span>
                           <div style="display: flex; gap: 0.5rem; align-items: center;">
-                              <button id="sys-transcript-cancel-selection-btn" class="btn-ghost" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; outline: none; cursor: pointer; font-weight: 500; border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); border-radius: 4px;">Cancel selection</button>
-                              <button id="sys-transcript-remove-selection-btn" class="btn-primary" style="background: #10b981; border-color: #10b981; padding: 0.35rem 0.75rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 500;">Remove selected text from video</button>
+                              <button id="sys-transcript-cancel-selection-btn" class="btn-ghost" type="button" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; outline: none; cursor: pointer; font-weight: 500; border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); border-radius: 4px;">Cancel selection</button>
+                              <button id="sys-transcript-remove-selection-btn" class="btn-primary" type="button" style="background: #10b981; border-color: #10b981; padding: 0.35rem 0.75rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 500;">Remove selected text from video</button>
                           </div>
                       </div>
 
                       <div id="sys-transcript-content" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.25rem; padding-right: 0.25rem; line-height: 1.6; font-size: 0.95rem; color: rgba(255,255,255,0.75); outline: none;" tabindex="0">
                           <!-- Words will go here -->
                       </div>
-                      <button id="sys-generate-transcript-btn" class="btn-primary" style="margin: 1rem auto; display: block; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Generate Transcript</button>
+                      <button id="sys-generate-transcript-btn" class="btn-primary" type="button" style="margin: 1rem auto; display: block; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Generate Transcript</button>
                       <div id="sys-transcript-progress-msg" style="display: none; text-align: center; color: var(--text-muted); font-style: italic; margin-top: 1rem;"></div>
                       <input type="file" id="sys-transcribe-file-input" accept=".json" style="display: none;">
                       <div id="sys-transcript-pipeline-controls" style="margin-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
@@ -1527,31 +1537,16 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
                 button.removeAttribute("aria-pressed");
             }
         });
-
-        const removeBtn = document.getElementById('sys-transcript-remove-selection-btn');
-        if (removeBtn) {
-            if (selectedTranscriptKeys.size > 0) {
-                removeBtn.style.display = 'inline-flex';
-                let allRemoved = true;
-                const selectedItems = currentTranscriptSelectableItems.filter(item => selectedTranscriptKeys.has(item.key));
-                selectedItems.forEach(item => {
-                    if (item.kind === 'word' && item.visibleWord.state !== 'removed') allRemoved = false;
-                    if (item.kind === 'pause') allRemoved = false;
-                });
-
-                if (allRemoved) {
-                    removeBtn.innerText = 'Restore this section';
-                    removeBtn.style.background = '#3b82f6';
-                    removeBtn.style.borderColor = '#3b82f6';
-                } else {
-                    removeBtn.innerText = 'Remove selected text from video';
-                    removeBtn.style.background = '#10b981';
-                    removeBtn.style.borderColor = '#10b981';
-                }
-            } else {
-                removeBtn.style.display = 'none';
-            }
-        }
+        
+        const selectedItems = currentTranscriptSelectableItems.filter(
+            item => selectedTranscriptKeys.has(item.key)
+        );
+        updateTranscriptSelectionControls({
+            selectionBar: document.getElementById('sys-transcript-selection-bar'),
+            durationLabel: document.getElementById('sys-transcript-selection-duration'),
+            removeButton: document.getElementById('sys-transcript-remove-selection-btn'),
+            selectedItems
+        });
     };
 
     const clearTranscriptSelection = () => {
@@ -1614,6 +1609,10 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
     const handleRemoveSelection = () => {
         const selectedItems = currentTranscriptSelectableItems.filter(item => selectedTranscriptKeys.has(item.key));
         if (selectedItems.length === 0) return;
+        if (!isTimelineSeqEditing || !timelineEditorController) {
+            fswAlert("The timeline editor is still loading. Please try again in a moment.");
+            return;
+        }
 
         const selectedWordItems = selectedItems.filter(item => item.kind === "word");
         const selectedPauseItems = selectedItems.filter(item => item.kind === "pause");
@@ -1637,33 +1636,10 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
         }
 
         // 1. Build word removal ranges
-        const wordRanges = [];
-        let currentWordRun = [];
-
-        for (let i = 0; i < currentTranscriptSelectableItems.length; i++) {
-            const item = currentTranscriptSelectableItems[i];
-            if (selectedTranscriptKeys.has(item.key) && item.kind === 'word') {
-                currentWordRun.push(item);
-            } else {
-                if (currentWordRun.length > 0) {
-                    const firstWord = currentWordRun[0].visibleWord;
-                    const lastWord = currentWordRun[currentWordRun.length - 1].visibleWord;
-                    wordRanges.push({
-                        visibleStart: firstWord.visibleStartTime,
-                        visibleEnd: lastWord.visibleEndTime
-                    });
-                    currentWordRun = [];
-                }
-            }
-        }
-        if (currentWordRun.length > 0) {
-            const firstWord = currentWordRun[0].visibleWord;
-            const lastWord = currentWordRun[currentWordRun.length - 1].visibleWord;
-            wordRanges.push({
-                visibleStart: firstWord.visibleStartTime,
-                visibleEnd: lastWord.visibleEndTime
-            });
-        }
+        const wordRanges = buildSelectedWordRanges(
+            currentTranscriptSelectableItems,
+            selectedTranscriptKeys
+        );
 
         // 2. Build pause removal ranges
         const selectedPauses = selectedPauseItems.map(item => item.pause);
@@ -1674,23 +1650,10 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
         }));
 
         // 3. Normalise and merge ranges
-        let allRanges = [...wordRanges, ...pauseRanges].filter(r => Number.isFinite(r.visibleStart) && Number.isFinite(r.visibleEnd) && r.visibleEnd > r.visibleStart);
-        allRanges.sort((a, b) => a.visibleStart - b.visibleStart);
-
-        const finalRanges = [];
-        const EPSILON = 1e-6;
-        for (const range of allRanges) {
-            if (finalRanges.length === 0) {
-                finalRanges.push(range);
-                continue;
-            }
-            const last = finalRanges[finalRanges.length - 1];
-            if (range.visibleStart <= last.visibleEnd + EPSILON) {
-                last.visibleEnd = Math.max(last.visibleEnd, range.visibleEnd);
-            } else {
-                finalRanges.push(range);
-            }
-        }
+        const finalRanges = mergeVisibleSelectionRanges([
+            ...wordRanges,
+            ...pauseRanges
+        ]);
 
         if (finalRanges.length === 0) {
             if (pausePlan.protected.length > 0) {
@@ -3532,72 +3495,68 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
         }
     };
 
-    const bufferToWav = (buffer) => {
-        const numOfChan = 1; // force mono to save space
+    const bufferToWav = (buffer, startTime = 0, endTime = buffer.duration) => {
+        const numOfChan = 1;
+        const safeStartTime = Math.max(0, Math.min(Number(startTime) || 0, buffer.duration));
+        const safeEndTime = Math.max(safeStartTime, Math.min(Number(endTime) || buffer.duration, buffer.duration));
+        const sourceStartIndex = Math.floor(safeStartTime * buffer.sampleRate);
+        const sourceEndIndex = Math.min(buffer.length, Math.ceil(safeEndTime * buffer.sampleRate));
+        const sourceLength = sourceEndIndex - sourceStartIndex;
+        if (sourceLength <= 0) {
+            throw new Error('The selected audio chunk is empty.');
+        }
+
         const targetWavBytes = 3400000;
         const maximumSpeechSampleRate = 12000;
         const minimumSpeechSampleRate = 8000;
-        const sampleRateForTargetSize = Math.floor((targetWavBytes - 44) / Math.max(buffer.duration, 1));
+        const chunkDuration = sourceLength / buffer.sampleRate;
+        const sampleRateForTargetSize = Math.floor((targetWavBytes - 44) / Math.max(chunkDuration, 1));
         const sampleRate = Math.max(
             minimumSpeechSampleRate,
             Math.min(maximumSpeechSampleRate, sampleRateForTargetSize)
         );
         const scale = sampleRate / buffer.sampleRate;
-        const length = Math.floor(buffer.length * scale);
+        const length = Math.max(1, Math.floor(sourceLength * scale));
         const result = new Float32Array(length);
 
-        // Average all channels to mono so we don't lose mic audio from other channels
         const inputNumOfChan = Math.max(1, buffer.numberOfChannels);
         const channelData = [];
-        for (let c = 0; c < inputNumOfChan; c++) {
-            channelData.push(buffer.getChannelData(c));
+        for (let channel = 0; channel < inputNumOfChan; channel++) {
+            channelData.push(buffer.getChannelData(channel));
         }
 
-        // Downsample and mix down to mono
-        for (let i = 0; i < length; i++) {
-            const index = Math.min(buffer.length - 1, Math.floor(i / scale));
+        for (let index = 0; index < length; index++) {
+            const sourceIndex = Math.min(
+                sourceEndIndex - 1,
+                sourceStartIndex + Math.floor(index / scale)
+            );
             let sum = 0;
-            for (let c = 0; c < inputNumOfChan; c++) {
-                sum += channelData[c][index];
+            for (let channel = 0; channel < inputNumOfChan; channel++) {
+                sum += channelData[channel][sourceIndex];
             }
-            result[i] = sum / inputNumOfChan;
+            result[index] = sum / inputNumOfChan;
         }
 
         const bufferLength = result.length;
-        const ab = new ArrayBuffer(44 + bufferLength);
-        const view = new DataView(ab);
+        const arrayBuffer = new ArrayBuffer(44 + bufferLength);
+        const view = new DataView(arrayBuffer);
 
-        /* RIFF identifier */
         writeString(view, 0, 'RIFF');
-        /* file length */
         view.setUint32(4, 36 + bufferLength, true);
-        /* RIFF type */
         writeString(view, 8, 'WAVE');
-        /* format chunk identifier */
         writeString(view, 12, 'fmt ');
-        /* format chunk length */
         view.setUint32(16, 16, true);
-        /* sample format (raw) */
         view.setUint16(20, 1, true);
-        /* channel count */
         view.setUint16(22, numOfChan, true);
-        /* sample rate */
         view.setUint32(24, sampleRate, true);
-        /* byte rate (sample rate * block align) */
         view.setUint32(28, sampleRate, true);
-        /* block align (channel count * bytes per sample) */
         view.setUint16(32, numOfChan, true);
-        /* bits per sample */
         view.setUint16(34, 8, true);
-        /* data chunk identifier */
         writeString(view, 36, 'data');
-        /* data chunk length */
         view.setUint32(40, bufferLength, true);
-
-        // Write PCM samples
         floatTo8BitPCM(view, 44, result);
 
-        return new Blob([ab], { type: 'audio/wav' });
+        return new Blob([arrayBuffer], { type: 'audio/wav' });
     };
 
     const buildSpeechSegments = (providerResult) => {
@@ -3818,37 +3777,68 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
             // Clear recordedVideoBlob so we don't upload again in saveGuide
             recordedVideoBlob = null;
 
-            const transcribeBlob = async (blob, name, mime) => {
+            const getAccessToken = async () => {
                 const { data: { session } } = await supabase.auth.getSession();
-                const token = session?.access_token || '';
+                return session?.access_token || '';
+            };
 
+            const transcribeBlob = async (blob, name, mime, batch = null) => {
+                const token = await getAccessToken();
                 const formData = new FormData();
                 formData.append('guideId', existingGuide?.id || '');
+                if (batch) {
+                    formData.append('batchId', batch.batchId);
+                    formData.append('batchToken', batch.batchToken);
+                    formData.append('chunkIndex', String(batch.chunkIndex));
+                    formData.append('chunkCount', String(batch.chunkCount));
+                }
                 formData.append('file', blob, name);
 
-                try {
-                    const transRes = await fetch('/api/transcribe', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: formData
-                    });
+                const transRes = await fetch('/api/transcribe', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
 
-                    if (transRes.ok) {
-                        const transData = await transRes.json();
-                        return {
-                            ...transData,
-                            requestId: transRes.headers.get('X-Request-ID') || crypto.randomUUID()
-                        };
-                    } else {
-                        const errData = await transRes.json().catch(() => ({}));
-                        const errMsg = errData.error?.message || errData.error || `Status ${transRes.status}`;
-                        throw new Error(errMsg);
-                    }
-                } catch (err) {
-                    throw err;
+                if (transRes.ok) {
+                    const transData = await transRes.json();
+                    return {
+                        ...transData,
+                        requestId: transRes.headers.get('X-Request-ID') || crypto.randomUUID()
+                    };
                 }
+
+                const errData = await transRes.json().catch(() => ({}));
+                const errMsg = errData.error?.message || errData.error || `Status ${transRes.status}`;
+                throw new Error(errMsg);
+            };
+
+            const startTranscriptionBatch = async (chunkCount) => {
+                const token = await getAccessToken();
+                const batchId = crypto.randomUUID();
+                const response = await fetch('/api/transcribe', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'start_transcription_batch',
+                        guideId: existingGuide?.id || '',
+                        batchId,
+                        chunkCount
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.error?.message || errorData.error || `Status ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+
+                return response.json();
             };
 
             // Step 1: Extract audio track client-side using Web Audio API to bypass 25MB Whisper limit
@@ -3857,6 +3847,7 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
 
             let clientSideExtractionSucceeded = false;
             let extractedWavBlob = null;
+            let decodedAudioBuffer = null;
 
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3905,7 +3896,8 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
                         }
                     }
                 }
-
+                
+                decodedAudioBuffer = audioBuffer;
                 extractedWavBlob = bufferToWav(audioBuffer);
                 audioCtx.close();
                 clientSideExtractionSucceeded = true;
@@ -3930,19 +3922,61 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
             const MAX_ALLOWED_SIZE = 3670016; // 3.5 MB matching MAX_FILE_BYTES in api/transcribe.js
 
             if (clientSideExtractionSucceeded && extractedWavBlob) {
-                if (extractedWavBlob.size > MAX_ALLOWED_SIZE) {
-                    console.warn(`Extracted WAV audio is too large (${(extractedWavBlob.size / (1024 * 1024)).toFixed(2)} MB) for synchronous Vercel transcription. Skipping API call.`);
-                    transcriptionError = new Error(`The audio recording is too large (${(extractedWavBlob.size / (1024 * 1024)).toFixed(2)} MB) for instant AI structuring (limit is 3.5 MB).`);
-                } else {
-                    try {
-                        console.log("Attempting transcription using client-side extracted WAV...");
+                try {
+                    if (extractedWavBlob.size <= MAX_ALLOWED_SIZE) {
+                        console.log('Attempting transcription using client-side extracted WAV...');
                         transcriptionResult = await transcribeBlob(extractedWavBlob, 'audio.wav', 'audio/wav');
-                        segments = buildSpeechSegments(transcriptionResult);
-                        console.log(`Transcribed segments from WAV. Count: ${segments.length}`);
-                    } catch (transError) {
-                        console.warn("Transcription of extracted WAV failed:", transError);
-                        transcriptionError = transError;
+                    } else {
+                        if (!decodedAudioBuffer) {
+                            throw new Error('The extracted audio could not be split for transcription.');
+                        }
+
+                        const chunkPlan = createTranscriptionChunkPlan(decodedAudioBuffer.duration);
+                        const batch = await startTranscriptionBatch(chunkPlan.length);
+                        const chunkResults = [];
+
+                        for (const chunk of chunkPlan) {
+                            recProgressMsg.innerText = `Transcribing audio part ${chunk.index + 1} of ${chunkPlan.length}...`;
+                            recProgressBar.style.width = `${40 + Math.round(((chunk.index + 1) / chunkPlan.length) * 30)}%`;
+
+                            const chunkBlob = bufferToWav(
+                                decodedAudioBuffer,
+                                chunk.startTime,
+                                chunk.endTime
+                            );
+                            if (chunkBlob.size > MAX_ALLOWED_SIZE) {
+                                throw new Error(`Audio part ${chunk.index + 1} exceeded the safe upload size.`);
+                            }
+
+                            const response = await transcribeBlob(
+                                chunkBlob,
+                                `audio_part_${chunk.index + 1}.wav`,
+                                'audio/wav',
+                                {
+                                    batchId: batch.batchId,
+                                    batchToken: batch.batchToken,
+                                    chunkIndex: chunk.index,
+                                    chunkCount: chunkPlan.length
+                                }
+                            );
+                            chunkResults.push({
+                                ...chunk,
+                                response
+                            });
+                        }
+
+                        transcriptionResult = stitchTranscriptionChunks(
+                            chunkResults,
+                            Number(duration) || decodedAudioBuffer.duration,
+                            batch.batchId
+                        );
                     }
+
+                    segments = buildSpeechSegments(transcriptionResult);
+                    console.log(`Transcribed speech segments. Count: ${segments.length}`);
+                } catch (transError) {
+                    console.warn('Transcription of extracted audio failed:', transError);
+                    transcriptionError = transError;
                 }
             }
 
@@ -5092,23 +5126,24 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
     };
 
     const handleGlobalKeyDown = (e) => {
-        if (!isTimelineSeqEditing || !timelineEditorController) return;
-
-        if ((e.key === 'Backspace' || e.key === 'Delete') && selectedTranscriptKeys && selectedTranscriptKeys.size > 0) {
-            const activeEl = document.activeElement;
-            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
-                // Do nothing if typing
-            } else {
-                e.preventDefault();
-                handleRemoveSelection();
-                return;
-            }
-        }
-
         const activeEl = document.activeElement;
-        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+        const isTyping = Boolean(
+            activeEl
+            && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)
+        );
+
+        if (
+            isTranscriptDeleteKey(e.key)
+            && selectedTranscriptKeys
+            && selectedTranscriptKeys.size > 0
+            && !isTyping
+        ) {
+            e.preventDefault();
+            handleRemoveSelection();
             return;
         }
+
+        if (!isTimelineSeqEditing || !timelineEditorController || isTyping) return;
 
         if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
             e.preventDefault();
