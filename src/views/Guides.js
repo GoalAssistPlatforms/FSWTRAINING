@@ -8,7 +8,7 @@ export const renderGuides = (user, stats) => {
 
     return `
     <div class="guides-container fade-in" style="display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 180px);">
-        
+
         <!-- Left Sidebar: Document Library -->
         <div style="background: rgba(255,255,255,0.02); border-right: 1px solid rgba(255,255,255,0.05); padding: 1.5rem; overflow-y: auto; height: 100%; display: flex; flex-direction: column;">
             <div style="margin-bottom: 1.5rem;">
@@ -26,7 +26,7 @@ export const renderGuides = (user, stats) => {
                     <div style="font-size: 0.7rem; color: var(--text-muted);">Upload PDF</div>
                     <input type="file" id="guide-file-input" accept=".pdf" style="display: none;">
                 </div>
-                
+
                 <div id="create-interactive-guide-btn" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 0.8rem; text-align: center; cursor: pointer; transition: all 0.3s; display: flex; flex-direction: column; justify-content: center;">
                     <div style="font-size: 1.2rem; margin-bottom: 0.2rem;">🖱️</div>
                     <div style="font-size: 0.7rem; color: #10b981;">Build Guide</div>
@@ -39,7 +39,7 @@ export const renderGuides = (user, stats) => {
             </div>
             ${statsHtml}
             <div id="upload-progress" style="margin-top: 0; margin-bottom: 1rem; font-size: 0.8rem; color: var(--primary); font-weight: bold; display: none; text-align: center;"></div>
-            
+
             <button id="manage-content-btn" class="btn-ghost" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid var(--glass-border); padding: 0.6rem; border-radius: var(--radius-md); font-size: 0.8rem; cursor: pointer; color: white; margin-bottom: 2rem; margin-top: 0.8rem; transition: background-color 0.2s;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 Manage Curation & Reviews
@@ -67,7 +67,7 @@ export const renderGuides = (user, stats) => {
 
         <!-- Center: Main Panel (Hides Chat / Shows Manager Dashboard) -->
         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; padding: 2rem 2rem 5rem 2rem; height: 100%; box-sizing: border-box; overflow-y: auto;">
-            
+
             <!-- Chat View -->
             <div id="guides-chat-view" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
                 <!-- Review Alert Banner (Manager Only) -->
@@ -98,7 +98,7 @@ export const renderGuides = (user, stats) => {
                     <input type="text" id="chat-input" placeholder="Ask Helen & Lindsay..." style="width: 100%; padding: 1.2rem 4rem 1.2rem 2rem; background: rgba(30, 31, 32, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 35px; color: white; font-size: 1.1rem; outline: none; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: background 0.3s, border-color 0.3s;" onfocus="this.style.background='rgba(40,41,42,0.9)'; this.style.borderColor='rgba(255,255,255,0.3)';" onblur="this.style.background='rgba(30,31,32,0.8)'; this.style.borderColor='rgba(255,255,255,0.1)';">
                     <button id="send-chat-btn" style="position: absolute; right: 8px; top: 8px; bottom: 8px; padding: 0 1rem; background: white; border: none; border-radius: 30px; color: black; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
                 </div>
-                
+
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem; width: 100%; max-width: 800px;" id="chat-suggestions">
                     <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #4285f4">✏️</span> Summarize the WFH Policy</button>
                     <button class="suggestion-chip" style="background: rgba(30,31,32,0.6); padding: 0.8rem 1.2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><span style="color: #fbbc04">💡</span> How do I request PTO?</button>
@@ -152,7 +152,7 @@ export const renderGuides = (user, stats) => {
             </div>
         </div>
     </div>
-    
+
     <!-- PDF Viewer Modal -->
     <div id="pdf-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: var(--bg-dark); width: 90%; height: 90%; border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
@@ -163,15 +163,15 @@ export const renderGuides = (user, stats) => {
             <iframe id="pdf-iframe" style="flex: 1; width: 100%; border: none;"></iframe>
         </div>
     </div>
-    
+
     <!-- Document Upload Modal -->
     <div id="upload-doc-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: var(--bg-dark); padding: 2rem; border-radius: var(--radius-lg); width: 400px; max-width: 90%; border: 1px solid var(--glass-border);">
             <h3 style="margin-top: 0; color: white;">Upload Document Guide</h3>
-            
+
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Document Name</label>
             <input type="text" id="upload-title" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
-            
+
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Description</label>
             <input type="text" id="upload-desc" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
 
@@ -198,10 +198,10 @@ export const renderGuides = (user, stats) => {
     <div id="add-link-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: var(--bg-dark); padding: 2rem; border-radius: var(--radius-lg); width: 400px; max-width: 90%; border: 1px solid var(--glass-border);">
             <h3 style="margin-top: 0; color: white;">Add Web Resource</h3>
-            
+
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">URLs (Enter multiple links separated by commas or new lines)</label>
             <textarea id="link-url" placeholder="https://..." style="width: 100%; height: 100px; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
-            
+
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Tags (comma separated)</label>
             <input type="text" id="link-tags" placeholder="e.g. Training, External" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
 
@@ -224,10 +224,10 @@ export const renderGuides = (user, stats) => {
     <div id="edit-curation-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
         <div style="background: var(--bg-dark); padding: 2rem; border-radius: var(--radius-lg); width: 400px; max-width: 90%; border: 1px solid var(--glass-border);">
             <h3 style="margin-top: 0; color: white;" id="edit-curation-title-header">Edit Item Details</h3>
-            
+
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Title</label>
             <input type="text" id="edit-curation-title" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
-            
+
             <label style="color: var(--text-muted); display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Description / Notes</label>
             <input type="text" id="edit-curation-desc" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
 
@@ -248,7 +248,7 @@ export const renderGuides = (user, stats) => {
             </div>
         </div>
     </div>
-    
+
     <style>
         #upload-zone:hover { border-color: var(--primary); background: rgba(255,255,255,0.05); }
         .source-link { display: inline-block; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: var(--primary); text-transform: uppercase; cursor: pointer; margin-top: 5px; }
@@ -271,10 +271,10 @@ export const initGuidesEvents = async (user) => {
         try {
             const guides = await fetchAllGuides()
             const linksList = document.getElementById('links-list')
-            
+
             const pdfs = guides.filter(g => g.file_url && g.file_url.includes('/storage/'));
             const links = guides.filter(g => g.file_url && !g.file_url.includes('/storage/'));
-            
+
             if (!pdfs || pdfs.length === 0) {
                 guidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No documents available yet.</div>`
             } else {
@@ -293,7 +293,7 @@ export const initGuidesEvents = async (user) => {
                     </div>
                 `).join('')
             }
-            
+
             if (!links || links.length === 0) {
                 linksList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No external links available yet.</div>`
             } else {
@@ -323,7 +323,7 @@ export const initGuidesEvents = async (user) => {
                     }
                 });
             });
-            
+
             // Attach view listeners to web links
             document.querySelectorAll('.clickable-web-link').forEach(card => {
                 card.addEventListener('click', (e) => {
@@ -358,19 +358,40 @@ export const initGuidesEvents = async (user) => {
         // LOAD INTERACTIVE GUIDES
         try {
             const courses = await getCourses(user.role);
-            const interactiveGuides = courses.filter(c => 
-                c.content_json?.is_system_simulation === true || 
+            const interactiveGuides = courses.filter(c =>
+                c.content_json?.is_system_simulation === true ||
                 c.content_json?.type === 'video_walkthrough'
             );
             const interactiveGuidesList = document.getElementById('interactive-guides-list');
-            
+
             if (!interactiveGuides || interactiveGuides.length === 0) {
                 interactiveGuidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No software guides available.</div>`;
             } else {
-                interactiveGuidesList.innerHTML = interactiveGuides.map(g => `
+                interactiveGuidesList.innerHTML = interactiveGuides.map(g => {
+                    let content = g.content_json;
+                    if (typeof content === 'string') {
+                        try { content = JSON.parse(content); } catch (error) {}
+                    }
+
+                    const renderStatus = content?.renderStatus || 'notRequired';
+                    let statusBadges = g.status === 'draft'
+                        ? `<span style="font-size: 0.65rem; color: #3b82f6; border: 1px solid #3b82f6; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 0.5rem; vertical-align: middle;">DRAFT</span>`
+                        : `<span style="font-size: 0.65rem; color: #10b981; border: 1px solid #10b981; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 0.5rem; vertical-align: middle;">LIVE</span>`;
+
+                    if (renderStatus === 'queued') {
+                        statusBadges += `<span style="font-size: 0.65rem; color: #9ca3af; border: 1px solid #9ca3af; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 0.5rem; vertical-align: middle;">QUEUED</span>`;
+                    } else if (renderStatus === 'processing') {
+                        statusBadges += `<span style="font-size: 0.65rem; color: #f59e0b; border: 1px solid #f59e0b; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 0.5rem; vertical-align: middle;">RENDERING</span>`;
+                    } else if (renderStatus === 'failed') {
+                        statusBadges += `<span style="font-size: 0.65rem; color: #ef4444; border: 1px solid #ef4444; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 0.5rem; vertical-align: middle;">FAILED</span>`;
+                    } else if (renderStatus === 'stale') {
+                        statusBadges += `<span style="font-size: 0.65rem; color: #f59e0b; border: 1px solid #f59e0b; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 0.5rem; vertical-align: middle;">OUTDATED</span>`;
+                    }
+
+                    return `
                     <div class="guide-card clickable-interactive-card card-hover" data-course='${JSON.stringify(g).replace(/'/g, "&#39;")}' style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;">
                        <div>
-                           <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem; color: white;">${g.title}</h4>
+                           <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem; color: white;">${g.title}${statusBadges}</h4>
                            <div style="font-size: 0.75rem; color: var(--text-muted);">${g.description || 'No description'}</div>
                            ${g.tags && g.tags.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;" onclick="event.stopPropagation()">
                                ${g.tags.map(t => `<span class="guide-tag" data-tag="${t}" style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; color: #10b981; cursor: pointer;">${t}</span>`).join('')}
@@ -381,7 +402,8 @@ export const initGuidesEvents = async (user) => {
                            ${user.role === 'manager' ? `<button class="delete-interactive-btn" data-id="${g.id}" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); padding: 4px 8px; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8rem;">X</button>` : ''}
                        </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
 
                 // View logic via card click
                 document.querySelectorAll('.clickable-interactive-card').forEach(card => {
@@ -398,15 +420,15 @@ export const initGuidesEvents = async (user) => {
                         btn.addEventListener('click', async (e) => {
                             const courseData = JSON.parse(e.target.dataset.course);
                             const { renderSystemBuilder, initSystemBuilder } = await import('./SystemBuilder.js');
-                            
+
                             const viewGuides = document.getElementById('view-guides');
                             document.querySelector('.guides-container').style.display = 'none';
-                            
+
                             const builderDiv = document.createElement('div');
                             builderDiv.id = 'sys-builder-container';
                             builderDiv.innerHTML = renderSystemBuilder();
                             viewGuides.appendChild(builderDiv);
-                            
+
                             initSystemBuilder(() => {
                                 builderDiv.remove();
                                 document.querySelector('.guides-container').style.display = 'grid';
@@ -473,7 +495,7 @@ export const initGuidesEvents = async (user) => {
         let pendingFile = null;
 
         uploadZone.addEventListener('click', () => fileInput.click())
-        
+
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0]
             if (!file) return
@@ -498,14 +520,14 @@ export const initGuidesEvents = async (user) => {
             const title = titleInput.value.trim() || pendingFile.name;
             const desc = descInput.value.trim() || 'PDF Document';
             const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
-            
+
             const reviewInterval = parseInt(document.getElementById('upload-review-interval')?.value || '12');
-            
+
             try {
                 await processAndUploadGuide(pendingFile, title, desc, tags, reviewInterval, (progressMsg) => {
                     progressDiv.innerText = progressMsg
                 })
-                
+
                 progressDiv.innerText = 'Upload complete!'
                 setTimeout(() => progressDiv.style.display = 'none', 3000)
                 loadGuides()
@@ -513,7 +535,7 @@ export const initGuidesEvents = async (user) => {
                 await fswAlert("Upload failed: " + err.message)
                 progressDiv.style.display = 'none'
             }
-            
+
             pendingFile = null;
             fileInput.value = '';
         })
@@ -540,25 +562,25 @@ export const initGuidesEvents = async (user) => {
             confirmLinkBtn.addEventListener('click', async () => {
                 const rawUrls = linkUrlInput.value.trim();
                 if (!rawUrls) return;
-                
+
                 linkModal.style.display = 'none';
                 progressDiv.style.display = 'block';
 
                 const urlsToProcess = rawUrls.split(/[\n,]+/).map(u => u.trim()).filter(u => u.length > 5 && u.startsWith('http'));
                 const tags = linkTagsInput.value.split(',').map(t => t.trim()).filter(t => t);
-                
+
                 const reviewInterval = parseInt(document.getElementById('link-review-interval')?.value || '12');
-                
+
                 try {
                     for (let i = 0; i < urlsToProcess.length; i++) {
                         const isBatch = urlsToProcess.length > 1;
                         if (isBatch) progressDiv.innerText = `Processing link ${i+1}/${urlsToProcess.length}...`;
-                        
+
                         await processAndUploadWebLink(urlsToProcess[i], tags, reviewInterval, (progressMsg) => {
                             if (!isBatch) progressDiv.innerText = progressMsg;
                         });
                     }
-                    
+
                     progressDiv.innerText = 'All links uploaded and processed!'
                     setTimeout(() => progressDiv.style.display = 'none', 3000)
                     loadGuides()
@@ -575,15 +597,15 @@ export const initGuidesEvents = async (user) => {
             createInteractiveBtn.addEventListener('click', async () => {
                 const { renderSystemBuilder, initSystemBuilder } = await import('./SystemBuilder.js');
                 const viewGuides = document.getElementById('view-guides');
-                
+
                 // Hide main guides container, show builder
                 document.querySelector('.guides-container').style.display = 'none';
-                
+
                 const builderDiv = document.createElement('div');
                 builderDiv.id = 'sys-builder-container';
                 builderDiv.innerHTML = renderSystemBuilder();
                 viewGuides.appendChild(builderDiv);
-                
+
                 initSystemBuilder(() => {
                     // onClose form
                     builderDiv.remove();
@@ -608,10 +630,10 @@ export const initGuidesEvents = async (user) => {
 
         // Convert markdown for AI response
         const formattedContent = marked.parse(content);
-        
+
         let sourceHtml = '';
         let embedHtml = '';
-        
+
         if (sources && sources.length > 0) {
             // Deduplicate sources by document title
             const uniqueSources = [];
@@ -622,19 +644,19 @@ export const initGuidesEvents = async (user) => {
                     uniqueSources.push(s);
                 }
             });
-            
-            sourceHtml = `<div style="margin-top: 15px; display: flex; gap: 0.5rem; flex-wrap: wrap;">` + 
+
+            sourceHtml = `<div style="margin-top: 15px; display: flex; gap: 0.5rem; flex-wrap: wrap;">` +
                          uniqueSources.map(src => {
                              if (src.is_interactive && src.courseData) {
                                  const courseDataStr = JSON.stringify(src.courseData).replace(/'/g, "&#39;");
                                  const embedId = 'sim-embed-' + Math.random().toString(36).substr(2, 9);
                                  embedHtml += `<div id="${embedId}" class="interactive-chat-embed" data-course='${courseDataStr}'></div>`;
-                                 
+
                                  return `<span class="source-link interactive-source-link" data-course='${courseDataStr}' style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"><span style="color: #34a853;">🖱️</span> ${src.document_title.replace('Interactive Guide: ', '')}</span>`;
                              } else {
                                  const fileUrl = src.file_url || '';
                                  const isYoutube = fileUrl.includes('youtube.com') || fileUrl.includes('youtu.be');
-                                 
+
                                  // Build ChatGPT-style video embed if it's a YouTube source
                                  if (isYoutube) {
                                      const vidMatch = fileUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
@@ -646,7 +668,7 @@ export const initGuidesEvents = async (user) => {
                                          `;
                                      }
                                  }
-                                 
+
                                  return `<span class="source-link web-source-link" data-url="${fileUrl}" style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"><span style="color: #fbbc04;">${isYoutube ? '▶️' : '📄'}</span> ${src.document_title}</span>`;
                              }
                          }).join(' ') +
@@ -657,7 +679,7 @@ export const initGuidesEvents = async (user) => {
         const iconHtml = '';
 
         msgDiv.innerHTML = `<div style="display: flex; align-items: flex-start;">${iconHtml}<div style="flex: 1; width: 100%;">${formattedContent}${embedHtml}${sourceHtml}</div></div>`;
-        
+
         // Render Interactive Guides Inline
         msgDiv.querySelectorAll('.interactive-chat-embed').forEach(async container => {
             const courseData = JSON.parse(container.dataset.course);
@@ -673,7 +695,7 @@ export const initGuidesEvents = async (user) => {
                 renderCoursePlayer(courseData, user);
             });
         });
-        
+
         // Attach click listeners to external sources so they actually open
         msgDiv.querySelectorAll('.web-source-link').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -701,13 +723,13 @@ export const initGuidesEvents = async (user) => {
         // Hide greeting and suggestions
         const greetingDiv = document.getElementById('chat-greeting');
         if (greetingDiv) greetingDiv.style.display = 'none';
-        
+
         const suggestionsDiv = document.getElementById('chat-suggestions');
         if (suggestionsDiv) suggestionsDiv.style.display = 'none';
 
         appendMessage(q, true)
         chatInput.value = ''
-        
+
         // Show loading indicator
         const loadingDiv = document.createElement('div')
         loadingDiv.innerHTML = `<span>Thinking...</span>`
@@ -750,7 +772,7 @@ export const initGuidesEvents = async (user) => {
             const docs = document.querySelectorAll('#guides-list .guide-card');
             const interactives = document.querySelectorAll('#interactive-guides-list .guide-card');
             const links = document.querySelectorAll('#links-list .guide-card');
-            
+
             [...docs, ...interactives, ...links].forEach(card => {
                 const text = card.innerText.toLowerCase();
                 card.style.display = text.includes(val) ? 'flex' : 'none';
@@ -829,7 +851,7 @@ export const initGuidesEvents = async (user) => {
         const loadCurationItems = async () => {
             try {
                 curationItemsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading curation items...</div>';
-                
+
                 const [guides, courses] = await Promise.all([
                     fetchAllGuides(),
                     getCourses('manager')
@@ -887,7 +909,7 @@ export const initGuidesEvents = async (user) => {
             const overdueItems = allCurationItems.filter(item => item.next_review_date && new Date(item.next_review_date) < now);
             const banner = document.getElementById('curation-alert-banner');
             const alertText = document.getElementById('curation-alert-text');
-            
+
             if (banner && alertText) {
                 if (overdueItems.length > 0) {
                     banner.style.display = 'flex';
@@ -917,7 +939,7 @@ export const initGuidesEvents = async (user) => {
 
             const filtered = allCurationItems.filter(item => {
                 // Search match
-                const matchQuery = item.title.toLowerCase().includes(query) || 
+                const matchQuery = item.title.toLowerCase().includes(query) ||
                                    (item.description && item.description.toLowerCase().includes(query)) ||
                                    item.tags.some(t => t.toLowerCase().includes(query));
                 if (!matchQuery) return false;
@@ -1024,7 +1046,7 @@ export const initGuidesEvents = async (user) => {
                             ${statusBadge}
                         </div>
                     </div>
-                    
+
                     <!-- Middle Row: Next Review Details -->
                     <div style="background: rgba(0,0,0,0.25); padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
                         <div style="color: var(--text-muted);">
@@ -1134,7 +1156,7 @@ export const initGuidesEvents = async (user) => {
         if (confirmEditBtn) {
             confirmEditBtn.addEventListener('click', async () => {
                 if (!currentlyEditingItem) return;
-                
+
                 const id = currentlyEditingItem.id;
                 const type = currentlyEditingItem.type;
                 const title = editTitleInput.value.trim();
@@ -1177,7 +1199,7 @@ export const initGuidesEvents = async (user) => {
                 }
             });
         }
-        
+
         // Initial setup to verify status and show banner
         setTimeout(async () => {
             try {
@@ -1188,7 +1210,7 @@ export const initGuidesEvents = async (user) => {
                 ]);
                 const now = new Date();
                 let overdueCount = 0;
-                
+
                 guides.forEach(g => {
                     if (g.next_review_date && new Date(g.next_review_date) < now) overdueCount++;
                 });

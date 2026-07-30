@@ -16,6 +16,27 @@ export const getCourses = async (role) => {
 
     const { data, error } = await query
     if (error) throw error
+
+    if (role !== 'manager') {
+        return (data || []).filter(course => {
+            let content = course.content_json;
+            if (typeof content === 'string') {
+                try {
+                    content = JSON.parse(content);
+                } catch (error) {
+                    return true;
+                }
+            }
+
+            if (content?.type === 'video_walkthrough') {
+                const renderStatus = content.renderStatus || 'ready';
+                return renderStatus === 'ready' || renderStatus === 'notRequired';
+            }
+
+            return true;
+        });
+    }
+
     return data
 }
 
@@ -40,7 +61,7 @@ export const getCourseUsageStats = async () => {
         .select('content_json')
         .gte('created_at', dates.periodStart.toISOString())
         .neq('status', 'archived');
-        
+
     if (error) throw error;
 
     const actualCoursesCount = (courses || []).filter(c => {
@@ -50,7 +71,7 @@ export const getCourseUsageStats = async () => {
         }
         return content?.is_system_simulation !== true && content?.type !== 'video_walkthrough';
     }).length;
-    
+
     return {
         used: actualCoursesCount,
         total: settings.max_courses_per_period,
@@ -59,8 +80,12 @@ export const getCourseUsageStats = async () => {
 }
 
 export const createCourse = async (courseData) => {
+    const courseToInsert = { ...courseData };
+
     // Check limits if user is a manager
-    const { data: userAuth } = await supabase.auth.getUser();
+    const { data: userAuth, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+
     if (userAuth?.user) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
         if (profile?.role === 'manager') {
@@ -90,18 +115,63 @@ export const createCourse = async (courseData) => {
                 }
             }
         }
+
+        // Resolve the tenant before inserting. Some legacy FSW profiles were
+        // created before account memberships were introduced.
+        if (!courseToInsert.account_id) {
+            const { data: profileWithAccount, error: profileAccountError } = await supabase
+                .from('profiles')
+                .select('account_id')
+                .eq('id', userAuth.user.id)
+                .maybeSingle();
+
+            if (!profileAccountError && profileWithAccount?.account_id) {
+                courseToInsert.account_id = profileWithAccount.account_id;
+            }
+
+            if (!courseToInsert.account_id) {
+                const { data: memberships, error: membershipError } = await supabase
+                    .from('account_memberships')
+                    .select('account_id')
+                    .eq('user_id', userAuth.user.id)
+                    .limit(2);
+
+                if (!membershipError && memberships?.length === 1) {
+                    courseToInsert.account_id = memberships[0].account_id;
+                }
+            }
+
+            // FSW is a single-account deployment. For legacy users without either
+            // mapping, recover the account only when RLS exposes exactly one account.
+            if (!courseToInsert.account_id) {
+                const { data: accessibleAccounts, error: accountsError } = await supabase
+                    .from('accounts')
+                    .select('id')
+                    .limit(2);
+
+                if (!accountsError && accessibleAccounts?.length === 1) {
+                    courseToInsert.account_id = accessibleAccounts[0].id;
+                }
+            }
+
+            if (!courseToInsert.account_id) {
+                throw new Error('Your user account is not linked to the FSW workspace. Please ask an administrator to restore the account link before creating a course or guide.');
+            }
+        }
+    } else if (!courseToInsert.account_id) {
+        throw new Error('You must be signed in before creating a course or guide.');
     }
 
 
-    if (courseData.review_interval_months && !courseData.next_review_date) {
+    if (courseToInsert.review_interval_months && !courseToInsert.next_review_date) {
         const d = new Date();
-        d.setMonth(d.getMonth() + parseInt(courseData.review_interval_months));
-        courseData.next_review_date = d.toISOString();
+        d.setMonth(d.getMonth() + parseInt(courseToInsert.review_interval_months));
+        courseToInsert.next_review_date = d.toISOString();
     }
 
     const { data, error } = await supabase
         .from('courses')
-        .insert([courseData])
+        .insert([courseToInsert])
         .select()
 
     if (error) throw error
@@ -167,7 +237,7 @@ export const saveLessonProgress = async (userId, courseId, moduleIndex, lessonIn
         if (existing) {
             let status = existing.status;
             if (status === 'assigned') status = 'in-progress';
-            
+
             await supabase.from('user_progress').update({
                 status,
                 last_module_index: moduleIndex,
@@ -226,4 +296,3 @@ export const saveExemptedLessons = async (userId, courseId, exemptedLessons, sta
         console.error('Error saving exempted lessons:', e);
     }
 }
-
