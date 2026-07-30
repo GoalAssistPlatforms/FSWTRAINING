@@ -80,8 +80,12 @@ export const getCourseUsageStats = async () => {
 }
 
 export const createCourse = async (courseData) => {
+    const courseToInsert = { ...courseData };
+
     // Check limits if user is a manager
-    const { data: userAuth } = await supabase.auth.getUser();
+    const { data: userAuth, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+
     if (userAuth?.user) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single();
         if (profile?.role === 'manager') {
@@ -114,7 +118,7 @@ export const createCourse = async (courseData) => {
 
         // Resolve the tenant before inserting. Some legacy FSW profiles were
         // created before account memberships were introduced.
-        if (!courseData.account_id) {
+        if (!courseToInsert.account_id) {
             const { data: profileWithAccount, error: profileAccountError } = await supabase
                 .from('profiles')
                 .select('account_id')
@@ -122,10 +126,10 @@ export const createCourse = async (courseData) => {
                 .maybeSingle();
 
             if (!profileAccountError && profileWithAccount?.account_id) {
-                courseData.account_id = profileWithAccount.account_id;
+                courseToInsert.account_id = profileWithAccount.account_id;
             }
 
-            if (!courseData.account_id) {
+            if (!courseToInsert.account_id) {
                 const { data: memberships, error: membershipError } = await supabase
                     .from('account_memberships')
                     .select('account_id')
@@ -133,39 +137,41 @@ export const createCourse = async (courseData) => {
                     .limit(2);
 
                 if (!membershipError && memberships?.length === 1) {
-                    courseData.account_id = memberships[0].account_id;
+                    courseToInsert.account_id = memberships[0].account_id;
                 }
             }
 
             // FSW is a single-account deployment. For legacy users without either
             // mapping, recover the account only when RLS exposes exactly one account.
-            if (!courseData.account_id) {
+            if (!courseToInsert.account_id) {
                 const { data: accessibleAccounts, error: accountsError } = await supabase
                     .from('accounts')
                     .select('id')
                     .limit(2);
 
                 if (!accountsError && accessibleAccounts?.length === 1) {
-                    courseData.account_id = accessibleAccounts[0].id;
+                    courseToInsert.account_id = accessibleAccounts[0].id;
                 }
             }
 
-            if (!courseData.account_id) {
-                throw new Error('Your user account is not linked to the FSW workspace. Please ask an administrator to restore the account link before creating a guide.');
+            if (!courseToInsert.account_id) {
+                throw new Error('Your user account is not linked to the FSW workspace. Please ask an administrator to restore the account link before creating a course or guide.');
             }
         }
+    } else if (!courseToInsert.account_id) {
+        throw new Error('You must be signed in before creating a course or guide.');
     }
 
 
-    if (courseData.review_interval_months && !courseData.next_review_date) {
+    if (courseToInsert.review_interval_months && !courseToInsert.next_review_date) {
         const d = new Date();
-        d.setMonth(d.getMonth() + parseInt(courseData.review_interval_months));
-        courseData.next_review_date = d.toISOString();
+        d.setMonth(d.getMonth() + parseInt(courseToInsert.review_interval_months));
+        courseToInsert.next_review_date = d.toISOString();
     }
 
     const { data, error } = await supabase
         .from('courses')
-        .insert([courseData])
+        .insert([courseToInsert])
         .select()
 
     if (error) throw error
