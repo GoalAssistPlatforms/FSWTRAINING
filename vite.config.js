@@ -9,7 +9,12 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [nitro(), workflow()],
         nitro: {
-            serverDir: './server'
+            serverDir: './server',
+            vercel: {
+                functions: {
+                    maxDuration: 'max'
+                }
+            }
         },
         server: {
             proxy: {

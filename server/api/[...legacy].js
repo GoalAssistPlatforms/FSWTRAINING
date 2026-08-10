@@ -1,15 +1,15 @@
 import { defineEventHandler } from 'nitro/h3';
-import dalleHandler from '../../api/dalle.js';
-import elevenLabsHandler from '../../api/elevenlabs.js';
-import emailHandler from '../../api/email.js';
-import embeddingsHandler from '../../api/embeddings.js';
-import gammaExportHandler from '../../api/gamma/export.js';
-import gammaExportStatusHandler from '../../api/gamma/exports/[id].js';
-import gammaGenerationHandler from '../../api/gamma/generations.js';
-import gammaGenerationStatusHandler from '../../api/gamma/generations/[id].js';
-import openRouterHandler from '../../api/openai.js';
-import proxyHandler from '../../api/proxy.js';
-import transcribeHandler from '../../api/transcribe.js';
+import dalleHandler from '../legacy/dalle.js';
+import elevenLabsHandler from '../legacy/elevenlabs.js';
+import emailHandler from '../legacy/email.js';
+import embeddingsHandler from '../legacy/embeddings.js';
+import gammaExportHandler from '../legacy/gamma/export.js';
+import gammaExportStatusHandler from '../legacy/gamma/exports/[id].js';
+import gammaGenerationHandler from '../legacy/gamma/generations.js';
+import gammaGenerationStatusHandler from '../legacy/gamma/generations/[id].js';
+import openRouterHandler from '../legacy/openai.js';
+import proxyHandler from '../legacy/proxy.js';
+import transcribeHandler from '../legacy/transcribe.js';
 import {
     createLegacyRequest,
     createLegacyResponse,

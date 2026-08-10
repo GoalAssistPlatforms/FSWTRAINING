@@ -1,6 +1,6 @@
 import { Readable } from 'stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import handler from '../../../../../api/transcribe';
+import handler from '../../../../../server/legacy/transcribe';
 
 const mockSupabase = {
     auth: {
