@@ -1,5 +1,4 @@
-import { createPresentation, exportToPdf } from './gamma.js';
-import { supabase } from './supabase.js';
+import { createPresentation, exportAndUploadPdf } from './gamma.js';
 import { generateThumbnail } from './images.js';
 import { createAudio } from './elevenlabs.js';
 import { searchCompanyContext } from './guides.js';
@@ -346,30 +345,9 @@ export const generateCourseContent = async (topic, supportingDocs = "", onProgre
                         // Export to PDF
                         if (gammaId) {
                             onProgress(`${progressPrefix} Exporting slides to PDF for "${lesson.title}"...`);
-                            const pdfDownloadUrl = await exportToPdf(gammaId);
-                            if (pdfDownloadUrl) {
-                                onProgress(`${progressPrefix} Saving PDF to cloud...`);
-                                const pdfResponse = await fetch(pdfDownloadUrl);
-                                const pdfBlob = await pdfResponse.blob();
-                                
-                                const filePath = `slides/${gammaId}.pdf`;
-                                const { data: uploadData, error: uploadError } = await supabase.storage
-                                    .from('course_assets')
-                                    .upload(filePath, pdfBlob, {
-                                        contentType: 'application/pdf',
-                                        upsert: true
-                                    });
-
-                                if (uploadError) {
-                                    console.error("Failed to upload PDF to Supabase:", uploadError);
-                                } else {
-                                    const { data: publicUrlData } = supabase.storage
-                                        .from('course_assets')
-                                        .getPublicUrl(filePath);
-                                    gammaPdfUrl = publicUrlData.publicUrl;
-                                    console.log("PDF uploaded to:", gammaPdfUrl);
-                                }
-                            }
+                            onProgress(`${progressPrefix} Saving PDF to cloud...`);
+                            gammaPdfUrl = await exportAndUploadPdf(gammaId);
+                            console.log("PDF uploaded to:", gammaPdfUrl);
                         }
                     } catch (err) {
                         console.error("[AI] Gamma failed:", err);
