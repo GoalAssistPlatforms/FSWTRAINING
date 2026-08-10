@@ -1,5 +1,6 @@
 import {
     listCourseGenerationJobs,
+    removeQueuedCourseGenerationJob,
     requestCourseGenerationCancellation,
     startBackgroundCourseGeneration,
     subscribeToCourseGenerationJobs
@@ -214,10 +215,9 @@ export async function initCourseGenerationTray(user) {
         state.busyJobId = jobId;
         button.disabled = true;
         try {
-            if (action === 'cancel' || action === 'remove') {
-                await requestCourseGenerationCancellation(jobId);
-            }
+            if (action === 'cancel') await requestCourseGenerationCancellation(jobId);
             if (action === 'remove') {
+                await removeQueuedCourseGenerationJob(jobId);
                 state.dismissed.add(jobId);
                 saveDismissedJobs(user.id, state.dismissed);
             }
