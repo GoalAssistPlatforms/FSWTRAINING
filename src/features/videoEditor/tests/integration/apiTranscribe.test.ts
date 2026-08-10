@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createClient } from "@supabase/supabase-js";
-import handler from "../../../../../api/transcribe";
+import handler from "../../../../../server/legacy/transcribe";
 
 // Create a single mock instance that will be shared between test and handler
 const mockSupabase = {

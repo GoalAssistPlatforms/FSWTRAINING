@@ -1,10 +1,23 @@
 
 import { defineConfig, loadEnv } from 'vite';
+import { nitro } from 'nitro/vite';
+import { workflow } from 'workflow/vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     
     return {
+        plugins: [nitro(), workflow({ runtime: 'nodejs22.x' })],
+        nitro: {
+            serverDir: './server',
+            traceDeps: ['undici'],
+            vercel: {
+                functions: {
+                    maxDuration: 'max',
+                    runtime: 'nodejs22.x'
+                }
+            }
+        },
         server: {
             proxy: {
                 '/api/gamma-assets': {
