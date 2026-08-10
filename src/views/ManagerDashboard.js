@@ -12,12 +12,14 @@ import { fetchPendingExtensions, resolveExtension, sendNudge } from '../api/noti
 import { fswAlert, fswConfirm, fswPrompt } from '../utils/dialog'
 import { getPacks, getPack, createPack, updatePack, deletePack, assignPack, bulkAssignPack, revokePackAssignment, getPackCompletionStats, getPackAssignments } from '../api/packs'
 import { fetchAllGuides } from '../api/guides.js'
-import * as pdfjsLib from 'pdfjs-dist'
-
-
-// Set worker source for pdf.js
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+import {
+  completeCourseSourceJob,
+  createCourseSourceJob,
+  failCourseSourceJob,
+  formatSourceFileSize,
+  mergeCourseSourceFiles,
+  processCourseSourceFile
+} from '../api/courseSources.js'
 
 export const renderManagerDashboard = (user) => {
   return `
@@ -221,10 +223,11 @@ export const renderManagerDashboard = (user) => {
       </div>
 
       <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;">
-        <label style="margin-bottom: 0.6rem;">Supporting Documents (PDF, TXT, MD)</label>
+        <label style="margin-bottom: 0.35rem;">Supporting Documents (PDF, TXT, MD)</label>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.7rem; line-height: 1.4;">Attach up to 10 private source files. Each file can be up to 20 MB, with a combined limit of 50 MB.</div>
         <div style="display: flex; gap: 0.75rem; align-items: center;">
           <input type="file" id="course-files" multiple accept=".pdf,.txt,.md" style="display: none;" />
-          <button id="upload-btn" class="btn-ghost" style="font-size: 0.8rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--glass-border); color: white; cursor: pointer; border-radius: var(--radius-md); transition: background-color 0.2s;">
+          <button id="upload-btn" type="button" class="btn-ghost" style="font-size: 0.8rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--glass-border); color: white; cursor: pointer; border-radius: var(--radius-md); transition: background-color 0.2s;">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
@@ -301,6 +304,7 @@ export const initManagerEvents = async (effectiveUser) => {
   const fileList = document.getElementById('file-list')
   const courseList = document.getElementById('course-list')
   const packList = document.getElementById('pack-list')
+  let selectedCourseFiles = []
 
 
   const tabCourses = document.getElementById('tab-courses')
@@ -1604,75 +1608,64 @@ export const initManagerEvents = async (effectiveUser) => {
     }
   }
 
-  // File Upload Handlers
-  uploadBtn?.addEventListener('click', () => fileInput.click())
+  const renderSelectedCourseFiles = () => {
+    if (!fileCount || !fileList) return
 
-  fileInput?.addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files)
-    if (files.length === 0) {
+    if (selectedCourseFiles.length === 0) {
       fileCount.innerText = 'No files selected'
       fileList.innerHTML = ''
       return
     }
 
-    const allowedExtensions = ['.pdf', '.txt', '.md'];
-    const invalidFiles = files.filter(f => {
-      const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
-      return !allowedExtensions.includes(ext);
-    });
+    const totalBytes = selectedCourseFiles.reduce((sum, file) => sum + file.size, 0)
+    fileCount.innerText = `${selectedCourseFiles.length} file${selectedCourseFiles.length === 1 ? '' : 's'} selected (${formatSourceFileSize(totalBytes)})`
+    fileList.innerHTML = selectedCourseFiles.map((file, index) => `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHTML(file.name)}">${escapeHTML(file.name)} <span style="opacity: 0.65;">(${formatSourceFileSize(file.size)})</span></span>
+        <button type="button" class="remove-course-source" data-index="${index}" aria-label="Remove ${escapeHTML(file.name)}" style="border: none; background: transparent; color: #fca5a5; cursor: pointer; font-size: 1rem; padding: 0.1rem 0.35rem;">×</button>
+      </div>
+    `).join('')
+  }
 
-    if (invalidFiles.length > 0) {
-      await fswAlert(`Unsupported file format detected: ${invalidFiles.map(f => f.name).join(', ')}.\n\nOnly PDF (.pdf), Text (.txt), and Markdown (.md) files are supported. If you have a Word Document (.docx), please save it as a PDF first, then upload it!`);
-      fileInput.value = ''; // Reset
-      fileCount.innerText = 'No files selected';
-      fileList.innerHTML = '';
-      return;
+  const clearSelectedCourseFiles = () => {
+    selectedCourseFiles = []
+    if (fileInput) fileInput.value = ''
+    renderSelectedCourseFiles()
+  }
+
+  // File Upload Handlers
+  uploadBtn?.addEventListener('click', () => fileInput?.click())
+
+  fileInput?.addEventListener('change', async (event) => {
+    const incomingFiles = Array.from(event.target.files || [])
+    if (incomingFiles.length === 0) return
+
+    try {
+      selectedCourseFiles = mergeCourseSourceFiles(selectedCourseFiles, incomingFiles)
+      renderSelectedCourseFiles()
+    } catch (error) {
+      await fswAlert(error.message)
+    } finally {
+      fileInput.value = ''
     }
-
-    fileCount.innerText = `${files.length} file${files.length === 1 ? '' : 's'} selected`
-    fileList.innerHTML = files.map(f => `<div>• ${f.name}</div>`).join('')
   })
 
-  // Helper to extract text from files
-  async function extractTextFromFiles(files) {
-    let combinedText = ""
+  fileList?.addEventListener('click', (event) => {
+    const removeButton = event.target.closest('.remove-course-source')
+    if (!removeButton) return
 
-    for (const file of files) {
-      combinedText += `\n\n--- Start of Document: ${file.name} ---\n`
-
-      try {
-        if (file.type === 'application/pdf') {
-          const arrayBuffer = await file.arrayBuffer()
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-          let pdfText = ""
-
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i)
-            const textContent = await page.getTextContent()
-            const pageText = textContent.items.map(item => item.str).join(' ')
-            pdfText += `\n[Page ${i}]\n${pageText}`
-          }
-          combinedText += pdfText
-        } else {
-          // Plain text / markdown
-          const text = await file.text()
-          combinedText += text
-        }
-      } catch (err) {
-        console.error(`Failed to read file ${file.name}:`, err)
-        combinedText += `\n[ERROR READING FILE]\n`
-      }
-
-      combinedText += `\n--- End of Document: ${file.name} ---\n`
-    }
-    return combinedText
-  }
+    const index = Number(removeButton.dataset.index)
+    if (!Number.isInteger(index) || index < 0 || index >= selectedCourseFiles.length) return
+    selectedCourseFiles.splice(index, 1)
+    renderSelectedCourseFiles()
+  })
 
   function toggleModal(show) {
     modal.style.display = show ? 'block' : 'none'
     overlay.style.display = show ? 'block' : 'none'
     if (!show) {
       if (promptInput) promptInput.value = ''
+      clearSelectedCourseFiles()
       const fields = ['course-title', 'course-objective', 'course-audience', 'course-topics', 'course-scenarios']
       fields.forEach(id => {
         const el = document.getElementById(id)
@@ -1697,7 +1690,7 @@ export const initManagerEvents = async (effectiveUser) => {
         await fswAlert("Please enter a Course Title.")
         return
     }
-    if (!objective && (!fileInput || fileInput.files.length === 0)) {
+    if (!objective && selectedCourseFiles.length === 0) {
         await fswAlert("Please provide either a Course Objective or attach supporting documents so the AI knows what to cover.")
         return
     }
@@ -1706,22 +1699,6 @@ export const initManagerEvents = async (effectiveUser) => {
     if (audience) description += `\nTarget Audience: ${audience}`
     if (topics) description += `\nMandatory Topics: ${topics}`
     if (scenarios) description += `\nScenarios/Activities: ${scenarios}`
-
-    // Extract file content
-    const files = Array.from(fileInput.files)
-    let supportingDocs = ""
-
-    if (files.length > 0) {
-      // Show feedback while reading
-      const originalBtnText = confirmBtn.innerText
-      confirmBtn.innerText = 'Reading files...'
-      confirmBtn.disabled = true
-
-      supportingDocs = await extractTextFromFiles(files)
-
-      confirmBtn.innerText = originalBtnText
-      confirmBtn.disabled = false
-    }
 
     const logContainer = document.getElementById('generation-log')
 
@@ -1745,14 +1722,29 @@ export const initManagerEvents = async (effectiveUser) => {
       }
     }
 
+    let sourceJob = null
+
     try {
       confirmBtn.innerText = 'Generating...'
       confirmBtn.disabled = true
 
       console.log('Starting course generation for:', description)
 
+      if (selectedCourseFiles.length > 0) {
+        onProgress(`Creating a private source workspace for ${selectedCourseFiles.length} attachment${selectedCourseFiles.length === 1 ? '' : 's'}...`)
+        sourceJob = await createCourseSourceJob({ title, objective })
+
+        for (let index = 0; index < selectedCourseFiles.length; index++) {
+          const file = selectedCourseFiles[index]
+          onProgress(`[Source ${index + 1}/${selectedCourseFiles.length}] Processing ${file.name}...`)
+          await processCourseSourceFile(sourceJob, file, onProgress)
+        }
+
+        onProgress('All source documents are indexed and ready.')
+      }
+
       // 1. Generate Content with Progress Callback
-      const aiData = await generateCourseContent(description, supportingDocs, onProgress)
+      const aiData = await generateCourseContent(description, sourceJob?.id || null, onProgress)
 
       console.log('AI Content Generated:', aiData)
       onProgress('Saving course to database...')
@@ -1769,6 +1761,11 @@ export const initManagerEvents = async (effectiveUser) => {
       })
       console.log('Course Created:', course)
 
+      if (sourceJob) {
+        onProgress('Linking private source documents to the course...')
+        await completeCourseSourceJob(sourceJob.id, course.id)
+      }
+
       onProgress('SUCCESS: Course generated and saved.')
       onProgress('Refreshing dashboard...')
 
@@ -1782,17 +1779,18 @@ export const initManagerEvents = async (effectiveUser) => {
 
     } catch (error) {
       console.error('Course Generation Failed:', error)
+      if (sourceJob?.id) await failCourseSourceJob(sourceJob.id, error)
       if (logContainer) {
-        logContainer.innerHTML += `<div style="color: #ef4444; margin-top: 1rem; border-top: 1px solid #ef4444; padding-top: 0.5rem;">CRITICAL FAILURE: ${error.message}</div>`
+        const errorLine = document.createElement('div')
+        errorLine.innerText = `CRITICAL FAILURE: ${error.message}`
+        errorLine.style.cssText = 'color: #ef4444; margin-top: 1rem; border-top: 1px solid #ef4444; padding-top: 0.5rem;'
+        logContainer.appendChild(errorLine)
       }
       await fswAlert(`Generation Failed:\n${error.message}\n\nCheck the log for details.`)
     } finally {
       confirmBtn.innerText = 'Generate Course'
       confirmBtn.disabled = false
-      // Clear files
-      fileInput.value = ''
-      fileCount.innerText = 'No files selected'
-      fileList.innerHTML = ''
+      clearSelectedCourseFiles()
     }
   })
 
