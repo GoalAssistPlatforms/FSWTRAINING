@@ -280,7 +280,13 @@ export async function processAndUploadWebLink(url, tags = [], reviewIntervalMont
 
         // Fetch via our own serverless proxy to avoid third-party rate limits
         const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+        const response = await fetch(proxyUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
         if (!response.ok) throw new Error("Failed to fetch link");
         
         const htmlString = await response.text();

@@ -9,6 +9,7 @@ import { renderNotificationBell, initNotificationEvents } from './views/componen
 import { renderSettingsModal, initSettingsEvents } from './views/components/SettingsModal'
 import { checkAndGenerateDeadlineNotifications } from './utils/deadlineChecker'
 import { renderFeedbackModal, initFeedbackEvents } from './views/components/FeedbackModal'
+import { renderCourseGenerationTray, initCourseGenerationTray } from './views/components/CourseGenerationTray'
 
 const initApp = async () => {
   const app = document.querySelector('#app')
@@ -141,6 +142,7 @@ export const renderMainLayout = async (user) => {
     </main>
     ${renderSettingsModal(user)}
     ${renderFeedbackModal()}
+    ${renderCourseGenerationTray()}
     
     <!-- Floating Feedback Button -->
     <button id="floating-feedback-btn" style="position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; align-items: center; gap: 0.5rem; background: rgba(18, 142, 205, 0.9); backdrop-filter: blur(10px); color: white; padding: 0.75rem 1.25rem; border-radius: 50px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 15px 35px rgba(18,142,205,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.3)';">
@@ -182,6 +184,8 @@ export const renderMainLayout = async (user) => {
 
   // Initialize event listeners for dashboards
   const effectiveUser = { ...user, role: effectiveRole };
+  window.__managerCourseGenerationCleanup?.();
+  window.__managerCourseGenerationCleanup = null;
   
   if (effectiveRole === 'admin') {
       initAdminEvents();
@@ -194,6 +198,9 @@ export const renderMainLayout = async (user) => {
   initNotificationEvents();
   initSettingsEvents(user);
   initFeedbackEvents();
+
+  window.__courseGenerationTrayCleanup?.();
+  window.__courseGenerationTrayCleanup = await initCourseGenerationTray(effectiveUser);
 
   // Listen for refresh requests
   window.addEventListener('fsw-reload-notifications', async () => {

@@ -173,7 +173,16 @@ export const exportAndUploadPdf = async (gammaId) => {
 
         // Use the local/production proxied route to prevent CORS errors in browser fetch
         const proxiedUrl = pdfDownloadUrl.replace('https://assets.api.gamma.app', '/api/gamma-assets');
-        const pdfResponse = await fetch(proxiedUrl);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+        const pdfResponse = await fetch(proxiedUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (!pdfResponse.ok) {
+            throw new Error(`Gamma PDF download failed with status ${pdfResponse.status}`);
+        }
         const pdfBlob = await pdfResponse.blob();
         
         const filePath = `slides/${gammaId}.pdf`;
@@ -198,5 +207,4 @@ export const exportAndUploadPdf = async (gammaId) => {
         throw err;
     }
 };
-
 

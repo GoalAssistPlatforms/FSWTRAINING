@@ -13,6 +13,8 @@ import { renderSimulationPlayer } from './components/SimulationPlayer.js'
 import { saveExemptedLessons, updateCourse, saveLessonProgress } from '../api/courses.js'
 import { createAudio } from '../api/elevenlabs.js'
 import { createPresentation, exportAndUploadPdf } from '../api/gamma.js'
+import { advanceSlideWhenAudioEnds } from '../utils/lessonMediaSequence.js'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // Initialize Mermaid
 mermaid.initialize({ startOnLoad: false, theme: 'dark' })
@@ -451,9 +453,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                                         <div class="audio-track-item ${idx === 0 ? 'active' : ''}" data-track-idx="${idx}" style="padding: 1rem; border-radius: var(--radius-md); background: ${idx === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${idx === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: all 0.2s; position: relative;">
                                             <div style="font-size: 0.85rem; font-weight: 600; color: ${idx === 0 ? 'white' : 'var(--text-muted)'}; margin-bottom: 0.5rem;">${track.title || `Slide ${idx + 1}`}</div>
                                             <audio ${idx === 0 ? 'id="lesson-audio"' : ''} class="track-audio" controls src="${track.url}" preload="metadata" style="width: 100%; height: 28px; filter: invert(1) brightness(2) contrast(1.2); opacity: 0.9; outline: none;"></audio>
-                                            <div class="next-prompt fade-in" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; color: #10b981; font-weight: bold; text-align: center; background: rgba(16, 185, 129, 0.15); padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
-                                                Advance slide ➔ Play ▶
-                                            </div>
                                         </div>
                                     `).join('');
                                 })()}
@@ -1354,6 +1353,8 @@ export function renderCoursePlayer(course, user, options = {}) {
 
 
         // Handle Intro Video
+        // Bind media listeners before playback so even cached or very short tracks cannot finish first.
+        attachEvents(currentLes)
         const overlay = document.getElementById('intro-overlay')
         const video = document.getElementById('intro-video')
         const audio = document.getElementById('lesson-audio')
@@ -1394,7 +1395,6 @@ export function renderCoursePlayer(course, user, options = {}) {
             if (currentLesson.gamma_url) console.log('Lesson loaded')
         }
 
-        attachEvents(currentLes)
         updateNextButtonState()
 
         // Show welcome skips toast notification if skipped starting lessons
@@ -1485,37 +1485,49 @@ export function renderCoursePlayer(course, user, options = {}) {
         const pdfPrevBtn = document.getElementById('pdf-prev-slide-btn');
         const pdfNextBtn = document.getElementById('pdf-next-slide-btn');
         const audioElements = document.querySelectorAll('.track-audio');
+        let activeAudio = audioElements[0] || null;
+        let updateUserControlsState = () => {};
+        let pdfRenderQueue = Promise.resolve();
 
-        const renderPdfPage = async (num) => {
-            if (!pdfDoc) return;
-            const page = await pdfDoc.getPage(num);
-            // Adjust scale for higher resolution
-            const viewport = page.getViewport({ scale: 2.0 });
-            const ctx = pdfCanvas.getContext('2d');
-            pdfCanvas.height = viewport.height;
-            pdfCanvas.width = viewport.width;
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            updatePdfArrowVisibility();
+        const renderPdfPage = (num) => {
+            if (!pdfDoc || !pdfCanvas) return Promise.resolve(false);
+
+            const documentToRender = pdfDoc;
+            pdfRenderQueue = pdfRenderQueue
+                .catch(error => {
+                    console.error('Previous PDF slide render failed:', error);
+                })
+                .then(async () => {
+                    if (pdfDoc !== documentToRender || num !== currentPdfPage) return false;
+
+                    const page = await documentToRender.getPage(num);
+                    if (pdfDoc !== documentToRender || num !== currentPdfPage) return false;
+
+                    const viewport = page.getViewport({ scale: 2.0 });
+                    const ctx = pdfCanvas.getContext('2d');
+                    pdfCanvas.height = viewport.height;
+                    pdfCanvas.width = viewport.width;
+                    await page.render({ canvasContext: ctx, viewport }).promise;
+
+                    if (num === currentPdfPage) updatePdfArrowVisibility();
+                    return num === currentPdfPage;
+                });
+
+            return pdfRenderQueue;
         };
 
-        const goToNextPdfPage = () => {
+        const goToPdfPage = async (pageNumber) => {
             const totalPages = pdfDoc ? pdfDoc.numPages : audioElements.length;
-            if (currentPdfPage >= totalPages) return false;
-            currentPdfPage++;
-            if (pdfDoc) {
-                renderPdfPage(currentPdfPage);
-            }
+            if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > totalPages) return false;
+            if (pageNumber === currentPdfPage) return true;
+
+            currentPdfPage = pageNumber;
+            if (pdfDoc) await renderPdfPage(currentPdfPage);
             return true;
         };
 
-        const goToPrevPdfPage = () => {
-            if (currentPdfPage <= 1) return false;
-            currentPdfPage--;
-            if (pdfDoc) {
-                renderPdfPage(currentPdfPage);
-            }
-            return true;
-        };
+        const goToNextPdfPage = () => goToPdfPage(currentPdfPage + 1);
+        const goToPrevPdfPage = () => goToPdfPage(currentPdfPage - 1);
 
         const updatePdfArrowVisibility = () => {
             if (!pdfDoc) return;
@@ -1543,10 +1555,11 @@ export function renderCoursePlayer(course, user, options = {}) {
             const initPdf = async () => {
                 try {
                     const pdfjsLib = await import('pdfjs-dist');
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '5.4.530'}/build/pdf.worker.min.mjs`;
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
                     const loadingTask = pdfjsLib.getDocument(currentLesson.gamma_pdf_url);
                     pdfDoc = await loadingTask.promise;
-                    renderPdfPage(currentPdfPage);
+                    if (currentPdfPage > pdfDoc.numPages) currentPdfPage = pdfDoc.numPages;
+                    await renderPdfPage(currentPdfPage);
                 } catch (e) {
                     console.error("Failed to load PDF:", e);
                 }
@@ -1559,31 +1572,58 @@ export function renderCoursePlayer(course, user, options = {}) {
         if (audioElements && audioElements.length > 0) {
             // Link audio track ending to next page/audio
             audioElements.forEach((audio, idx) => {
-                audio.addEventListener('ended', () => {
-                    const didAdvance = goToNextPdfPage();
-                    if (didAdvance && idx + 1 < audioElements.length) {
-                        const nextAudio = audioElements[idx + 1];
-                        nextAudio.play();
-                        document.querySelectorAll('.audio-track-item').forEach(el => el.classList.remove('active'));
-                        audioElements[idx + 1].closest('.audio-track-item').classList.add('active');
+                audio.addEventListener('ended', async () => {
+                    const totalSlides = pdfDoc ? pdfDoc.numPages : audioElements.length;
+                    try {
+                        await advanceSlideWhenAudioEnds({
+                            audioIndex: idx,
+                            totalSlides,
+                            audioElements,
+                            showSlide: goToPdfPage,
+                            activateTrack: nextIndex => {
+                                activeAudio = audioElements[nextIndex];
+                                updateUserControlsState();
+                                document.querySelectorAll('.audio-track-item').forEach(el => {
+                                    el.classList.remove('active');
+                                    el.style.background = 'rgba(255,255,255,0.03)';
+                                    el.style.borderColor = 'rgba(255,255,255,0.05)';
+                                });
+                                const activeItem = audioElements[nextIndex]?.closest('.audio-track-item');
+                                if (activeItem) {
+                                    activeItem.classList.add('active');
+                                    activeItem.style.background = 'rgba(255,255,255,0.1)';
+                                    activeItem.style.borderColor = 'rgba(255,255,255,0.2)';
+                                }
+                            },
+                            onPlaybackError: error => {
+                                console.log('Next audio autoplay blocked:', error);
+                            }
+                        });
+                    } catch (error) {
+                        console.error('Failed to advance slide after audio:', error);
                     }
                 });
                 
                 audio.addEventListener('play', () => {
-                     if (pdfDoc && idx + 1 !== currentPdfPage) {
-                          currentPdfPage = idx + 1;
-                          renderPdfPage(currentPdfPage);
-                     }
+                     activeAudio = audio;
+                     updateUserControlsState();
+                     if (idx + 1 !== currentPdfPage) {
+                          goToPdfPage(idx + 1).catch(error => console.error('Failed to sync slide to audio:', error));
+                     } else {
+                        document.querySelectorAll('.audio-track-item').forEach(el => el.classList.remove('active'));
+                        const activeItem = audio.closest('.audio-track-item');
+                        if (activeItem) activeItem.classList.add('active');
+                    }
                 });
             });
 
             // Slide Navigation Arrows Click Events
             if (pdfPrevBtn) {
-                pdfPrevBtn.addEventListener('click', () => {
+                pdfPrevBtn.addEventListener('click', async () => {
                     let playingIdx = -1;
                     audioElements.forEach((a, i) => { if (!a.paused && !a.ended) playingIdx = i; });
                     
-                    const didRegress = goToPrevPdfPage();
+                    const didRegress = await goToPrevPdfPage();
                     if (didRegress) {
                         const targetIdx = currentPdfPage - 1;
                         if (playingIdx >= 0) {
@@ -1603,11 +1643,11 @@ export function renderCoursePlayer(course, user, options = {}) {
             }
 
             if (pdfNextBtn) {
-                pdfNextBtn.addEventListener('click', () => {
+                pdfNextBtn.addEventListener('click', async () => {
                     let playingIdx = -1;
                     audioElements.forEach((a, i) => { if (!a.paused && !a.ended) playingIdx = i; });
                     
-                    const didAdvance = goToNextPdfPage();
+                    const didAdvance = await goToNextPdfPage();
                     if (didAdvance) {
                         const targetIdx = currentPdfPage - 1;
                         if (playingIdx >= 0) {
@@ -1636,8 +1676,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                 const userProgBar = document.getElementById('user-progress-bar');
                 const userProgCont = document.getElementById('user-progress-container');
 
-                let activeAudio = audioElements[0];
-
                 const formatTime = (secs) => {
                     if (isNaN(secs)) return '0:00';
                     const m = Math.floor(secs / 60);
@@ -1665,6 +1703,7 @@ export function renderCoursePlayer(course, user, options = {}) {
                         userProgBar.style.width = `${pct}%`;
                     }
                 };
+                updateUserControlsState = updateControlsState;
 
                 userPlayBtn.addEventListener('click', () => {
                     if (!activeAudio) return;
@@ -2337,8 +2376,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                     t.style.borderColor = 'rgba(255,255,255,0.05)';
                     t.querySelector('div').style.color = 'var(--text-muted)';
                     t.style.animation = 'none';
-                    const prompt = t.querySelector('.next-prompt');
-                    if (prompt) prompt.style.display = 'none';
                 });
                 item.classList.add('active');
                 item.style.background = 'rgba(255,255,255,0.1)';
@@ -2348,17 +2385,7 @@ export function renderCoursePlayer(course, user, options = {}) {
             });
 
             audioEl.addEventListener('ended', () => {
-                // Highlight next track if it exists
-                if (index + 1 < trackItems.length) {
-                    const nextItem = trackItems[index + 1];
-                    const nextPrompt = nextItem.querySelector('.next-prompt');
-                    if (nextPrompt) nextPrompt.style.display = 'block';
-                    
-                    nextItem.style.background = 'rgba(16, 185, 129, 0.15)';
-                    nextItem.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                    nextItem.style.animation = 'pulse 2s infinite';
-                    nextItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                } else {
+                if (index + 1 >= trackItems.length) {
                     // All audio finished, switch to reading mode
                     const grid = document.querySelector('.cp-grid');
                     if (grid) {

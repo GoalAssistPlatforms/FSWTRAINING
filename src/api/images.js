@@ -110,6 +110,39 @@ async function getVisualDescription(topic) {
 }
 
 /**
+ * Generates an image through the server-side OpenAI proxy.
+ * GPT Image responses contain base64 image data, which Cloudinary accepts as a data URI.
+ * @param {string} prompt
+ * @returns {Promise<string>}
+ */
+async function generateOpenAIImage(prompt) {
+    const response = await fetch('/api/dalle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        const message = data.error?.message || data.error || `Image generation failed with status ${response.status}`;
+        throw new Error(message);
+    }
+
+    const generatedImage = data.data?.[0];
+
+    if (generatedImage?.b64_json) {
+        return `data:image/webp;base64,${generatedImage.b64_json}`;
+    }
+
+    if (generatedImage?.url) {
+        return generatedImage.url;
+    }
+
+    throw new Error('OpenAI image response did not contain image data.');
+}
+
+/**
  * Generates a thumbnail URL based on a prompt.
  * Enforces a "simple, cinematic, luxury" aesthetic.
  * RETRY POLICY: Matches strict requirements (3 image gens, 3 upload attempts each).
@@ -133,10 +166,9 @@ export const generateThumbnail = async (topic) => {
             const styleSuffix = ". The aesthetic is premium corporate minimalist, similar to Stripe or Duolingo marketing assets. Use the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Solid colors, crisp clean lines, no shading, strictly flat 2D graphic design style. CRITICAL: Do not make it photorealistic or 3D. It must look like a high-end vector illustration. No text.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
-            // 2. Generate Image via Pollinations.ai (Free, reliable, no API key required)
-            // Upgraded to use FLUX.1 model for massive quality improvements
-            const tempImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&nologo=true&model=flux`;
-            console.log(`[Thumbnail] Using Pollinations FLUX API URL...`);
+            // 2. Generate a landscape image with the strongest available OpenAI image model.
+            const tempImageUrl = await generateOpenAIImage(fullPrompt);
+            console.log('[Thumbnail] OpenAI image generated successfully.');
 
             // 3. Retry Loop for Uploading THIS specific image
             for (let uploadAttempt = 1; uploadAttempt <= MAX_UPLOAD_ATTEMPTS; uploadAttempt++) {
@@ -171,5 +203,3 @@ export const generateThumbnail = async (topic) => {
 
     return null; // Should be unreachable if logic holds, but safe fallback
 }
-
-
