@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 const supabaseMocks = vi.hoisted(() => ({
     rpc: vi.fn()
@@ -106,5 +107,16 @@ describe('course source retrieval', () => {
         expect(supabaseMocks.rpc.mock.calls[1][1].match_threshold).toBe(-1);
         expect(context).toContain('Policy.pdf, page 7');
         expect(context).toContain('nearest bounded source section');
+    });
+
+    it('qualifies the pgvector cosine operator for the restricted function search path', () => {
+        const migration = readFileSync(
+            new URL('../migrations/20260810_course_source_documents.sql', import.meta.url),
+            'utf8'
+        );
+        const qualifiedOperator = 'OPERATOR(public.<=>)';
+
+        expect(migration.match(/OPERATOR\(public\.<=>\)/g)).toHaveLength(3);
+        expect(migration.replaceAll(qualifiedOperator, '')).not.toContain('<=>');
     });
 });
