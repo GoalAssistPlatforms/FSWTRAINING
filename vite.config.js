@@ -7,12 +7,14 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     
     return {
-        plugins: [nitro(), workflow()],
+        plugins: [nitro(), workflow({ runtime: 'nodejs22.x' })],
         nitro: {
             serverDir: './server',
+            traceDeps: ['undici'],
             vercel: {
                 functions: {
-                    maxDuration: 'max'
+                    maxDuration: 'max',
+                    runtime: 'nodejs22.x'
                 }
             }
         },

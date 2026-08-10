@@ -1,7 +1,5 @@
-import { start } from 'workflow/api';
 import { createError, defineEventHandler } from 'nitro/h3';
 import { createUserSupabase, updateGenerationJob } from '../../courseGeneration/database.js';
-import { generateCourseInBackground } from '../../workflows/courseGeneration.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -52,8 +50,13 @@ export default defineEventHandler(async ({ req }) => {
 
     let run;
     try {
+        const [{ start }, { generateCourseInBackground }] = await Promise.all([
+            import('workflow/api'),
+            import('../../workflows/courseGeneration.js')
+        ]);
         run = await start(generateCourseInBackground, [jobId]);
     } catch (error) {
+        console.error('Course generation workflow could not be loaded or started.', error);
         await updateGenerationJob(jobId, {
             workflow_run_id: null,
             status: 'failed',
