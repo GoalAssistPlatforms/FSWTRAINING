@@ -58,7 +58,8 @@ function renderJob(job) {
     const progress = jobProgress(job);
     const active = ACTIVE_STATUSES.has(job.status);
     const statusClass = TERMINAL_STATUSES.has(job.status) ? job.status : 'active';
-    const canCancel = active && !job.cancel_requested_at;
+    const queued = job.status === 'queued';
+    const canCancel = active && (queued || !job.cancel_requested_at);
     const message = job.error_message && job.status === 'failed'
         ? job.error_message
         : job.stage_message || statusLabel(job);
@@ -82,7 +83,7 @@ function renderJob(job) {
             ` : ''}
             <p class="course-generation-message">${escapeHTML(message)}</p>
             <div class="course-generation-actions">
-                ${canCancel ? `<button type="button" data-generation-action="cancel" data-job-id="${job.id}">Cancel</button>` : ''}
+                ${canCancel ? `<button type="button" data-generation-action="${queued ? 'remove' : 'cancel'}" data-job-id="${job.id}">${queued ? 'Remove from queue' : 'Cancel'}</button>` : ''}
                 ${job.status === 'failed' ? `<button type="button" class="primary" data-generation-action="retry" data-job-id="${job.id}">Try again</button>` : ''}
                 ${job.status === 'completed' ? `<button type="button" class="primary" data-generation-action="review" data-job-id="${job.id}">Review draft</button>` : ''}
                 ${TERMINAL_STATUSES.has(job.status) ? `<button type="button" data-generation-action="dismiss" data-job-id="${job.id}">Dismiss</button>` : ''}
@@ -213,7 +214,13 @@ export async function initCourseGenerationTray(user) {
         state.busyJobId = jobId;
         button.disabled = true;
         try {
-            if (action === 'cancel') await requestCourseGenerationCancellation(jobId);
+            if (action === 'cancel' || action === 'remove') {
+                await requestCourseGenerationCancellation(jobId);
+            }
+            if (action === 'remove') {
+                state.dismissed.add(jobId);
+                saveDismissedJobs(user.id, state.dismissed);
+            }
             if (action === 'retry') await startBackgroundCourseGeneration(jobId);
             await refresh();
         } catch (error) {
