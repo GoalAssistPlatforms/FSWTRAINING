@@ -2,6 +2,27 @@ import { supabase } from './supabase.js';
 
 const VISIBLE_STATUSES = ['uploading', 'queued', 'running', 'processing', 'completed', 'failed', 'cancelled'];
 
+async function authenticatedCourseGenerationRequest(path, jobId) {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+
+    const response = await fetch(path, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ jobId })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(payload?.statusMessage || payload?.message || 'The course generation action could not be completed.');
+    }
+    return payload;
+}
+
 export async function createBackgroundCourseGenerationJob({
     title,
     objective,
@@ -27,24 +48,11 @@ export async function createBackgroundCourseGenerationJob({
 }
 
 export async function startBackgroundCourseGeneration(jobId) {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-    const accessToken = sessionData?.session?.access_token;
-    if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+    return authenticatedCourseGenerationRequest('/api/course-generation/start', jobId);
+}
 
-    const response = await fetch('/api/course-generation/start', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ jobId })
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(payload?.statusMessage || payload?.message || 'Course generation could not be started.');
-    }
-    return payload;
+export async function removeQueuedCourseGenerationJob(jobId) {
+    return authenticatedCourseGenerationRequest('/api/course-generation/remove', jobId);
 }
 
 export async function listCourseGenerationJobs(userId, limit = 10) {
