@@ -1,4 +1,3 @@
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import {
     downloadSourceDocument,
     replaceSourceChunks,
@@ -11,7 +10,23 @@ const CHUNK_OVERLAP_WORDS = 40;
 const EMBEDDING_BATCH_SIZE = 32;
 const SUMMARY_BATCH_CHARACTERS = 22000;
 
-async function extractPdfPages(buffer) {
+let pdfJsPromise;
+
+async function loadPdfJs() {
+    if (!pdfJsPromise) {
+        // PDF.js evaluates a DOMMatrix constant when its Node bundle loads, even
+        // when it is only being used for text extraction. Vercel functions do
+        // not provide that browser API, and rendering methods are not used here.
+        if (typeof globalThis.DOMMatrix === 'undefined') {
+            globalThis.DOMMatrix = class DOMMatrix {};
+        }
+        pdfJsPromise = import('pdfjs-dist/legacy/build/pdf.mjs');
+    }
+    return pdfJsPromise;
+}
+
+export async function extractPdfPages(buffer) {
+    const { getDocument } = await loadPdfJs();
     const loadingTask = getDocument({
         data: new Uint8Array(buffer),
         disableWorker: true,
