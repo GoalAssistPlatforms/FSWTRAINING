@@ -365,7 +365,7 @@ as $$
     chunk.id,
     chunk.document_id,
     chunk.content,
-    1 - (chunk.embedding <=> query_embedding) as similarity,
+    1 - (chunk.embedding OPERATOR(public.<=>) query_embedding) as similarity,
     document.original_name as document_name,
     chunk.page_start,
     chunk.page_end
@@ -375,8 +375,8 @@ as $$
   where document.generation_job_id = p_generation_job_id
     and document.status = 'ready'
     and public.get_user_account_role(document.account_id, auth.uid()) in ('manager', 'admin')
-    and 1 - (chunk.embedding <=> query_embedding) > match_threshold
-  order by chunk.embedding <=> query_embedding
+    and 1 - (chunk.embedding OPERATOR(public.<=>) query_embedding) > match_threshold
+  order by chunk.embedding OPERATOR(public.<=>) query_embedding
   limit least(greatest(match_count, 1), 12);
 $$;
 
