@@ -41,6 +41,8 @@ import {
 
 const GAMMA_POLL_LIMIT = 90;
 const GAMMA_POLL_INTERVAL = '5s';
+const LESSON_BATCH_SIZE = 2;
+const AUDIO_BATCH_SIZE = 4;
 
 async function claimJobStep(jobId) {
     'use step';
@@ -306,18 +308,22 @@ async function saveGammaPdfStep(jobId, lessonId, downloadUrl) {
     return updated;
 }
 
-async function generateAudioTrackStep(jobId, lessonId, trackIndex, ordinal, totalLessons) {
+async function prepareAudioBatchStep(jobId, ordinal, totalLessons, firstTrack, lastTrack, totalTracks) {
     'use step';
-    const lesson = await getLessonCheckpoint(lessonId);
-    const tracks = Array.isArray(lesson.audio_tracks) ? [...lesson.audio_tracks] : [];
-    const track = tracks[trackIndex];
-    if (!track) throw new Error(`Narration track ${trackIndex + 1} is missing for ${lesson.title}.`);
-    if (track.url) return lesson;
-
     await updateGenerationJob(jobId, {
         stage: 'generating_audio',
-        stage_message: `Narrating lesson ${ordinal} of ${totalLessons}, track ${trackIndex + 1} of ${tracks.length}`
+        stage_message: `Narrating lesson ${ordinal} of ${totalLessons}, tracks ${firstTrack + 1} to ${lastTrack + 1} of ${totalTracks}`
     });
+}
+
+async function generateAudioTrackStep(jobId, lessonId, trackIndex) {
+    'use step';
+    const lesson = await getLessonCheckpoint(lessonId);
+    const tracks = Array.isArray(lesson.audio_tracks) ? lesson.audio_tracks : [];
+    const track = tracks[trackIndex];
+    if (!track) throw new Error(`Narration track ${trackIndex + 1} is missing for ${lesson.title}.`);
+    if (track.url) return { trackIndex, url: track.url };
+
     const path = `audio/${jobId}/${lesson.module_index}_${lesson.lesson_index}/track_${trackIndex}.mp3`;
     let publicUrl = await getCourseAssetUrlIfExists(path);
     if (!publicUrl) {
@@ -327,7 +333,18 @@ async function generateAudioTrackStep(jobId, lessonId, trackIndex, ordinal, tota
             'audio/mpeg'
         );
     }
-    tracks[trackIndex] = { ...track, url: publicUrl };
+    return { trackIndex, url: publicUrl };
+}
+
+async function saveAudioBatchStep(jobId, lessonId, results) {
+    'use step';
+    const lesson = await getLessonCheckpoint(lessonId);
+    const tracks = Array.isArray(lesson.audio_tracks) ? [...lesson.audio_tracks] : [];
+    for (const result of results) {
+        const track = tracks[result.trackIndex];
+        if (!track) throw new Error(`Narration track ${result.trackIndex + 1} is missing for ${lesson.title}.`);
+        tracks[result.trackIndex] = { ...track, url: result.url };
+    }
     const updated = await updateLessonCheckpoint(lessonId, { audio_tracks: tracks });
     await refreshGenerationProgress(jobId);
     return updated;
@@ -422,43 +439,114 @@ export async function generateCourseInBackground(jobId) {
 
         if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
         await generateOutlineStep(jobId);
-        if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
-        await generateThumbnailStep(jobId);
 
         const lessons = await listLessonsStep(jobId);
-        for (let lessonIndex = 0; lessonIndex < lessons.length; lessonIndex += 1) {
-            const ordinal = lessonIndex + 1;
-            const lessonId = lessons[lessonIndex].id;
+        for (let batchStart = 0; batchStart < lessons.length; batchStart += LESSON_BATCH_SIZE) {
             if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
-            await generateLessonContentStep(jobId, lessonId, ordinal, lessons.length);
+            const batch = lessons.slice(batchStart, batchStart + LESSON_BATCH_SIZE);
+            const draftingTasks = batch.map((lesson, offset) => generateLessonContentStep(
+                jobId,
+                lesson.id,
+                batchStart + offset + 1,
+                lessons.length
+            ));
+            if (batchStart === 0) draftingTasks.push(generateThumbnailStep(jobId));
+            await Promise.all(draftingTasks);
+        }
 
+        for (let batchStart = 0; batchStart < lessons.length; batchStart += LESSON_BATCH_SIZE) {
             if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
-            await startGammaStep(jobId, lessonId, ordinal, lessons.length);
-            let generationResult = { state: 'pending' };
-            for (let attempt = 0; attempt < GAMMA_POLL_LIMIT && generationResult.state === 'pending'; attempt += 1) {
+            const batch = lessons.slice(batchStart, batchStart + LESSON_BATCH_SIZE).map((lesson, offset) => ({
+                lessonId: lesson.id,
+                ordinal: batchStart + offset + 1
+            }));
+
+            await Promise.all(batch.map(item => startGammaStep(
+                jobId,
+                item.lessonId,
+                item.ordinal,
+                lessons.length
+            )));
+
+            const generationResults = batch.map(() => ({ state: 'pending' }));
+            for (let attempt = 0; attempt < GAMMA_POLL_LIMIT; attempt += 1) {
+                const pendingIndexes = generationResults
+                    .map((result, index) => result.state === 'pending' ? index : -1)
+                    .filter(index => index >= 0);
+                if (pendingIndexes.length === 0) break;
                 await sleep(GAMMA_POLL_INTERVAL);
                 if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
-                generationResult = await pollGammaStep(lessonId);
+                const polled = await Promise.all(
+                    pendingIndexes.map(index => pollGammaStep(batch[index].lessonId))
+                );
+                pendingIndexes.forEach((index, resultIndex) => {
+                    generationResults[index] = polled[resultIndex];
+                });
             }
-            if (generationResult.state !== 'completed') throw new Error('Gamma presentation generation timed out.');
+            if (generationResults.some(result => result.state !== 'completed')) {
+                throw new Error('Gamma presentation generation timed out.');
+            }
 
-            await startGammaExportStep(lessonId);
-            let exportResult = { state: 'pending' };
-            for (let attempt = 0; attempt < GAMMA_POLL_LIMIT && exportResult.state === 'pending'; attempt += 1) {
+            await Promise.all(batch.map(item => startGammaExportStep(item.lessonId)));
+            const exportResults = batch.map(() => ({ state: 'pending' }));
+            for (let attempt = 0; attempt < GAMMA_POLL_LIMIT; attempt += 1) {
+                const pendingIndexes = exportResults
+                    .map((result, index) => result.state === 'pending' ? index : -1)
+                    .filter(index => index >= 0);
+                if (pendingIndexes.length === 0) break;
                 await sleep(GAMMA_POLL_INTERVAL);
                 if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
-                exportResult = await pollGammaExportStep(lessonId);
+                const polled = await Promise.all(
+                    pendingIndexes.map(index => pollGammaExportStep(batch[index].lessonId))
+                );
+                pendingIndexes.forEach((index, resultIndex) => {
+                    exportResults[index] = polled[resultIndex];
+                });
             }
-            if (exportResult.state !== 'completed') throw new Error('Gamma PDF export timed out.');
-            await saveGammaPdfStep(jobId, lessonId, exportResult.downloadUrl);
+            if (exportResults.some(result => result.state !== 'completed')) {
+                throw new Error('Gamma PDF export timed out.');
+            }
 
-            const currentLesson = await generateLessonContentStep(jobId, lessonId, ordinal, lessons.length);
-            const trackCount = Array.isArray(currentLesson.audio_tracks) ? currentLesson.audio_tracks.length : 0;
-            for (let trackIndex = 0; trackIndex < trackCount; trackIndex += 1) {
+            await Promise.all(batch.map((item, index) => saveGammaPdfStep(
+                jobId,
+                item.lessonId,
+                exportResults[index].downloadUrl
+            )));
+
+            for (const item of batch) {
                 if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
-                await generateAudioTrackStep(jobId, lessonId, trackIndex, ordinal, lessons.length);
+                const currentLesson = await generateLessonContentStep(
+                    jobId,
+                    item.lessonId,
+                    item.ordinal,
+                    lessons.length
+                );
+                const trackCount = Array.isArray(currentLesson.audio_tracks) ? currentLesson.audio_tracks.length : 0;
+                for (let trackStart = 0; trackStart < trackCount; trackStart += AUDIO_BATCH_SIZE) {
+                    if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
+                    const trackIndexes = Array.from(
+                        { length: Math.min(AUDIO_BATCH_SIZE, trackCount - trackStart) },
+                        (_, offset) => trackStart + offset
+                    );
+                    await prepareAudioBatchStep(
+                        jobId,
+                        item.ordinal,
+                        lessons.length,
+                        trackIndexes[0],
+                        trackIndexes[trackIndexes.length - 1],
+                        trackCount
+                    );
+                    const results = await Promise.all(
+                        trackIndexes.map(trackIndex => generateAudioTrackStep(
+                            jobId,
+                            item.lessonId,
+                            trackIndex
+                        ))
+                    );
+                    await saveAudioBatchStep(jobId, item.lessonId, results);
+                }
+                await completeLessonStep(jobId, item.lessonId);
             }
-            await completeLessonStep(jobId, lessonId);
         }
 
         if (!await ensureJobActiveStep(jobId)) return { status: 'cancelled' };
