@@ -93,6 +93,12 @@ describe('transcriptionWorker', () => {
     const result = await runTranscriptionWorkerTick(deps);
     expect(result).toEqual({ type: 'SUCCESS', jobId: 'job-1', recoveredCount: 0 });
     expect(fakeRepo.recordResult).toHaveBeenCalled();
+    expect(fakeNormaliser.normalise).toHaveBeenCalledWith(
+      { test: 'raw' },
+      'asset-1',
+      10,
+      'job-1'
+    );
   });
 
   it('3. Correct stage order', async () => {

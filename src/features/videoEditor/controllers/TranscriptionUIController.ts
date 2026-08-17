@@ -53,7 +53,7 @@ export class TranscriptionUIController {
     this.onStateChange = config.onStateChange;
   }
 
-  public setSourceAsset(id: string | null, duration: number | null) {
+  public async setSourceAsset(id: string | null, duration: number | null) {
     this.dispose();
 
     this.activeSourceAssetId = id;
@@ -76,7 +76,7 @@ export class TranscriptionUIController {
           this.onStateChange(jobState);
         }
       );
-      this.transcriptionJobController.init();
+      await this.transcriptionJobController.init();
 
       this.transcriptViewerController = new TranscriptViewerController({
         guideId: this.guideId,
