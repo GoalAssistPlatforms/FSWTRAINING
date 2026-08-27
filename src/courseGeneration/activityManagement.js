@@ -118,6 +118,19 @@ export function setLessonActivityMarkdown(markdown, activity) {
     return `${lessonContent}\n\n### Interactive Activity\n\n\`\`\`${activity.type}\n${JSON.stringify(activity.config, null, 2)}\n\`\`\``;
 }
 
+export function mergeEditableLessonMarkdown(originalMarkdown, editedMarkdown, activity) {
+    const lessonContent = stripLessonActivityMarkdown(editedMarkdown);
+
+    if (activity?.type && activity?.config) {
+        return setLessonActivityMarkdown(lessonContent, activity);
+    }
+
+    const originalActivityFence = String(originalMarkdown || '').match(ACTIVITY_FENCE_PATTERN)?.[0];
+    if (!originalActivityFence) return lessonContent;
+
+    return `${lessonContent}\n\n### Interactive Activity\n\n${originalActivityFence.trim()}`;
+}
+
 export function normaliseGeneratedActivity(rawValue, expectedType) {
     if (!SUPPORTED_ACTIVITY_TYPES.has(expectedType)) {
         throw new Error('The selected activity type is not supported.');

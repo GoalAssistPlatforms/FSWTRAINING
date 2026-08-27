@@ -4,6 +4,7 @@ import {
     buildActivityGenerationPayload,
     generateLessonActivity,
     getLessonActivityType,
+    mergeEditableLessonMarkdown,
     normaliseGeneratedActivity,
     setLessonActivityMarkdown,
     stripLessonActivityMarkdown
@@ -58,6 +59,26 @@ describe('lesson activity markdown', () => {
         expect(getLessonActivityType({ ai_component: toneActivity() })).toBe('ai-tone');
         expect(getLessonActivityType({ content: '```ai-swipe\n{}\n```' })).toBe('ai-swipe');
         expect(getLessonActivityType({ content: 'Lesson only' })).toBe('none');
+    });
+
+    it('allows lesson text edits while preserving protected activity content', () => {
+        const originalActivity = toneActivity('Protected activity');
+        const original = setLessonActivityMarkdown('Original lesson text', originalActivity);
+        const edited = `Updated lesson text
+
+### Interactive Activity
+
+\`\`\`ai-debate
+{"topic":"Accidental replacement"}
+\`\`\``;
+
+        const updated = mergeEditableLessonMarkdown(original, edited, originalActivity);
+
+        expect(stripLessonActivityMarkdown(updated)).toBe('Updated lesson text');
+        expect(updated).toContain('```ai-tone');
+        expect(updated).toContain('Protected activity');
+        expect(updated).not.toContain('```ai-debate');
+        expect(updated.match(/### Interactive Activity/g)).toHaveLength(1);
     });
 });
 

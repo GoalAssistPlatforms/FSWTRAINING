@@ -18,7 +18,9 @@ import {
     LESSON_ACTIVITY_OPTIONS,
     applyLessonActivitySelection,
     getActivityLabel,
-    getLessonActivityType
+    getLessonActivityType,
+    mergeEditableLessonMarkdown,
+    stripLessonActivityMarkdown
 } from '../courseGeneration/activityManagement.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
@@ -253,6 +255,10 @@ export function renderCoursePlayer(course, user, options = {}) {
         const currentLesson = currentModule.lessons[currentLessonIndex]
         const currentActivityType = getLessonActivityType(currentLesson)
 
+        const renderActivityPicker = () => `<div id="activity-type-picker" class="activity-type-picker"><button id="activity-type-toggle" class="hover-glow activity-type-toggle" type="button" aria-haspopup="menu" aria-expanded="false"><span id="activity-type-label">Activity: ${getActivityLabel(currentActivityType)}</span><span aria-hidden="true">⌄</span></button><div id="activity-type-menu" class="activity-type-menu" role="menu" hidden>${LESSON_ACTIVITY_OPTIONS.map(option => `<button type="button" role="menuitem" class="activity-type-option ${option.type === currentActivityType ? 'current' : ''}" data-activity-type="${option.type}"><span>${option.label}</span>${option.type === currentActivityType ? `<small>${option.type === 'none' ? 'Current' : 'Current · select again to regenerate'}</small>` : ''}</button>`).join('')}</div><div id="activity-generation-status" class="activity-generation-status" role="status" aria-live="polite" hidden></div></div>`;
+
+        const activityHeading = `<div class="lesson-activity-heading"><h3>Interactive Activity</h3>${user.role === 'manager' ? renderActivityPicker() : ''}</div>`;
+
         // 1. Parse Markdown
         // marked custom renderer handles 'chart' blocks
         let rawContent = currentLesson.content || '';
@@ -262,10 +268,11 @@ export function renderCoursePlayer(course, user, options = {}) {
         // }
 
         let processedContent = rawContent;
+        const hasActivityHeading = /### Interactive Activity/.test(String(rawContent));
         if (typeof processedContent === 'string') {
             processedContent = processedContent.replace(
                 /### Interactive Activity/g,
-                '<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;"><h3 style="color: white; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; margin: 0; color: var(--primary);">Interactive Activity</h3></div>'
+                activityHeading
             );
             
             // Auto-fix flattened code blocks that lose newlines when copy-pasted
@@ -502,23 +509,6 @@ export function renderCoursePlayer(course, user, options = {}) {
                 <div class="cp-text-panel" id="text-panel" style="position: relative;">
                     ${user.role === 'manager' ? `
                     <div class="lesson-manager-controls">
-                        <div id="activity-type-picker" class="activity-type-picker">
-                            <button id="activity-type-toggle" class="hover-glow activity-type-toggle" type="button" aria-haspopup="menu" aria-expanded="false">
-                                <span id="activity-type-label">Activity: ${getActivityLabel(currentActivityType)}</span>
-                                <span aria-hidden="true">⌄</span>
-                            </button>
-                            <div id="activity-type-menu" class="activity-type-menu" role="menu" hidden>
-                                ${LESSON_ACTIVITY_OPTIONS.map(option => `
-                                    <button type="button" role="menuitem" class="activity-type-option ${option.type === currentActivityType ? 'current' : ''}" data-activity-type="${option.type}">
-                                        <span>${option.label}</span>
-                                        ${option.type === currentActivityType
-                                            ? `<small>${option.type === 'none' ? 'Current' : 'Current · select again to regenerate'}</small>`
-                                            : ''}
-                                    </button>
-                                `).join('')}
-                            </div>
-                            <div id="activity-generation-status" class="activity-generation-status" role="status" aria-live="polite" hidden></div>
-                        </div>
                         <button id="inline-edit-btn" class="hover-glow lesson-manager-button" type="button">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                             <span>Edit Content</span>
@@ -528,6 +518,13 @@ export function renderCoursePlayer(course, user, options = {}) {
 
                     <div id="content-view-mode" class="lesson-content typography fade-in">
                         ${htmlContent}
+
+                        ${user.role === 'manager' && !hasActivityHeading ? `
+                            <div class="lesson-empty-activity">
+                                ${activityHeading}
+                                <p>No interactive activity is set for this lesson.</p>
+                            </div>
+                        ` : ''}
                         
                         ${(currentLesson.resources && currentLesson.resources.length > 0) ? `
                             <div class="resources-section" style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
@@ -1948,7 +1945,8 @@ export function renderCoursePlayer(course, user, options = {}) {
                     });
                 }
                 const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
-                easyMDEInstance.value((currentLesson.content || '').replace(/\\n/g, '\n'));
+                const editableLessonContent = stripLessonActivityMarkdown(currentLesson.content || '');
+                easyMDEInstance.value(editableLessonContent.replace(/\\n/g, '\n'));
                 setTimeout(() => easyMDEInstance.codemirror.refresh(), 100);
             });
 
@@ -1962,7 +1960,11 @@ export function renderCoursePlayer(course, user, options = {}) {
 
             saveBtn.addEventListener('click', async () => {
                 const currentLesson = modules[currentModuleIndex].lessons[currentLessonIndex];
-                currentLesson.content = easyMDEInstance.value();
+                currentLesson.content = mergeEditableLessonMarkdown(
+                    currentLesson.content,
+                    easyMDEInstance.value(),
+                    currentLesson.ai_component
+                );
                 
                 const originalText = saveBtn.innerText;
                 saveBtn.innerText = 'Saving...';

@@ -459,7 +459,7 @@ button {
 
 .lesson-manager-controls {
   position: absolute;
-  top: 1rem;
+  top: 1.75rem;
   right: 1rem;
   z-index: 30;
   display: flex;
@@ -492,6 +492,32 @@ button {
 
 .activity-type-picker {
   position: relative;
+  flex-shrink: 0;
+}
+
+.lesson-activity-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  margin: 3rem 0 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lesson-activity-heading h3 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.lesson-empty-activity p {
+  margin-bottom: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
 }
 
 .activity-type-toggle {
