@@ -23,7 +23,8 @@ const CONFIGURATION_INSTRUCTIONS = Object.freeze({
   "context": "The learner's role and the communication problem",
   "incoming_email": "A realistic email that presents the problem without giving away the answer",
   "initialText": ""
-}`,
+}
+The email must contain a specific problem the learner can genuinely resolve using the lesson content. Do not require facts, procedures or policies that are absent from the lesson.`,
     'ai-dojo': `Return config with:
 {
   "scenarioId": "A unique identifier for this scenario",
@@ -32,17 +33,19 @@ const CONFIGURATION_INSTRUCTIONS = Object.freeze({
   "objective": "What the learner must achieve in the conversation",
   "skills": ["Two or more relevant skills"],
   "initialText": "A realistic first person opening line from the caller"
-}`,
+}
+The objective must describe one concrete problem that can be demonstrated as resolved. Avoid vague objectives such as communicate effectively or handle the situation well.`,
     'ai-redline': `Return config with:
 {
   "title": "A realistic internal document title",
   "intro": "A short document introduction",
   "outro": "A realistic closing line",
   "items": [
-    { "content": "A realistic statement", "isRisk": true, "feedback": "Why it is risky or safe" }
+    { "content": "A complete statement, instruction, decision or claim", "isRisk": true, "feedback": "The concrete reason it is risky or safe" }
   ]
 }
-Include between five and seven items. Exactly two or three must be subtle risks. Every item must include educational feedback.`,
+Include between five and seven items. Exactly two or three must be subtle risks. Every item must include educational feedback.
+Each item must make sense on its own and be clearly judgeable as safe or correct, or risky or incorrect. Never use neutral events, background facts, vague observations or fragments as items. If an item is safe, make the correct action or requirement explicit. Feedback must explain the specific feature that makes the item safe or risky using only the lesson content.`,
     'ai-debate': `Return config with:
 {
   "topic": "A realistic proposed shortcut or contested decision",
@@ -50,16 +53,17 @@ Include between five and seven items. Exactly two or three must be subtle risks.
   "stakeholderName": "A realistic first name",
   "stances": ["Follow the correct approach", "Allow the proposed shortcut"]
 }
-The stakeholder must push for an unsafe, unfair, or noncompliant shortcut which the learner can challenge using the lesson.`,
+The stakeholder must push for an unsafe, unfair, or noncompliant shortcut which the learner can challenge using the lesson. The correct stance must be defensible with a concrete reason from the lesson so the learner can explain why it matters and respond to one relevant pushback.`,
     'ai-swipe': `Return config with:
 {
   "title": "A concise activity title",
   "cards": [
-    { "text": "A brief practical scenario", "isCorrect": true, "feedback": "Why this choice is correct or incorrect" }
+    { "text": "A complete actionable statement", "isCorrect": true, "feedback": "The specific reason this should be approved or binned" }
   ],
-  "labels": { "left": "Reject", "right": "Accept" }
+  "labels": { "left": "Bin It", "right": "Approved" }
 }
-Include between ten and twelve distinct cards with a useful mixture of accepted and rejected choices.`
+Include between ten and twelve distinct cards with a useful mixture of approved and binned choices.
+Every card must describe an action, decision, instruction or claim that can immediately and unambiguously be classified. isCorrect true means the statement is factually correct, safe and compliant. isCorrect false means it contains a definite mistake, unsafe practice, misleading claim or noncompliant action. Never use neutral events, ambiguous observations, partial facts, open ended questions or statements where both choices could reasonably be defended. Do not make a card wrong merely because information is missing unless that omission itself makes the action unsafe or noncompliant.`
 });
 
 function requiredString(value, fieldName) {
@@ -235,7 +239,7 @@ export function normaliseGeneratedActivity(rawValue, expectedType) {
     });
     const correctChoices = normalisedCards.filter(card => card.isCorrect).length;
     if (correctChoices === 0 || correctChoices === normalisedCards.length) {
-        throw new Error('The generated decision activity needs both accepted and rejected choices.');
+        throw new Error('The generated decision activity needs both approved and binned choices.');
     }
 
     return {
