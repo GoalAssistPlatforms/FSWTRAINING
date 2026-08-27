@@ -14,6 +14,12 @@ import { saveExemptedLessons, updateCourse, saveLessonProgress } from '../api/co
 import { createAudio } from '../api/elevenlabs.js'
 import { createPresentation, exportAndUploadPdf } from '../api/gamma.js'
 import { advanceSlideWhenAudioEnds } from '../utils/lessonMediaSequence.js'
+import {
+    LESSON_ACTIVITY_OPTIONS,
+    applyLessonActivitySelection,
+    getActivityLabel,
+    getLessonActivityType
+} from '../courseGeneration/activityManagement.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // Initialize Mermaid
@@ -245,6 +251,7 @@ export function renderCoursePlayer(course, user, options = {}) {
         if (!currentModule) return '<div>Error loading content</div>'
 
         const currentLesson = currentModule.lessons[currentLessonIndex]
+        const currentActivityType = getLessonActivityType(currentLesson)
 
         // 1. Parse Markdown
         // marked custom renderer handles 'chart' blocks
@@ -494,10 +501,29 @@ export function renderCoursePlayer(course, user, options = {}) {
                 <!-- Markdown Content -->
                 <div class="cp-text-panel" id="text-panel" style="position: relative;">
                     ${user.role === 'manager' ? `
-                    <button id="inline-edit-btn" class="hover-glow" style="position: absolute; top: 1rem; right: 1rem; z-index: 10; font-size: 0.8rem; border-radius: 4px; padding: 0.4rem 0.8rem; display: flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; backdrop-filter: blur(5px); transition: all 0.2s;">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                        <span>Edit Content</span>
-                    </button>
+                    <div class="lesson-manager-controls">
+                        <div id="activity-type-picker" class="activity-type-picker">
+                            <button id="activity-type-toggle" class="hover-glow activity-type-toggle" type="button" aria-haspopup="menu" aria-expanded="false">
+                                <span id="activity-type-label">Activity: ${getActivityLabel(currentActivityType)}</span>
+                                <span aria-hidden="true">⌄</span>
+                            </button>
+                            <div id="activity-type-menu" class="activity-type-menu" role="menu" hidden>
+                                ${LESSON_ACTIVITY_OPTIONS.map(option => `
+                                    <button type="button" role="menuitem" class="activity-type-option ${option.type === currentActivityType ? 'current' : ''}" data-activity-type="${option.type}">
+                                        <span>${option.label}</span>
+                                        ${option.type === currentActivityType
+                                            ? `<small>${option.type === 'none' ? 'Current' : 'Current · select again to regenerate'}</small>`
+                                            : ''}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div id="activity-generation-status" class="activity-generation-status" role="status" aria-live="polite" hidden></div>
+                        </div>
+                        <button id="inline-edit-btn" class="hover-glow lesson-manager-button" type="button">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            <span>Edit Content</span>
+                        </button>
+                    </div>
                     ` : ''}
 
                     <div id="content-view-mode" class="lesson-content typography fade-in">
@@ -1257,13 +1283,8 @@ export function renderCoursePlayer(course, user, options = {}) {
         // If no quiz, marked as complete.
         isQuizComplete = !currentLes.quiz || currentLes.quiz.length === 0;
 
-        // Check for Activity
-        // Look for special code blocks in content
-        const content = currentLes.content || '';
-        const hasActivity = content.includes('```ai-swipe') ||
-            content.includes('```ai-dojo') ||
-            content.includes('```ai-redline') ||
-            content.includes('```ai-debate');
+        // Check both the saved activity data and legacy activity code blocks.
+        const hasActivity = getLessonActivityType(currentLes) !== 'none';
 
         isActivityComplete = !hasActivity;
 
@@ -1769,6 +1790,99 @@ export function renderCoursePlayer(course, user, options = {}) {
             }
         }
 
+        // Manager Activity Type Menu
+        const activityPicker = document.getElementById('activity-type-picker');
+        if (activityPicker) {
+            const activityToggle = document.getElementById('activity-type-toggle');
+            const activityMenu = document.getElementById('activity-type-menu');
+            const activityLabel = document.getElementById('activity-type-label');
+            const activityStatus = document.getElementById('activity-generation-status');
+            const startingActivityType = getLessonActivityType(currentLesson);
+
+            const setActivityMenuOpen = (isOpen) => {
+                activityMenu.hidden = !isOpen;
+                activityToggle.setAttribute('aria-expanded', String(isOpen));
+            };
+
+            activityToggle.addEventListener('click', () => {
+                if (activityToggle.disabled) return;
+                const opening = activityMenu.hidden;
+                setActivityMenuOpen(opening);
+                if (opening) {
+                    setTimeout(() => {
+                        document.addEventListener('click', event => {
+                            if (!activityPicker.contains(event.target)) setActivityMenuOpen(false);
+                        }, { once: true });
+                    }, 0);
+                }
+            });
+
+            activityPicker.addEventListener('keydown', event => {
+                if (event.key === 'Escape') {
+                    setActivityMenuOpen(false);
+                    activityToggle.focus();
+                }
+            });
+
+            activityPicker.addEventListener('focusout', () => {
+                setTimeout(() => {
+                    if (!activityPicker.contains(document.activeElement)) setActivityMenuOpen(false);
+                }, 0);
+            });
+
+            activityMenu.addEventListener('click', async event => {
+                const option = event.target.closest('[data-activity-type]');
+                if (!option) return;
+
+                const selectedType = option.dataset.activityType;
+                setActivityMenuOpen(false);
+                if (selectedType === 'none' && startingActivityType === 'none') return;
+
+                const selectedLabel = getActivityLabel(selectedType);
+                activityToggle.disabled = true;
+                activityMenu.querySelectorAll('button').forEach(button => button.disabled = true);
+                activityLabel.textContent = selectedType === 'none'
+                    ? 'Removing activity…'
+                    : `Generating ${selectedLabel}…`;
+                activityStatus.hidden = false;
+                activityStatus.classList.remove('error');
+                activityStatus.textContent = selectedType === startingActivityType
+                    ? `Creating a new ${selectedLabel} for this lesson…`
+                    : selectedType === 'none'
+                        ? 'Removing the activity from this lesson…'
+                        : `Creating ${selectedLabel} for this lesson…`;
+
+                try {
+                    const nextModules = await applyLessonActivitySelection({
+                        modules,
+                        moduleIndex: currentModuleIndex,
+                        lessonIndex: currentLessonIndex,
+                        selectedType,
+                        generationContext: {
+                            courseTitle: course.title,
+                            moduleTitle: modules[currentModuleIndex].title
+                        },
+                        persist: nextContent => updateCourse(course.id, {
+                            content_json: nextContent,
+                            updated_at: new Date().toISOString()
+                        })
+                    });
+
+                    modules = nextModules;
+                    course.content_json = nextModules;
+                    compilePretest();
+                    mount();
+                } catch (error) {
+                    console.error('Failed to update lesson activity:', error);
+                    activityToggle.disabled = false;
+                    activityMenu.querySelectorAll('button').forEach(button => button.disabled = false);
+                    activityLabel.textContent = `Activity: ${getActivityLabel(startingActivityType)}`;
+                    activityStatus.classList.add('error');
+                    activityStatus.textContent = error?.message || 'The activity could not be generated. Select it again to retry.';
+                }
+            });
+        }
+
         // Inline Editor Logic
         const inlineEditBtn = document.getElementById('inline-edit-btn');
         if (inlineEditBtn) {
@@ -1782,6 +1896,8 @@ export function renderCoursePlayer(course, user, options = {}) {
             inlineEditBtn.addEventListener('click', async () => {
                 viewMode.style.display = 'none';
                 inlineEditBtn.style.display = 'none';
+                const activityControl = document.getElementById('activity-type-picker');
+                if (activityControl) activityControl.style.display = 'none';
                 editMode.style.display = 'block';
 
                 if (!easyMDEInstance) {
@@ -1840,6 +1956,8 @@ export function renderCoursePlayer(course, user, options = {}) {
                 editMode.style.display = 'none';
                 viewMode.style.display = 'block';
                 inlineEditBtn.style.display = 'flex';
+                const activityControl = document.getElementById('activity-type-picker');
+                if (activityControl) activityControl.style.display = '';
             });
 
             saveBtn.addEventListener('click', async () => {
