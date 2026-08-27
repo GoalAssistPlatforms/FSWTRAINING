@@ -305,20 +305,22 @@ export const generateCourseContent = async (topic, sourceGenerationJobId = null,
                                 - ai-redline: { "title": "A realistic internal document title (e.g., 'Q3 Safety Protocol Memo')", "intro": "Formal document header/introduction.", "outro": "Official sign-off or footer.", "items": [{ "content": "A specific, realistic paragraph or clause in the document.", "isRisk": true, "feedback": "Detailed explanation of why this clause is risky or safe, referencing FSW best practices." }] } (Title: "Risk & Compliance Audit")
                                   * CRITICAL for ai-redline:
                                   * Generate exactly 5-7 items.
-                                  * 2-3 items MUST be risks (isRisk: true). Risks must be subtle, realistic operational mistakes (e.g., bypassing a safety check to save time), not cartoonish errors.
+                                  * 2-3 items MUST be risks (isRisk: true). Risks must be subtle, realistic operational mistakes, not cartoonish errors.
                                   * 3-4 items MUST be safe (isRisk: false).
-                                  * ALWAYS provide educational 'feedback' for SAFE items (don't just say 'Correct'). The text MUST read like a real technical document.
+                                  * Every item MUST be a complete statement, instruction, decision, or claim that can clearly be judged as safe/correct or risky/incorrect on its own.
+                                  * NEVER use a neutral event, background fact, vague observation, or fragment as an item. If nothing is wrong with an item, make it explicitly correct and compliant.
+                                  * ALWAYS provide educational 'feedback' for SAFE items. The feedback must explain the concrete feature that makes the item safe or risky using only the lesson or supplied source material.
                                 - ai-debate: { "topic": "A controversial operational shortcut or policy bypass proposed by a colleague (e.g., 'Can we skip the system diagnostic this one time to save an hour?').", "persona": "A rushed, contrarian, or budget-conscious stakeholder pushing for the shortcut.", "stakeholderName": "A realistic name (e.g., Dave, Sarah)", "stances": ["Defend the Policy", "Allow the Shortcut"] } (Title: "Policy Pushback")
-                                  * CRITICAL for ai-debate: The scenario MUST involve a stakeholder pushing back against FSW best practices. The user must be forced to defend the correct, safe, or compliant procedure against this stubborn persona.
-                                - ai-swipe: { "title": "The Corkboard", "cards": [{ "text": "A brief, actionable scenario (Max 150 characters, e.g., 'A technician arrives without PPE but promises to just stay in the van.').", "isCorrect": true, "feedback": "Why this is the right course of action." }], "labels": { "left": "Reject", "right": "Accept" } } (Title: "The Corkboard")
+                                  * CRITICAL for ai-debate: The scenario MUST involve a stakeholder pushing back against FSW best practices. The user must defend the correct, safe, or compliant procedure and be capable of explaining why it matters.
+                                - ai-swipe: { "title": "The Corkboard", "cards": [{ "text": "A brief, actionable statement (Max 150 characters, e.g., 'A technician completes the required safety checks before starting work.').", "isCorrect": true, "feedback": "Why the statement is correct or incorrect." }], "labels": { "left": "Bin It", "right": "Approved" } } (Title: "The Corkboard")
                                   * CRITICAL for ai-swipe:
                                   * Generate exactly 10-12 cards.
-                                  * CARDS MUST NOT BE TRUE/FALSE TRIVIA. They must be practical snapshot scenarios describing a proposed action or decision. 
-                                  * It MUST fundamentally make grammatical and logical sense for the user to reply to the scenario with either "Accept" or "Reject".
-                                  * NEVER use open-ended questions. NEVER use questions like "Should we do this?". Instead, write statements like "A technician offers to..." so the user can Accept or Reject the offer.
-                                  * "isCorrect": true -> User should ACCEPT (Swipe Right). The action is highly compliant/safe.
-                                  * "isCorrect": false -> User should REJECT (Swipe Left). The action is poor practice/dangerous.
-                                  * FEEDBACK must explicitly teach the user the 'why' behind the policy.
+                                  * Each card MUST be a complete statement describing an action, decision, instruction, or claim. It must make immediate sense to classify it as Approved or Bin It.
+                                  * "isCorrect": true means the statement is factually correct, safe, compliant, and should be APPROVED.
+                                  * "isCorrect": false means the statement contains a definite mistake, unsafe practice, misleading claim, or noncompliant action and should be BINNED.
+                                  * NEVER create neutral events, ambiguous observations, partial facts, open-ended questions, or statements where both choices could reasonably be defended.
+                                  * Do not make a card incorrect merely because information is missing unless the missing information itself makes the proposed action unsafe or noncompliant.
+                                  * FEEDBACK must identify the specific reason the statement is correct or incorrect using only the lesson or supplied source material.
                                 `;
 
                     if (lessonReferenceContext) {
@@ -391,9 +393,8 @@ export const generateCourseContent = async (topic, sourceGenerationJobId = null,
                                 generatedTracks.push({ title: track.title, script: track.script, url: audioUrl });
                             } catch (err) {
                                 console.error(`[AI] Audio failed for track ${i}:`, err);
-                                generatedTracks.push({ title: track.title, script: track.script, url: null }); // Keep track even if generation failed
+                                generatedTracks.push({ title: track.title, script: track.script, url: null });
                             }
-                            // Small delay between calls to be safe
                             await new Promise(r => setTimeout(r, 500));
                         }
                     }
@@ -421,7 +422,7 @@ export const generateCourseContent = async (topic, sourceGenerationJobId = null,
                     lesson.gamma_id = gammaId;
                     lesson.gamma_pdf_url = gammaPdfUrl;
                     lesson.audio_tracks = generatedTracks;
-                    lesson.audio_url = generatedTracks.length > 0 ? generatedTracks[0].url : null; // Fallback for backward compatibility
+                    lesson.audio_url = generatedTracks.length > 0 ? generatedTracks[0].url : null;
                     lesson.presentation_input = contentData.presentation_input;
                     lesson.ai_component = contentData.ai_component;
 
@@ -430,7 +431,7 @@ export const generateCourseContent = async (topic, sourceGenerationJobId = null,
 
                 } catch (error) {
                     console.error(`[AI] Error processing lesson ${lesson.title} (Attempt ${attempts}):`, error);
-                    if (attempts >= 2) { // 2 attempts total
+                    if (attempts >= 2) {
                         lesson.content = "Lesson content failed to generate after retries.";
                         onProgress(`${progressPrefix} FAILED "${lesson.title}" - content generation error.`);
                     } else {
@@ -465,32 +466,15 @@ export const chatWithDojo = async (messages, scenario) => {
     let attempts = 0;
     while (attempts < 3) {
         try {
-            // Map internal 'ai' role to OpenAI 'assistant' role
             const apiMessages = messages.map(m => ({
                 role: m.role === 'ai' ? 'assistant' : m.role,
                 content: m.content
             }));
-
-            // Count user turns to determine "fatigue" state
             const userTurns = messages.filter(m => m.role === 'user').length;
-            let fatigueInstructions = "";
-
-            if (userTurns >= 5) {
-                fatigueInstructions = `
-                URGENT: The call is dragging on (Turn ${userTurns}).
-                - The user has taken too long to resolve the issue. 
-                - You MUST end the call now. State that you don't have any more time and will seek help elsewhere, say goodbye, and append [FAILED].
-                `;
-            } else if (userTurns >= 3) {
-                fatigueInstructions = `
-                NOTE: The troubleshooting is progressing (Turn ${userTurns}).
-                - Be cooperative. If they provide a solution that is "good enough" or close to the objective, accept it naturally, say goodbye, and append [SUCCESS].
-                - If they are completely lost or unhelpful, end the call in frustration and append [FAILED].
-                `;
-            }
 
             const completion = await openrouter.chat.completions.create({
                 model: "openai/gpt-4o-mini",
+                temperature: 0.2,
                 messages: [
                     {
                         role: "system",
@@ -499,23 +483,22 @@ export const chatWithDojo = async (messages, scenario) => {
                 ROLE: ${scenario.role}
                 ISSUE / OBJECTIVE TO BE RESOLVED BY USER: ${scenario.objective}
                 SCENARIO INTRO: ${scenario.intro}
-                
+                USER RESPONSES SO FAR: ${userTurns}
+
                 CRITICAL RULES:
-                1. You are strictly the character defined in ROLE. You are experiencing an issue related to the subject matter.
-                2. You are NOT an AI assistant, mentor, or helpful guide. Do not act like you are testing the user. You genuinely need their help to resolve your issue.
-                3. NEVER give away the solution. Let the user troubleshoot, ask questions, or provide the fix.
-                4. Answer the user's questions naturally based on your role and issue, but do not volunteer information they haven't asked for if it makes it too easy.
-                5. Show appropriate emotion (frustration, confusion, urgency) depending on your role.
+                1. You are strictly the character defined in ROLE. You genuinely need the learner's help.
+                2. You are not an assistant, mentor, examiner, or coach. Never reveal that you are evaluating the learner.
+                3. Never give away the solution. Answer questions naturally but do not volunteer the answer.
+                4. Do not agree simply because the learner sounds confident, polite, or proposes an action. Judge whether the specific objective has actually been resolved.
+                5. If the learner's first substantive response appears to solve the problem, do not immediately finish. Ask exactly one relevant follow-up question that tests an important detail, consequence, or next step from the stated objective.
+                6. Once that relevant follow-up has been answered adequately and the objective is genuinely resolved, conclude naturally and append [SUCCESS]. There is no arbitrary minimum or maximum number of turns.
+                7. If the learner is partly right, stay in character and ask a useful question that exposes what still needs resolving rather than simply agreeing.
 
                 COMPLETION LOGIC:
-                - Stay in character. 
-                - Evaluate the user's responses. Have they successfully identified and resolved your issue according to the OBJECTIVE?
-                - If the user has sufficiently resolved the issue, you MUST naturally conclude the conversation. Express gratitude or relief ("Thanks for sorting that out", "That makes sense now", etc.), say goodbye, and append [SUCCESS] at the very end. 
-                - If the user explicitly gives up, gives dangerously incorrect advice, or is completely unhelpful, you MUST end the call in frustration or disappointment. Say goodbye and append [FAILED] at the very end.
-                - DO NOT append [SUCCESS] or [FAILED] until the conversation naturally concludes or you are forced to end it.
-                - DO NOT ask any further questions or request more work if you are appending [SUCCESS] or [FAILED].
-
-                ${fatigueInstructions}
+                - Append [SUCCESS] only when the conversation demonstrates that the learner has actually resolved the stated objective and, where the solution appeared in their first response, has also answered the required follow-up challenge.
+                - Append [FAILED] only when the learner explicitly gives up, gives dangerously incorrect advice after a reasonable opportunity to correct it, or clearly abandons the objective.
+                - Never award success because of generic closing language such as thanks, great, book, schedule, survey, sorted, or sounds good.
+                - If you append [SUCCESS] or [FAILED], do not ask another question.
                 `
                     },
                     ...apiMessages
@@ -527,74 +510,79 @@ export const chatWithDojo = async (messages, scenario) => {
             attempts++;
             if (attempts >= 3) {
                 console.warn("Falling back to offline simulation mode.");
-                return getFallbackResponse(messages, scenario);
+                return getFallbackResponse();
             }
-            // Short exponential backoff: 500ms, 1000ms
             await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempts - 1)));
         }
     }
 };
 
 /**
- * Fallback logic when AI is offline/failing
+ * Fallback logic when AI is offline/failing.
+ * Deliberately never fabricates a pass because the objective cannot be safely evaluated offline.
  */
-const getFallbackResponse = (messages, scenario) => {
-    const lastUserMessage = messages[messages.length - 1]?.content.toLowerCase() || "";
-
-    // Generic "dumb" simulation to allow completion
-    // Check if it looks like they are closing or solving the problem
-    if (lastUserMessage.includes('thank') || lastUserMessage.includes('great') || lastUserMessage.includes('book') || lastUserMessage.includes('schedule') || lastUserMessage.includes('survey')) {
-        return "That sounds perfect. Let's go ahead with that. Thank you for your help! [SUCCESS]";
-    }
-
-    return "I understand. Could you tell me more about how we can proceed with this? I'm quite interested in getting this sorted.";
+const getFallbackResponse = () => {
+    return "I am not quite clear on what I should do next. Could you explain the specific action you want me to take?";
 };
 
 /**
- * Handles Socratic Debate logic
+ * Handles Policy Pushback logic.
  */
-/**
- * Handles Socratic Debate logic
- */
-export const chatWithDebater = async (messages, topic, persona, pointNumber = 1, failedAttempts = 0) => {
-    let instructions = `
-        You are roleplaying a stubborn FSW stakeholder pushing back against a company policy.
-        
-        TOPIC / PROPOSED SHORTCUT: ${topic}
-        YOUR PERSONA: ${persona || "A rushed, budget-conscious contractor."}
-        CURRENT PUSHBACK LEVEL: ${pointNumber} of 5.
-        FAILED ATTEMPTS TO CONVINCE YOU: ${failedAttempts}
+export const chatWithDebater = async (messages, topic, persona, pointNumber = 0, failedAttempts = 0) => {
+    const instructions = `
+        You are roleplaying a realistic FSW stakeholder who is pushing for a shortcut or poor decision.
 
-        OBJECTIVE: 
-        1. Evaluate the user's latest message. Are they successfully defending the policy with strong logic, or are they caving to your pressure / using weak arguments?
-        2. If the user gives a weak reason, set "advance_progress" to false. However, if FAILED ATTEMPTS TO CONVINCE YOU is 2 or more, do NOT fail them. Instead, set "advance_progress" to true to move the conversation forward. In your reply, transition to a collaborative, professional tone and clearly explain the correct policy rationale they should have used, as if you now understand the importance of the rule. Make sure to penalize their "final_feedback" score. If the user explicitly quits or completely abandons the meeting, you can set "failed_state" to true.
-        3. If the user provides a strong, logical defense of the best practice, set "advance_progress" to true, and either push back from a different angle or start conceding.
-        4. Provide an optional "hint" (out of character) to help them out if advance_progress is false and failed_state is false.
-        5. If CURRENT PROGRESS is 5 AND you set advance_progress to true, or if you set failed_state to true, you MUST populate "final_feedback".
-                
-        RULES:
-        1. KEEP IT CONCISE. Your "reply" string must be under 50 words.
-        2. Stay in character based on YOUR PERSONA. Be stubborn but realistic.
-        
-        OUTPUT FORMAT (Return STRICT JSON):
+        TOPIC / PROPOSED SHORTCUT: ${topic}
+        YOUR PERSONA: ${persona || "A rushed, budget-conscious stakeholder."}
+        PREVIOUS UI PROGRESS COUNT: ${pointNumber}
+        RECENT UNSUCCESSFUL ATTEMPTS: ${failedAttempts}
+
+        The learner passes by demonstrating three concrete outcomes across the conversation:
+        1. CORRECT_POSITION: They hold the correct safe, fair, compliant, or otherwise lesson-aligned position rather than caving to the shortcut.
+        2. SOUND_REASONING: They explain a relevant reason, consequence, principle, or practical rationale supported by the topic and conversation.
+        3. HANDLED_PUSHBACK: After you have challenged their reasoning with a relevant follow-up objection, they respond to that objection adequately without abandoning the correct position.
+
+        IMPORTANT CONVERSATION BEHAVIOUR:
+        1. Evaluate the whole conversation, not merely the latest sentence.
+        2. Do not agree immediately when the learner gives a good first answer. If they have the correct position and sound reasoning but have not yet handled a genuine follow-up challenge, reply with one realistic objection or pressure point and keep the meeting going.
+        3. Once all three outcomes are genuinely met, concede naturally and complete the scenario. Do not manufacture extra turns.
+        4. A weak answer does not automatically advance progress. Give a concise in-character challenge and an optional coaching hint.
+        5. Never auto-advance because the learner has failed several times. Progress only when an outcome is actually demonstrated.
+        6. Set failed_state to true only if the learner clearly caves to the unsafe or noncompliant shortcut, explicitly gives up, or abandons the meeting after a reasonable opportunity to recover.
+        7. Keep reply under 60 words and stay in character.
+
+        Return strict JSON:
         {
-          "reply": "Your next pushback or response...",
-          "advance_progress": true, // false if they caved or gave a weak argument
-          "failed_state": false, // set to true ONLY if the user explicitly caves, gives up, or fails completely (this ends the simulation in a failure)
-          "hint": "Optional coaching nudge if advance_progress is false. (string or null)",
+          "reply": "Your next in-character response",
+          "outcomes_met": {
+            "correct_position": true,
+            "sound_reasoning": true,
+            "handled_pushback": false
+          },
+          "advance_progress": true,
+          "completed": false,
+          "failed_state": false,
+          "hint": null,
           "final_feedback": null
         }
-        
-        ONLY if CURRENT PROGRESS is 5 and advance_progress is true, or if failed_state is true, "final_feedback" MUST be:
+
+        Set advance_progress to true when the number of genuinely met outcomes has increased or when completed is true. It exists for backward compatibility with the UI.
+
+        When completed is true, final_feedback MUST contain:
         {
-          "score": 85, // 0-74 means fail, 75-100 means pass. (If failed_state is true, score MUST be below 75)
-          "strongest_argument": "Summary of what they did well (or N/A)",
-          "weakness": "Why they failed or what they could improve"
+          "score": 85,
+          "strongest_argument": "What the learner did particularly well",
+          "weakness": "One concise improvement point, or 'No material weakness identified.'"
         }
+        A passing score is 75 to 100.
+
+        When failed_state is true, final_feedback MUST contain a score below 75 and explain what the learner abandoned or got wrong.
+        Never populate final_feedback merely because a turn count has been reached.
     `;
 
     const completion = await openrouter.chat.completions.create({
         model: "openai/gpt-4o",
+        temperature: 0.2,
         response_format: { type: "json_object" },
         messages: [
             {
@@ -608,33 +596,43 @@ export const chatWithDebater = async (messages, topic, persona, pointNumber = 1,
 };
 
 /**
- * Analyzes tone of user draft against a specific email context
+ * Analyses the learner's reply using one stable 100 point rubric.
  */
 export const analyzeTone = async (userText, context, incomingEmail) => {
     const completion = await openrouter.chat.completions.create({
         model: "openai/gpt-4o-mini",
+        temperature: 0,
         messages: [
             {
                 role: "system",
                 content: `${FSW_INTERNAL_CONTEXT}
                 You are a Professional Communications Coach at FSW.
-                
-                Task: Analyze the user's reply to an email.
+
+                Task: Analyse the learner's reply to the supplied email.
                 Context: ${context}
-                Incoming Email (that they are replying to): "${incomingEmail}"
-                
-                Analyze the User's Draft for:
-                1. Problem Resolution (does the reply actually provide the correct steps or information to solve the sender's problem?)
-                2. Professionalism (appropriate framing, no slang)
-                3. Tone (confident, helpful, direct but polite)
-                
-                CRITICAL RULE:
-                If the user DOES NOT successfully resolve the issue or provide the necessary steps, the score MUST be below 75 (e.g. 50-60). The primary goal is problem resolution. Only give a score of 75 or higher if they have solved the problem.
+                Incoming Email: "${incomingEmail}"
+
+                Use this fixed rubric every time:
+                1. Problem resolution: 0 to 50 points. Does the reply directly answer the sender's actual problem using only facts, steps, requirements, and implications supported by the supplied context or incoming email?
+                2. Professionalism: 0 to 25 points. Is the reply appropriately framed, clear, respectful, and free from slang or unnecessary hostility?
+                3. Tone and clarity: 0 to 25 points. Is it confident, helpful, concise enough, direct, and easy to act on?
+
+                SCORING RULES:
+                - score MUST equal problem_resolution + professionalism + tone_and_clarity.
+                - 75 is the pass mark. Do not apply a hidden higher bar.
+                - If problem_resolution is below 35, cap the overall score at 74 even if the writing style is excellent.
+                - If the reply invents a policy, deadline, procedure, threshold, contact, attachment, or requirement not present in the supplied material, treat that as a problem-resolution weakness. Do not reward invented detail.
+                - Do not criticise the learner for omitting a fact or procedure that is not present in the supplied context or incoming email.
+                - Feedback must be grounded only in the supplied material and the learner's wording.
+                - Judge identical text consistently. Do not introduce novelty or stylistic randomness into the score.
 
                 Return JSON:
                 {
-                    "score": number (0-100),
-                    "feedback": "A short, constructive paragraph (max 2 sentences) giving specific advice on how to improve. Address the user directly."
+                    "score": 0,
+                    "problem_resolution": 0,
+                    "professionalism": 0,
+                    "tone_and_clarity": 0,
+                    "feedback": "At most two concise sentences giving specific, grounded advice."
                 }
                 `
             },
@@ -643,5 +641,18 @@ export const analyzeTone = async (userText, context, incomingEmail) => {
         response_format: { type: "json_object" }
     });
 
-    return JSON.parse(completion.choices[0].message.content);
+    const result = JSON.parse(completion.choices[0].message.content);
+    const problemResolution = Math.max(0, Math.min(50, Number(result.problem_resolution) || 0));
+    const professionalism = Math.max(0, Math.min(25, Number(result.professionalism) || 0));
+    const toneAndClarity = Math.max(0, Math.min(25, Number(result.tone_and_clarity) || 0));
+    let score = problemResolution + professionalism + toneAndClarity;
+    if (problemResolution < 35) score = Math.min(score, 74);
+
+    return {
+        ...result,
+        problem_resolution: problemResolution,
+        professionalism,
+        tone_and_clarity: toneAndClarity,
+        score
+    };
 };

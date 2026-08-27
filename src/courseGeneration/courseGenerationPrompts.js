@@ -172,11 +172,11 @@ CONTENT RULES:
 9. Never describe the activity as an AI, chatbot, robot, or automated system.
 
 INTERACTIVE ACTIVITY CONFIGURATION:
-1. ai-tone requires context, incoming_email, and initialText. The email must present a realistic problem for the learner to resolve.
-2. ai-dojo requires scenarioId, intro, role, objective, skills, and initialText. The virtual colleague must have a realistic problem.
-3. ai-redline requires title, intro, outro, and between five and seven items. Between two and three items must be subtle risks and every item needs educational feedback.
-4. ai-debate requires topic, persona, stakeholderName, and stances. A stakeholder must push for an unsafe or noncompliant shortcut.
-5. ai-swipe requires title, labels, and between ten and twelve practical cards that can logically be accepted or rejected.`;
+1. ai-tone requires context, incoming_email, and initialText. The incoming email must present one specific problem that can genuinely be resolved from the lesson content. Do not make success depend on facts or policies absent from the lesson.
+2. ai-dojo requires scenarioId, intro, role, objective, skills, and initialText. The caller must have one concrete problem. The objective must state what observable outcome resolves that problem, not a vague communication goal.
+3. ai-redline requires title, intro, outro, and between five and seven items. Exactly two or three items must be subtle risks. Every item must be a complete statement, instruction, decision, or claim that is clearly safe or correct, or risky or incorrect. Never use neutral events, vague observations, background facts, or fragments as review items. Every item needs educational feedback that identifies the concrete reason for its classification using only the lesson or supplied source material.
+4. ai-debate requires topic, persona, stakeholderName, and exactly two stances. A stakeholder must push for an unsafe, unfair, or noncompliant shortcut. The correct stance must be defensible with a concrete reason from the lesson so the learner can hold the right position, explain why it matters, and respond to a relevant pushback.
+5. ai-swipe requires title, labels, and between ten and twelve cards. Use labels Bin It and Approved. Every card must be a complete action, decision, instruction, or claim that can be unambiguously classified. isCorrect true means the statement is factually correct, safe and compliant and should be Approved. isCorrect false means it contains a definite mistake, unsafe practice, misleading claim, or noncompliant action and should be Binned. Never use neutral events, ambiguous observations, partial facts, open ended questions, or statements where both choices could reasonably be defended. Do not make a card incorrect merely because information is missing unless that omission itself makes the action unsafe or noncompliant. Every card needs feedback explaining the specific reason for its classification.`;
 
     if (referenceContext) {
         systemPrompt += `
