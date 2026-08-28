@@ -1,1 +1,0 @@
-Knowledge chat embedding proxy now prefers OPENROUTER_API_KEY and the OpenRouter embeddings endpoint, falling back to OPENAI_API_KEY when OpenRouter is unavailable.
