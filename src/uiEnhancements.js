@@ -2,6 +2,7 @@ import { initGuideChatHistory } from './guideChatHistory.js';
 import { initPhoneCallVoiceEnhancement } from './phoneCallVoiceEnhancement.js';
 import { initGuidesWorkspaceEnhancement } from './guidesWorkspaceEnhancement.js';
 import { initGuidesLibraryPolish } from './guidesLibraryPolish.js';
+import { initGuidesChatOrganisation } from './guidesChatOrganisation.js';
 
 const LEARNING_PACK_GREEN = '#10b981';
 const STYLE_ID = 'fsw-ui-enhancement-styles';
@@ -189,12 +190,15 @@ export const initUiEnhancements = root => {
   let activeChatView = null;
   let activeChatCleanup = null;
   let activeWorkspaceCleanup = null;
+  let activeOrganisationCleanup = null;
   let destroyed = false;
 
   const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
   const cleanupGuidesLibraryPolish = initGuidesLibraryPolish(root);
 
   const cleanupActiveWorkspace = () => {
+    activeOrganisationCleanup?.();
+    activeOrganisationCleanup = null;
     activeWorkspaceCleanup?.();
     activeWorkspaceCleanup = null;
   };
@@ -210,8 +214,6 @@ export const initUiEnhancements = root => {
     if (!chatView || chatView === activeChatView || chatView === scheduledChatView) return;
     scheduledChatView = chatView;
 
-    // Run after the Guides screen has attached its original listeners. The persistent
-    // chat module can then replace only the send controls and leave the rest untouched.
     requestAnimationFrame(async () => {
       if (destroyed) return;
       const target = scheduledChatView;
@@ -223,6 +225,7 @@ export const initUiEnhancements = root => {
       activeChatCleanup = await initGuideChatHistory(target);
       cleanupActiveWorkspace();
       activeWorkspaceCleanup = initGuidesWorkspaceEnhancement(root);
+      activeOrganisationCleanup = initGuidesChatOrganisation(root);
     });
   };
 
