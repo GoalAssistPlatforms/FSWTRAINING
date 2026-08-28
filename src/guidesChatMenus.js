@@ -114,7 +114,8 @@ const ensureStyles = () => {
       background: rgba(255,255,255,0.08);
     }
 
-    .guides-chat-rename-backdrop {
+    .guides-chat-rename-backdrop,
+    .guides-project-delete-backdrop {
       position: fixed;
       inset: 0;
       z-index: 14000;
@@ -126,7 +127,8 @@ const ensureStyles = () => {
       backdrop-filter: blur(5px);
     }
 
-    .guides-chat-rename-dialog {
+    .guides-chat-rename-dialog,
+    .guides-project-delete-dialog {
       width: min(460px, calc(100vw - 2rem));
       padding: 1.35rem;
       border: 1px solid rgba(255,255,255,0.12);
@@ -136,14 +138,16 @@ const ensureStyles = () => {
       box-sizing: border-box;
     }
 
-    .guides-chat-rename-dialog h3 {
+    .guides-chat-rename-dialog h3,
+    .guides-project-delete-dialog h3 {
       margin: 0;
       color: #f8fafc;
       font-size: 1.08rem;
       font-weight: 700;
     }
 
-    .guides-chat-rename-dialog p {
+    .guides-chat-rename-dialog p,
+    .guides-project-delete-dialog p {
       margin: 0.38rem 0 1rem;
       color: #8b95a5;
       font-size: 0.8rem;
@@ -168,14 +172,16 @@ const ensureStyles = () => {
       box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
     }
 
-    .guides-chat-rename-actions {
+    .guides-chat-rename-actions,
+    .guides-project-delete-actions {
       display: flex;
       justify-content: flex-end;
       gap: 0.55rem;
       margin-top: 1rem;
     }
 
-    .guides-chat-rename-actions button {
+    .guides-chat-rename-actions button,
+    .guides-project-delete-actions button {
       min-width: 82px;
       padding: 0.62rem 0.95rem;
       border-radius: 9px;
@@ -186,12 +192,14 @@ const ensureStyles = () => {
       cursor: pointer;
     }
 
-    .guides-chat-rename-cancel {
+    .guides-chat-rename-cancel,
+    .guides-project-delete-cancel {
       background: transparent;
       color: #cbd5e1;
     }
 
-    .guides-chat-rename-cancel:hover {
+    .guides-chat-rename-cancel:hover,
+    .guides-project-delete-cancel:hover {
       background: rgba(255,255,255,0.06);
     }
 
@@ -199,6 +207,65 @@ const ensureStyles = () => {
       background: var(--primary);
       border-color: var(--primary) !important;
       color: white;
+    }
+
+    .guides-project-delete-heading {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+    }
+
+    .guides-project-delete-icon {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+    }
+
+    .guides-project-delete-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .guides-project-delete-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .guides-project-delete-copy p {
+      margin-bottom: 0;
+    }
+
+    .guides-project-delete-name {
+      color: #f8fafc;
+      font-weight: 650;
+    }
+
+    .guides-project-delete-note {
+      margin-top: 1rem;
+      padding: 0.8rem 0.9rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.035);
+      color: #aab3c0;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .guides-project-delete-confirm {
+      background: #dc2626;
+      border-color: #dc2626 !important;
+      color: white;
+    }
+
+    .guides-project-delete-confirm:hover {
+      background: #ef4444;
+      border-color: #ef4444 !important;
     }
   `;
   document.head.appendChild(style);
@@ -257,6 +324,53 @@ const showRenameDialog = currentTitle => new Promise(resolve => {
     input.focus();
     input.select();
   });
+});
+
+const showProjectDeleteDialog = projectName => new Promise(resolve => {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'guides-project-delete-backdrop';
+  backdrop.innerHTML = `
+    <div class="guides-project-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="guides-project-delete-title">
+      <div class="guides-project-delete-heading">
+        <div class="guides-project-delete-icon">${icon('delete')}</div>
+        <div class="guides-project-delete-copy">
+          <h3 id="guides-project-delete-title">Delete project?</h3>
+          <p>Are you sure you want to delete <span class="guides-project-delete-name">${escapeHtml(projectName)}</span>?</p>
+        </div>
+      </div>
+      <div class="guides-project-delete-note">Chats in this project will move back to Chats. No conversations will be deleted.</div>
+      <div class="guides-project-delete-actions">
+        <button type="button" class="guides-project-delete-cancel">Cancel</button>
+        <button type="button" class="guides-project-delete-confirm">Delete project</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(backdrop);
+  let settled = false;
+
+  const finish = result => {
+    if (settled) return;
+    settled = true;
+    document.removeEventListener('keydown', onKeyDown, true);
+    backdrop.remove();
+    resolve(result);
+  };
+
+  const onKeyDown = event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    }
+  };
+
+  document.addEventListener('keydown', onKeyDown, true);
+  backdrop.querySelector('.guides-project-delete-cancel').addEventListener('click', () => finish(false));
+  backdrop.querySelector('.guides-project-delete-confirm').addEventListener('click', () => finish(true));
+  backdrop.addEventListener('pointerdown', event => {
+    if (event.target === backdrop) finish(false);
+  });
+
+  requestAnimationFrame(() => backdrop.querySelector('.guides-project-delete-cancel')?.focus());
 });
 
 export const initGuidesChatMenus = root => {
@@ -387,6 +501,7 @@ export const initGuidesChatMenus = root => {
   const showProjectMenu = (trigger, heading) => {
     closeMenu();
     const projectId = heading.closest('[data-project-id]')?.dataset.projectId;
+    const projectName = heading.querySelector('.guides-chat-project-name')?.textContent?.trim() || 'this project';
     const renameButton = heading.querySelector('.project-rename');
     const deleteButton = heading.querySelector('.project-delete');
 
@@ -403,13 +518,29 @@ export const initGuidesChatMenus = root => {
     positionMenu(trigger);
     wireOutsideClose(trigger);
 
-    menu.addEventListener('click', event => {
+    menu.addEventListener('click', async event => {
       const actionButton = event.target.closest('[data-project-action]');
       if (!actionButton || !projectId) return;
       const action = actionButton.dataset.projectAction;
       closeMenu();
-      if (action === 'rename') renameButton?.click();
-      if (action === 'delete') deleteButton?.click();
+
+      if (action === 'rename') {
+        renameButton?.click();
+        return;
+      }
+
+      if (action === 'delete') {
+        const confirmed = await showProjectDeleteDialog(projectName);
+        if (!confirmed || !deleteButton) return;
+
+        const originalConfirm = window.confirm;
+        window.confirm = () => true;
+        try {
+          deleteButton.click();
+        } finally {
+          window.confirm = originalConfirm;
+        }
+      }
     });
   };
 
@@ -477,6 +608,7 @@ export const initGuidesChatMenus = root => {
     closeMenu();
     root.removeEventListener('click', onClick);
     document.querySelector('.guides-chat-rename-backdrop')?.remove();
+    document.querySelector('.guides-project-delete-backdrop')?.remove();
     root.querySelector('.guides-workspace-sidebar')?.classList.remove('guides-chat-menus-ready');
   };
 };
