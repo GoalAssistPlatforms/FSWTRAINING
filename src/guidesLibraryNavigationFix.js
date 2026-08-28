@@ -32,10 +32,22 @@ const ensureStyles = () => {
       height: 100% !important;
       max-height: 100% !important;
       min-height: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      box-sizing: border-box;
+    }
+
+    .guides-workspace-ready #guides-manager-view > * {
+      flex: 0 0 auto;
+    }
+
+    .guides-workspace-ready #guides-manager-view #curation-items-list {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
       overscroll-behavior: contain;
-      box-sizing: border-box;
       scrollbar-width: thin;
     }
 
