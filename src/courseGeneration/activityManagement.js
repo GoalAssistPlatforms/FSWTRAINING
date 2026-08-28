@@ -2,11 +2,11 @@ import { COURSE_ACTIVITY_TYPES, FSW_INTERNAL_CONTEXT } from './courseGenerationP
 
 export const LESSON_ACTIVITY_OPTIONS = Object.freeze([
     { type: 'none', label: 'No Activity' },
-    { type: 'ai-tone', label: 'Tone Analyser' },
-    { type: 'ai-dojo', label: 'Simulated Call' },
+    { type: 'ai-tone', label: 'Chat Message' },
+    { type: 'ai-dojo', label: 'Phone Call' },
     { type: 'ai-redline', label: 'Document Inspector' },
-    { type: 'ai-debate', label: 'Policy Pushback' },
-    { type: 'ai-swipe', label: 'Decision Swipe' }
+    { type: 'ai-debate', label: 'Video Call' },
+    { type: 'ai-swipe', label: 'Corkboard' }
 ]);
 
 const ACTIVITY_LABELS = Object.freeze(Object.fromEntries(
