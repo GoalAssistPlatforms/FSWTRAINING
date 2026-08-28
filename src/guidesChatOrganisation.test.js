@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { organiseChats } from './guidesChatOrganisation.js';
+import { organiseChats, projectFolderIcon } from './guidesChatOrganisation.js';
 
 describe('organiseChats', () => {
   const items = [
@@ -30,5 +30,16 @@ describe('organiseChats', () => {
     });
 
     expect(result.unfiled.map(item => item.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('projectFolderIcon', () => {
+  it('renders visibly different closed and open folder states', () => {
+    const closed = projectFolderIcon(true);
+    const open = projectFolderIcon(false);
+
+    expect(closed).toContain('guides-chat-project-folder-icon');
+    expect(open).toContain('guides-chat-project-folder-icon');
+    expect(closed).not.toBe(open);
   });
 });
