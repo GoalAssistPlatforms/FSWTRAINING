@@ -1,5 +1,3 @@
-import { generateChatAudio } from './api/elevenlabs.js';
-
 const DEFAULT_STATUS = 'Connected';
 
 export const speechRecognitionErrorMessage = error => {
@@ -48,6 +46,7 @@ const playCallerAudio = async (root, text) => {
 
   let audioUrl = null;
   try {
+    const { generateChatAudio } = await import('./api/elevenlabs.js');
     audioUrl = await generateChatAudio(text);
     if (!audioUrl) throw new Error('No audio returned');
 
