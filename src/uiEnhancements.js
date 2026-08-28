@@ -1,6 +1,7 @@
 import { initGuideChatHistory } from './guideChatHistory.js';
 import { initPhoneCallVoiceEnhancement } from './phoneCallVoiceEnhancement.js';
 import { initGuidesWorkspaceEnhancement } from './guidesWorkspaceEnhancement.js';
+import { initGuidesLibraryPolish } from './guidesLibraryPolish.js';
 
 const LEARNING_PACK_GREEN = '#10b981';
 const STYLE_ID = 'fsw-ui-enhancement-styles';
@@ -191,6 +192,7 @@ export const initUiEnhancements = root => {
   let destroyed = false;
 
   const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
+  const cleanupGuidesLibraryPolish = initGuidesLibraryPolish(root);
 
   const cleanupActiveWorkspace = () => {
     activeWorkspaceCleanup?.();
@@ -251,6 +253,7 @@ export const initUiEnhancements = root => {
     destroyed = true;
     observer.disconnect();
     cleanupPhoneCallVoice();
+    cleanupGuidesLibraryPolish();
     cleanupActiveChat();
   };
 };
