@@ -1,5 +1,6 @@
 import { initGuideChatHistory } from './guideChatHistory.js';
 import { initPhoneCallVoiceEnhancement } from './phoneCallVoiceEnhancement.js';
+import { initGuidesWorkspaceEnhancement } from './guidesWorkspaceEnhancement.js';
 
 const LEARNING_PACK_GREEN = '#10b981';
 const STYLE_ID = 'fsw-ui-enhancement-styles';
@@ -186,14 +187,21 @@ export const initUiEnhancements = root => {
   let scheduledChatView = null;
   let activeChatView = null;
   let activeChatCleanup = null;
+  let activeWorkspaceCleanup = null;
   let destroyed = false;
 
   const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
+
+  const cleanupActiveWorkspace = () => {
+    activeWorkspaceCleanup?.();
+    activeWorkspaceCleanup = null;
+  };
 
   const cleanupActiveChat = () => {
     activeChatCleanup?.();
     activeChatCleanup = null;
     activeChatView = null;
+    cleanupActiveWorkspace();
   };
 
   const scheduleChatInitialisation = chatView => {
@@ -211,6 +219,8 @@ export const initUiEnhancements = root => {
       if (activeChatView && activeChatView !== target) cleanupActiveChat();
       activeChatView = target;
       activeChatCleanup = await initGuideChatHistory(target);
+      cleanupActiveWorkspace();
+      activeWorkspaceCleanup = initGuidesWorkspaceEnhancement(root);
     });
   };
 
