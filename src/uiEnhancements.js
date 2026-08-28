@@ -1,7 +1,7 @@
+import { initGuideChatHistory } from './guideChatHistory.js';
+
 const LEARNING_PACK_GREEN = '#10b981';
 const STYLE_ID = 'fsw-ui-enhancement-styles';
-const NEW_CHAT_BUTTON_ID = 'new-guides-chat-btn';
-const NEW_CHAT_CONTROLS_ID = 'guides-chat-controls';
 
 const ensureStyles = () => {
   if (document.getElementById(STYLE_ID)) return;
@@ -14,17 +14,20 @@ const ensureStyles = () => {
       box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
     }
 
-    #${NEW_CHAT_CONTROLS_ID} {
+    #guides-chat-controls {
       width: 100%;
       max-width: 800px;
       display: flex;
       justify-content: flex-end;
       align-items: center;
+      gap: 0.5rem;
       box-sizing: border-box;
       margin-bottom: 0.25rem;
+      position: relative;
+      z-index: 40;
     }
 
-    #${NEW_CHAT_BUTTON_ID} {
+    #guides-chat-controls > button {
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
@@ -40,108 +43,189 @@ const ensureStyles = () => {
       transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
     }
 
-    #${NEW_CHAT_BUTTON_ID}:hover:not(:disabled) {
+    #guides-chat-controls > button:hover:not(:disabled) {
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.24);
       color: white;
     }
 
-    #${NEW_CHAT_BUTTON_ID}:focus-visible {
+    #guides-chat-controls > button:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 2px;
     }
 
-    #${NEW_CHAT_BUTTON_ID}:disabled {
+    #guides-chat-controls > button:disabled {
       cursor: not-allowed;
       opacity: 0.45;
+    }
+
+    #guides-chat-history-panel {
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      right: 0;
+      width: min(360px, calc(100vw - 3rem));
+      max-height: min(520px, 65vh);
+      overflow-y: auto;
+      padding: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      background: rgba(17, 24, 39, 0.98);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(18px);
+      box-sizing: border-box;
+    }
+
+    #guides-chat-history-panel[hidden] {
+      display: none;
+    }
+
+    .guide-chat-history-heading {
+      padding: 0.35rem 0.45rem 0.7rem;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .guide-chat-history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .guide-chat-history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.4rem;
+      align-items: center;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .guide-chat-history-item:hover,
+    .guide-chat-history-item.active {
+      background: rgba(255, 255, 255, 0.065);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .guide-chat-history-open {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.18rem;
+      padding: 0.65rem 0.7rem;
+      background: transparent;
+      border: none;
+      color: white;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .guide-chat-history-title {
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .guide-chat-history-date {
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    .guide-chat-history-actions {
+      display: flex;
+      gap: 0.2rem;
+      padding-right: 0.4rem;
+    }
+
+    .guide-chat-history-actions button {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .guide-chat-history-actions button:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+
+    .guide-chat-delete:hover {
+      color: #f87171 !important;
+    }
+
+    .guide-chat-history-empty {
+      padding: 1.25rem 0.75rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.82rem;
     }
   `;
 
   document.head.appendChild(style);
 };
 
-export const resetGuidesChat = () => {
-  const chatHistory = document.getElementById('chat-history');
-  const greeting = document.getElementById('chat-greeting');
-  const suggestions = document.getElementById('chat-suggestions');
-  const chatInput = document.getElementById('chat-input');
-  const sendButton = document.getElementById('send-chat-btn');
-
-  if (!chatHistory || !greeting || document.getElementById('chat-loading')) return false;
-
-  Array.from(chatHistory.children).forEach(child => {
-    if (child !== greeting) child.remove();
-  });
-
-  greeting.style.display = 'flex';
-  if (suggestions) suggestions.style.display = 'flex';
-
-  if (chatInput) {
-    chatInput.value = '';
-    chatInput.disabled = false;
-  }
-
-  if (sendButton) sendButton.disabled = false;
-
-  chatHistory.scrollTop = 0;
-  requestAnimationFrame(() => chatInput?.focus());
-  return true;
-};
-
-const syncNewChatButton = root => {
-  const chatView = root.querySelector?.('#guides-chat-view');
-  const chatHistory = root.querySelector?.('#chat-history');
-  if (!chatView || !chatHistory) return;
-
-  let controls = root.querySelector?.(`#${NEW_CHAT_CONTROLS_ID}`);
-  if (!controls) {
-    controls = document.createElement('div');
-    controls.id = NEW_CHAT_CONTROLS_ID;
-
-    const button = document.createElement('button');
-    button.id = NEW_CHAT_BUTTON_ID;
-    button.type = 'button';
-    button.setAttribute('aria-label', 'Start a new chat');
-    button.innerHTML = `
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 5v14"></path>
-        <path d="M5 12h14"></path>
-      </svg>
-      <span>New chat</span>
-    `;
-    button.addEventListener('click', resetGuidesChat);
-
-    controls.appendChild(button);
-    chatView.insertBefore(controls, chatHistory);
-  }
-
-  const button = controls.querySelector(`#${NEW_CHAT_BUTTON_ID}`);
-  if (button) {
-    const isAnswering = Boolean(root.querySelector?.('#chat-loading'));
-    button.disabled = isAnswering;
-    button.title = isAnswering
-      ? 'Wait for the current answer to finish'
-      : 'Clear this conversation and start again';
-  }
-};
-
-const syncEnhancements = root => {
-  ensureStyles();
-  syncNewChatButton(root);
-};
-
 export const initUiEnhancements = root => {
   if (!root) return () => {};
 
-  syncEnhancements(root);
+  ensureStyles();
 
   let queued = false;
+  let scheduledChatView = null;
+  let activeChatView = null;
+  let activeChatCleanup = null;
+  let destroyed = false;
+
+  const cleanupActiveChat = () => {
+    activeChatCleanup?.();
+    activeChatCleanup = null;
+    activeChatView = null;
+  };
+
+  const scheduleChatInitialisation = chatView => {
+    if (!chatView || chatView === activeChatView || chatView === scheduledChatView) return;
+    scheduledChatView = chatView;
+
+    // Run after the Guides screen has attached its original listeners. The persistent
+    // chat module can then replace only the send controls and leave the rest untouched.
+    requestAnimationFrame(async () => {
+      if (destroyed) return;
+      const target = scheduledChatView;
+      scheduledChatView = null;
+      if (!target?.isConnected) return;
+
+      if (activeChatView && activeChatView !== target) cleanupActiveChat();
+      activeChatView = target;
+      activeChatCleanup = await initGuideChatHistory(target);
+    });
+  };
+
+  const syncEnhancements = () => {
+    ensureStyles();
+
+    if (activeChatView && !activeChatView.isConnected) cleanupActiveChat();
+    scheduleChatInitialisation(root.querySelector?.('#guides-chat-view'));
+  };
+
+  syncEnhancements();
+
   const observer = new MutationObserver(() => {
     if (queued) return;
     queued = true;
     requestAnimationFrame(() => {
       queued = false;
-      syncEnhancements(root);
+      if (!destroyed) syncEnhancements();
     });
   });
 
@@ -150,5 +234,9 @@ export const initUiEnhancements = root => {
     subtree: true
   });
 
-  return () => observer.disconnect();
+  return () => {
+    destroyed = true;
+    observer.disconnect();
+    cleanupActiveChat();
+  };
 };
