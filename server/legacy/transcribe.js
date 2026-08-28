@@ -365,11 +365,20 @@ export default async function handler(req, res) {
     // 4. Validate server configuration
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-    const openaiApiKey = process.env.OPENAI_API_KEY;
+    const openrouterApiKey = process.env.OPENROUTER_API_KEY;
 
-    if (!supabaseUrl || !supabaseAnonKey || !openaiApiKey) {
+    if (!supabaseUrl || !supabaseAnonKey || !openrouterApiKey) {
       throw new TranscribeError('SERVER_CONFIGURATION_ERROR', 'Server configuration error: Missing required credentials', 500, 'server_config_check');
     }
+
+    const openrouter = new OpenAI({
+      apiKey: openrouterApiKey,
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': req.headers?.['http-referer'] || req.headers?.origin || 'http://localhost:5173',
+        'X-Title': 'FSW Training Platform'
+      }
+    });
 
     // 5. Extract bearer token
     const authHeader = req.headers.authorization || '';
@@ -427,7 +436,7 @@ export default async function handler(req, res) {
         }
 
         const expiresAt = Date.now() + BATCH_TOKEN_TTL_MS;
-        const batchToken = createBatchToken(openaiApiKey, {
+        const batchToken = createBatchToken(openrouterApiKey, {
           version: 1,
           userId: user.id,
           guideId,
@@ -529,11 +538,10 @@ export default async function handler(req, res) {
         throw new TranscribeError('UNSUPPORTED_MEDIA', 'The recording format is not supported.', 400, 'source_mime_check');
       }
 
-      const openai = new OpenAI({ apiKey: openaiApiKey });
       const sourceFile = await toFile(sourceBuffer, `walkthrough_${correlationId}.${extension}`, { type: sourceMime });
-      const transcription = await openai.audio.transcriptions.create({
+      const transcription = await openrouter.audio.transcriptions.create({
         file: sourceFile,
-        model: 'whisper-1',
+        model: 'openai/whisper-1',
         response_format: 'verbose_json',
         timestamp_granularities: ['word']
       }, {
@@ -620,7 +628,7 @@ export default async function handler(req, res) {
         throw new TranscribeError('INVALID_BATCH', 'Invalid transcription chunk details.', 400, 'batch_chunk_validation');
       }
 
-      const batchPayload = verifyBatchToken(openaiApiKey, batchToken);
+      const batchPayload = verifyBatchToken(openrouterApiKey, batchToken);
       if (
         batchPayload.version !== 1
         || batchPayload.userId !== user.id
@@ -646,13 +654,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // 14. Call OpenAI Whisper-1 API
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    // 14. Call Whisper through OpenRouter
     const file = await toFile(fileData.buffer, safeFilename, { type: fileData.mimeType });
 
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await openrouter.audio.transcriptions.create({
       file,
-      model: 'whisper-1',
+      model: 'openai/whisper-1',
       response_format: 'verbose_json',
       timestamp_granularities: ['word']
     }, {
@@ -694,7 +701,7 @@ export default async function handler(req, res) {
       stage = 'provider_network';
     }
 
-    // Safe logging: no access token, openAI keys, supabase keys, multipart body, audio content, raw provider bodies, or signed URLs.
+    // Safe logging: no access token, provider keys, Supabase keys, multipart body, audio content, raw provider bodies, or signed URLs.
     console.error(
       `[TranscribeError] RequestID: ${correlationId} | Code: ${code} | Status: ${status} | Stage: ${stage}`
     );
