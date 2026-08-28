@@ -1,5 +1,12 @@
 const WORKSPACE_STYLE_ID = 'guides-workspace-enhancement-styles';
 
+const escapeHtml = value => String(value || '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
 const ensureWorkspaceStyles = () => {
   if (document.getElementById(WORKSPACE_STYLE_ID)) return;
 
@@ -356,7 +363,7 @@ const renderSidebarHistory = (list, historyPanel) => {
   const items = Array.from(historyPanel.querySelectorAll('.guide-chat-history-item'));
   if (items.length === 0) {
     const emptyText = historyPanel.textContent.trim() || 'No saved chats yet.';
-    list.innerHTML = `<div class="guides-workspace-chat-empty">${emptyText}</div>`;
+    list.innerHTML = `<div class="guides-workspace-chat-empty">${escapeHtml(emptyText)}</div>`;
     return;
   }
 
@@ -366,14 +373,14 @@ const renderSidebarHistory = (list, historyPanel) => {
     const date = item.querySelector('.guide-chat-history-date')?.textContent?.trim() || '';
     const active = item.classList.contains('active') ? ' active' : '';
     return `
-      <div class="guides-workspace-chat-item${active}" data-id="${id}">
-        <button type="button" class="guides-workspace-chat-open" data-id="${id}" title="${title.replace(/"/g, '&quot;')}">
-          <span class="guides-workspace-chat-title">${title}</span>
-          ${date ? `<span class="guides-workspace-chat-date">${date}</span>` : ''}
+      <div class="guides-workspace-chat-item${active}" data-id="${escapeHtml(id)}">
+        <button type="button" class="guides-workspace-chat-open" data-id="${escapeHtml(id)}" title="${escapeHtml(title)}">
+          <span class="guides-workspace-chat-title">${escapeHtml(title)}</span>
+          ${date ? `<span class="guides-workspace-chat-date">${escapeHtml(date)}</span>` : ''}
         </button>
         <div class="guides-workspace-chat-actions">
-          <button type="button" class="guides-workspace-chat-rename" data-id="${id}" aria-label="Rename chat" title="Rename">✎</button>
-          <button type="button" class="guides-workspace-chat-delete" data-id="${id}" aria-label="Delete chat" title="Delete">×</button>
+          <button type="button" class="guides-workspace-chat-rename" data-id="${escapeHtml(id)}" aria-label="Rename chat" title="Rename">✎</button>
+          <button type="button" class="guides-workspace-chat-delete" data-id="${escapeHtml(id)}" aria-label="Delete chat" title="Delete">×</button>
         </div>
       </div>`;
   }).join('');
@@ -559,52 +566,50 @@ export const initGuidesWorkspaceEnhancement = root => {
   });
   libraryButton?.addEventListener('click', showLibrary);
 
+  const historyPanel = root.querySelector('#guides-chat-history-panel');
   const syncHistory = () => {
-    if (destroyed) return;
-    const historyPanel = root.querySelector('#guides-chat-history-panel');
-    renderSidebarHistory(chatList, historyPanel);
+    if (!destroyed) renderSidebarHistory(chatList, historyPanel);
   };
+  const historyObserver = historyPanel ? new MutationObserver(syncHistory) : null;
+  if (historyPanel) historyObserver.observe(historyPanel, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
   const handleSidebarClick = event => {
     const openButton = event.target.closest('.guides-workspace-chat-open');
     if (openButton) {
       showChat();
-      const source = root.querySelector(`.guide-chat-history-open[data-id="${openButton.dataset.id}"]`);
-      source?.click();
+      root.querySelector(`.guide-chat-history-open[data-id="${CSS.escape(openButton.dataset.id)}"]`)?.click();
       return;
     }
 
     const renameButton = event.target.closest('.guides-workspace-chat-rename');
     if (renameButton) {
-      root.querySelector(`.guide-chat-rename[data-id="${renameButton.dataset.id}"]`)?.click();
+      root.querySelector(`.guide-chat-rename[data-id="${CSS.escape(renameButton.dataset.id)}"]`)?.click();
       return;
     }
 
     const deleteButton = event.target.closest('.guides-workspace-chat-delete');
     if (deleteButton) {
-      root.querySelector(`.guide-chat-delete[data-id="${deleteButton.dataset.id}"]`)?.click();
+      root.querySelector(`.guide-chat-delete[data-id="${CSS.escape(deleteButton.dataset.id)}"]`)?.click();
     }
   };
   chatList?.addEventListener('click', handleSidebarClick);
 
-  const observer = new MutationObserver(() => {
-    if (destroyed) return;
-    syncHistory();
-    if (isManager && managerView?.style.display !== 'none') {
-      prepareManagerLibrary(root, managerView, legacySidebar);
-      hideCourseCards(managerView);
+  let managerObserver = null;
+  if (isManager && managerView) {
+    prepareManagerLibrary(root, managerView, legacySidebar);
+    const curationList = managerView.querySelector('#curation-items-list');
+    if (curationList) {
+      managerObserver = new MutationObserver(() => hideCourseCards(managerView));
+      managerObserver.observe(curationList, { childList: true, subtree: true });
     }
-  });
-  observer.observe(container, { childList: true, subtree: true });
+  }
 
-  requestAnimationFrame(() => {
-    syncHistory();
-    if (isManager) prepareManagerLibrary(root, managerView, legacySidebar);
-  });
+  requestAnimationFrame(syncHistory);
 
   return () => {
     destroyed = true;
-    observer.disconnect();
+    historyObserver?.disconnect();
+    managerObserver?.disconnect();
     chatList?.removeEventListener('click', handleSidebarClick);
   };
 };
