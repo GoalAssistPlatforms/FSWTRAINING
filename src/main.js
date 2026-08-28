@@ -1,4 +1,5 @@
 import './styles/style.css'
+import './uiEnhancements.js'
 
 import { getCurrentUser, signOut } from './api/auth'
 import { renderLogin } from './views/Login'
@@ -39,10 +40,6 @@ const initApp = async () => {
     }
 
     if (window.location.pathname === '/reset-password') {
-      // We need to handle the case where the user lands here via email link
-      // Supabase handles the session exchange, so we just show the reset form
-      // But we should verify we have a user effectively (triggered by the link)
-      // If not, it might just redirect to login, but let's try rendering the form
       const { renderResetPassword } = await import('./views/Login')
       renderResetPassword()
       return
@@ -70,12 +67,10 @@ const initApp = async () => {
 export const renderMainLayout = async (user) => {
   const app = document.querySelector('#app')
 
-  // Run the deadline checker on startup for the user
   await checkAndGenerateDeadlineNotifications();
 
   const bellHtml = await renderNotificationBell();
 
-  // Determine effective role based on admin toggle
   let effectiveRole = user.role;
   let adminToggleHtml = '';
 
@@ -144,7 +139,6 @@ export const renderMainLayout = async (user) => {
     ${renderFeedbackModal()}
     ${renderCourseGenerationTray()}
     
-    <!-- Floating Feedback Button -->
     <button id="floating-feedback-btn" style="position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; align-items: center; gap: 0.5rem; background: rgba(18, 142, 205, 0.9); backdrop-filter: blur(10px); color: white; padding: 0.75rem 1.25rem; border-radius: 50px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 0.9rem;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 15px 35px rgba(18,142,205,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.3)';">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Feedback
     </button>
@@ -163,7 +157,6 @@ export const renderMainLayout = async (user) => {
     })
   }
 
-  // Floating Feedback button trigger
   const feedbackBtn = document.getElementById('floating-feedback-btn');
   if (feedbackBtn) {
       feedbackBtn.addEventListener('click', () => {
@@ -171,18 +164,16 @@ export const renderMainLayout = async (user) => {
       });
   }
 
-  // Setup Admin Toggle Listener
   if (user.role === 'admin') {
       const toggle = document.getElementById('admin-view-toggle');
       if (toggle) {
           toggle.addEventListener('change', (e) => {
               sessionStorage.setItem('adminViewMode', e.target.value);
-              renderMainLayout(user); // Re-render the layout
+              renderMainLayout(user);
           });
       }
   }
 
-  // Initialize event listeners for dashboards
   const effectiveUser = { ...user, role: effectiveRole };
   window.__managerCourseGenerationCleanup?.();
   window.__managerCourseGenerationCleanup = null;
@@ -202,7 +193,6 @@ export const renderMainLayout = async (user) => {
   window.__courseGenerationTrayCleanup?.();
   window.__courseGenerationTrayCleanup = await initCourseGenerationTray(effectiveUser);
 
-  // Listen for refresh requests
   window.addEventListener('fsw-reload-notifications', async () => {
       const ph = document.getElementById('notification-bell-placeholder');
       if (ph) {
