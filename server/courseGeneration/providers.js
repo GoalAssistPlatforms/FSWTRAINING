@@ -1,4 +1,8 @@
-const OPENAI_IMAGE_MODELS = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1'];
+const OPENROUTER_IMAGE_MODELS = [
+    'openai/gpt-image-2',
+    'openai/gpt-image-1',
+    'openai/gpt-image-1-mini'
+];
 const GAMMA_BASE_URL = 'https://public-api.gamma.app/v1.0';
 
 function requiredEnvironmentValue(name, fallbackName = null) {
@@ -31,35 +35,37 @@ async function requestJson(url, options, providerName) {
     return data;
 }
 
+function openRouterHeaders(apiKey) {
+    return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.VERCEL_PROJECT_PRODUCTION_URL
+            ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+            : 'https://fswtraining.vercel.app',
+        'X-Title': 'FSW Training Platform'
+    };
+}
+
 export async function createOpenRouterCompletion(payload) {
     const apiKey = requiredEnvironmentValue('OPENROUTER_API_KEY');
     return requestJson('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-            'HTTP-Referer': process.env.VERCEL_PROJECT_PRODUCTION_URL
-                ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-                : 'https://fswtraining.vercel.app',
-            'X-Title': 'FSW Training Platform'
-        },
+        headers: openRouterHeaders(apiKey),
         body: JSON.stringify(payload)
     }, 'OpenRouter');
 }
 
 export async function createEmbeddings(inputs) {
-    const apiKey = requiredEnvironmentValue('OPENAI_API_KEY');
-    const data = await requestJson('https://api.openai.com/v1/embeddings', {
+    const apiKey = requiredEnvironmentValue('OPENROUTER_API_KEY');
+    const data = await requestJson('https://openrouter.ai/api/v1/embeddings', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
-        },
+        headers: openRouterHeaders(apiKey),
         body: JSON.stringify({
-            model: 'text-embedding-3-small',
-            input: inputs
+            model: 'openai/text-embedding-3-small',
+            input: inputs,
+            dimensions: 1536
         })
-    }, 'OpenAI embeddings');
+    }, 'OpenRouter embeddings');
 
     return (data.data || [])
         .sort((left, right) => left.index - right.index)
@@ -69,43 +75,42 @@ export async function createEmbeddings(inputs) {
 function isImageModelAccessError(error) {
     return error?.status === 403
         || error?.status === 404
-        || /model_not_found|invalid_model|not have access|does not have access/i.test(error?.message || '');
+        || /model_not_found|invalid_model|not have access|does not have access|no endpoints found/i.test(error?.message || '');
 }
 
-async function generateOpenAIImage(prompt) {
-    const apiKey = requiredEnvironmentValue('OPENAI_API_KEY');
+async function generateOpenRouterImage(prompt) {
+    const apiKey = requiredEnvironmentValue('OPENROUTER_API_KEY');
 
-    for (const [index, model] of OPENAI_IMAGE_MODELS.entries()) {
+    for (const [index, model] of OPENROUTER_IMAGE_MODELS.entries()) {
         try {
-            const data = await requestJson('https://api.openai.com/v1/images/generations', {
+            const data = await requestJson('https://openrouter.ai/api/v1/images', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${apiKey}`
-                },
+                headers: openRouterHeaders(apiKey),
                 body: JSON.stringify({
                     model,
                     prompt,
-                    size: '1536x1024',
+                    aspect_ratio: '3:2',
                     quality: 'high',
                     output_format: 'webp',
-                    output_compression: 90,
                     n: 1
                 }),
                 signal: AbortSignal.timeout(180000)
-            }, 'OpenAI image');
+            }, 'OpenRouter image');
 
             const image = data.data?.[0];
-            if (image?.b64_json) return `data:image/webp;base64,${image.b64_json}`;
+            if (image?.b64_json) {
+                const mediaType = image.media_type || 'image/png';
+                return `data:${mediaType};base64,${image.b64_json}`;
+            }
             if (image?.url) return image.url;
-            throw new Error('OpenAI image response did not contain image data.');
+            throw new Error('OpenRouter image response did not contain image data.');
         } catch (error) {
-            const hasFallback = index < OPENAI_IMAGE_MODELS.length - 1;
+            const hasFallback = index < OPENROUTER_IMAGE_MODELS.length - 1;
             if (!hasFallback || !isImageModelAccessError(error)) throw error;
         }
     }
 
-    throw new Error('No OpenAI image model was available.');
+    throw new Error('No OpenRouter image model was available.');
 }
 
 async function uploadThumbnailToCloudinary(imageUrl, topic) {
@@ -148,7 +153,7 @@ export async function generateThumbnailAsset(topic) {
     }
 
     const prompt = `A beautifully clean, modern, flat two dimensional vector graphic illustration of ${visualSubject}. Premium corporate minimalist design using the FSW navy blue, bright blue, green, and white palette. Solid colours, crisp clean lines, no shading, no photorealism, no three dimensional rendering, no people, and no text.`;
-    const temporaryImage = await generateOpenAIImage(prompt);
+    const temporaryImage = await generateOpenRouterImage(prompt);
     return uploadThumbnailToCloudinary(temporaryImage, topic);
 }
 
