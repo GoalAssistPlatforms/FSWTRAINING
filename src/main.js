@@ -1,5 +1,4 @@
 import './styles/style.css'
-import './uiEnhancements.js'
 
 import { getCurrentUser, signOut } from './api/auth'
 import { renderLogin } from './views/Login'
