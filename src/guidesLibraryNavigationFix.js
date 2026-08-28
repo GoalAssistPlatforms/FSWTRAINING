@@ -32,7 +32,7 @@ const ensureStyles = () => {
       height: 100% !important;
       max-height: 100% !important;
       min-height: 0 !important;
-      display: flex !important;
+      display: flex;
       flex-direction: column !important;
       overflow: hidden !important;
       box-sizing: border-box;
