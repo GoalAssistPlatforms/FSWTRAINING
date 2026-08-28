@@ -20,7 +20,7 @@ const openrouter = {
 /**
  * Uploads an image URL to Cloudinary and returns the secure URL.
  * Throws an error if upload fails.
- * @param {string} imageUrl - Temporary URL from OpenAI
+ * @param {string} imageUrl - Generated image data URI or temporary URL
  * @param {string} topic - Topic for filename generation (optional, for tagging/naming if needed)
  */
 export async function uploadToCloudinary(imageUrl, topic) {
@@ -40,15 +40,12 @@ export async function uploadToCloudinary(imageUrl, topic) {
 
     console.log(`Starting Cloudinary upload with preset: "${uploadPreset}"`);
 
-    // 1. Prepare FormData for Cloudinary (Cloudinary accepts Data URIs directly)
     const formData = new FormData();
-    formData.append('file', imageUrl); // Pass the base64 data URI directly
+    formData.append('file', imageUrl);
     formData.append('upload_preset', uploadPreset);
-    // Add context/tags if useful for management
     formData.append('context', `caption=${topic}`);
     formData.append('tags', `course_thumbnail,${topic.replace(/\s+/g, '_')}`);
 
-    // 3. Upload to Cloudinary
     const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
         body: formData
@@ -72,7 +69,7 @@ export async function uploadToCloudinary(imageUrl, topic) {
 }
 
 /**
- * Generates a visual description for a given topic using GPT-4o-mini.
+ * Generates a visual description for a given topic using GPT-4o-mini through OpenRouter.
  * Converts abstract concepts into concrete physical objects.
  * @param {string} topic
  * @returns {Promise<string>}
@@ -110,12 +107,12 @@ async function getVisualDescription(topic) {
 }
 
 /**
- * Generates an image through the server-side OpenAI proxy.
- * GPT Image responses contain base64 image data, which Cloudinary accepts as a data URI.
+ * Generates an image through the server-side OpenRouter proxy.
+ * OpenRouter image responses contain base64 image data, which Cloudinary accepts as a data URI.
  * @param {string} prompt
  * @returns {Promise<string>}
  */
-async function generateOpenAIImage(prompt) {
+async function generateOpenRouterImage(prompt) {
     const response = await fetch('/api/dalle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,14 +129,15 @@ async function generateOpenAIImage(prompt) {
     const generatedImage = data.data?.[0];
 
     if (generatedImage?.b64_json) {
-        return `data:image/webp;base64,${generatedImage.b64_json}`;
+        const mediaType = generatedImage.media_type || 'image/png';
+        return `data:${mediaType};base64,${generatedImage.b64_json}`;
     }
 
     if (generatedImage?.url) {
         return generatedImage.url;
     }
 
-    throw new Error('OpenAI image response did not contain image data.');
+    throw new Error('OpenRouter image response did not contain image data.');
 }
 
 /**
@@ -157,26 +155,21 @@ export const generateThumbnail = async (topic) => {
         try {
             console.log(`[Thumbnail] Generation Attempt ${genAttempt}/${MAX_GENERATION_ATTEMPTS} for topic: ${topic}`);
 
-            // 1. Get a concrete visual description
             const visualSubject = await getVisualDescription(topic);
             console.log(`[Thumbnail] Visual Subject generated: "${visualSubject}"`);
 
-            // Aesthetic enforcement (Clean, modern flat 2D graphics)
             const stylePrefix = "A beautifully clean, modern, flat 2D vector graphic illustration of";
             const styleSuffix = ". The aesthetic is premium corporate minimalist, similar to Stripe or Duolingo marketing assets. Use the FSW brand color palette (Navy Blue, Bright Blue, Green, and White). Solid colors, crisp clean lines, no shading, strictly flat 2D graphic design style. CRITICAL: Do not make it photorealistic or 3D. It must look like a high-end vector illustration. No text.";
             const fullPrompt = `${stylePrefix} ${visualSubject}${styleSuffix}`;
 
-            // 2. Generate a landscape image with the strongest available OpenAI image model.
-            const tempImageUrl = await generateOpenAIImage(fullPrompt);
-            console.log('[Thumbnail] OpenAI image generated successfully.');
+            const tempImageUrl = await generateOpenRouterImage(fullPrompt);
+            console.log('[Thumbnail] OpenRouter image generated successfully.');
 
-            // 3. Retry Loop for Uploading THIS specific image
             for (let uploadAttempt = 1; uploadAttempt <= MAX_UPLOAD_ATTEMPTS; uploadAttempt++) {
                 try {
                     console.log(`[Thumbnail] Upload Attempt ${uploadAttempt}/${MAX_UPLOAD_ATTEMPTS}...`);
                     const persistentUrl = await uploadToCloudinary(tempImageUrl, topic);
 
-                    // IF SUCCESSFUL, WE ARE DONE
                     console.log('[Thumbnail] Success! Persistent URL:', persistentUrl);
                     return persistentUrl;
 
@@ -184,10 +177,8 @@ export const generateThumbnail = async (topic) => {
                     console.error(`[Thumbnail] Upload Attempt ${uploadAttempt} failed:`, uploadError);
                     if (uploadAttempt === MAX_UPLOAD_ATTEMPTS) {
                         console.warn(`[Thumbnail] All upload attempts failed for this image. Discarding image.`);
-                        // Throwing here breaks the inner loop, caught by outer loop, triggering a NEW image generation.
                         throw new Error("Max upload attempts reached for this image.");
                     }
-                    // Wait briefly before retrying upload (1s)
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
@@ -196,10 +187,10 @@ export const generateThumbnail = async (topic) => {
             console.error(`[Thumbnail] Generation Cycle ${genAttempt} failed:`, genError);
             if (genAttempt === MAX_GENERATION_ATTEMPTS) {
                 console.error("[Thumbnail] CRITICAL: All generation and upload attempts failed.");
-                return null; // or throw genError if you want to bubble it up
+                return null;
             }
         }
     }
 
-    return null; // Should be unreachable if logic holds, but safe fallback
+    return null;
 }
