@@ -47,7 +47,8 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           ...req.body,
-          model: provider.model
+          model: provider.model,
+          dimensions: req.body?.dimensions || 1536
         })
       });
 
