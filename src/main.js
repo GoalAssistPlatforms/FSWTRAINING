@@ -1,5 +1,6 @@
 import './styles/style.css'
 
+import { initUiEnhancements } from './uiEnhancements'
 import { getCurrentUser, signOut } from './api/auth'
 import { renderLogin } from './views/Login'
 import { renderManagerDashboard, initManagerEvents } from './views/ManagerDashboard'
@@ -142,6 +143,9 @@ export const renderMainLayout = async (user) => {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Feedback
     </button>
   `
+
+  window.__fswUiEnhancementsCleanup?.();
+  window.__fswUiEnhancementsCleanup = initUiEnhancements(app.querySelector('main'));
 
   document.querySelector('#logout-btn').addEventListener('click', async () => {
     await signOut()
