@@ -3,6 +3,7 @@ import { initPhoneCallVoiceEnhancement } from './phoneCallVoiceEnhancement.js';
 import { initGuidesWorkspaceEnhancement } from './guidesWorkspaceEnhancement.js';
 import { initGuidesLibraryPolish } from './guidesLibraryPolish.js';
 import { initGuidesChatOrganisation } from './guidesChatOrganisation.js';
+import { initGuidesChatMenus } from './guidesChatMenus.js';
 
 const LEARNING_PACK_GREEN = '#10b981';
 const STYLE_ID = 'fsw-ui-enhancement-styles';
@@ -191,12 +192,15 @@ export const initUiEnhancements = root => {
   let activeChatCleanup = null;
   let activeWorkspaceCleanup = null;
   let activeOrganisationCleanup = null;
+  let activeMenusCleanup = null;
   let destroyed = false;
 
   const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
   const cleanupGuidesLibraryPolish = initGuidesLibraryPolish(root);
 
   const cleanupActiveWorkspace = () => {
+    activeMenusCleanup?.();
+    activeMenusCleanup = null;
     activeOrganisationCleanup?.();
     activeOrganisationCleanup = null;
     activeWorkspaceCleanup?.();
@@ -226,6 +230,7 @@ export const initUiEnhancements = root => {
       cleanupActiveWorkspace();
       activeWorkspaceCleanup = initGuidesWorkspaceEnhancement(root);
       activeOrganisationCleanup = initGuidesChatOrganisation(root);
+      activeMenusCleanup = initGuidesChatMenus(root);
     });
   };
 
