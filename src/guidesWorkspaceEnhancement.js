@@ -276,6 +276,141 @@ const ensureWorkspaceStyles = () => {
       min-height: 72px;
     }
 
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] {
+      padding: 0 1rem 1.2rem;
+    }
+
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] .guides-library-section-title {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] #guides-list {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      align-items: start;
+      gap: 1.25rem 1rem !important;
+    }
+
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] .guide-card {
+      position: relative;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 0.7rem;
+      min-width: 0;
+      min-height: 0 !important;
+      padding: 0.65rem !important;
+      border: 1px solid transparent !important;
+      border-radius: 12px !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] .guide-card:hover,
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] .guide-card:focus-visible {
+      background: rgba(255,255,255,0.045) !important;
+      border-color: rgba(255,255,255,0.08) !important;
+      outline: none;
+    }
+
+    .guide-document-thumbnail {
+      position: relative;
+      width: 100%;
+      height: 186px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid rgba(148,163,184,0.28);
+      border-radius: 8px;
+      background: #eef2f7;
+      box-shadow: 0 9px 22px rgba(0,0,0,0.2);
+    }
+
+    .guide-document-thumbnail-canvas {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      opacity: 0;
+      background: white;
+      transition: opacity 0.18s ease;
+    }
+
+    .guide-document-thumbnail-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+      transition: opacity 0.18s ease;
+    }
+
+    .guide-document-thumbnail[data-thumbnail-state="loading"] .guide-document-thumbnail-placeholder {
+      animation: guide-document-thumbnail-pulse 1.2s ease-in-out infinite alternate;
+    }
+
+    .guide-document-thumbnail[data-thumbnail-state="ready"] .guide-document-thumbnail-canvas {
+      opacity: 1;
+    }
+
+    .guide-document-thumbnail[data-thumbnail-state="ready"] .guide-document-thumbnail-placeholder {
+      opacity: 0;
+    }
+
+    .guide-document-thumbnail-badge {
+      position: absolute;
+      z-index: 2;
+      right: 0.45rem;
+      bottom: 0.45rem;
+      padding: 0.18rem 0.38rem;
+      border-radius: 5px;
+      background: rgba(185,28,28,0.92);
+      color: white;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      box-shadow: 0 2px 7px rgba(0,0,0,0.22);
+    }
+
+    .guide-document-card-details {
+      width: 100%;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .guide-document-card-details h4 {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .guide-document-card-details > div:last-child:not(:first-child) {
+      justify-content: center;
+    }
+
+    .guides-user-library-view .guides-library-section[data-library-type="documents"] .guide-card > div:last-child:not(.guide-document-card-details) {
+      position: absolute;
+      z-index: 3;
+      top: 1rem;
+      right: 1rem;
+    }
+
+    @keyframes guide-document-thumbnail-pulse {
+      from { opacity: 0.72; }
+      to { opacity: 1; }
+    }
+
     .guides-library-manager-actions {
       display: flex;
       align-items: center;
@@ -314,6 +449,14 @@ const ensureWorkspaceStyles = () => {
       .guides-workspace-sidebar {
         padding-left: 0.55rem;
         padding-right: 0.55rem;
+      }
+
+      .guides-user-library-view .guides-library-section[data-library-type="documents"] #guides-list {
+        grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      }
+
+      .guide-document-thumbnail {
+        height: 160px;
       }
     }
   `;

@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe('Guides workspace enhancement', () => {
-  it('moves browsing into Library and keeps chat history in the left sidebar', () => {
+  it('moves browsing into Library and keeps chat history in the left sidebar', async () => {
     document.body.innerHTML = `
       <div id="root">
         <div class="guides-container">
@@ -40,6 +40,7 @@ describe('Guides workspace enhancement', () => {
       </div>`;
 
     const cleanup = initGuidesWorkspaceEnhancement(document.getElementById('root'));
+    await new Promise(resolve => requestAnimationFrame(resolve));
 
     expect(document.querySelector('.guides-workspace-sidebar')).not.toBeNull();
     expect(document.querySelector('.guides-workspace-chat-title')?.textContent).toBe('Holiday policy');

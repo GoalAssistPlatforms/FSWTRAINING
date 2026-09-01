@@ -2,6 +2,7 @@ import { marked } from 'marked';
 import { processAndUploadGuide, processAndUploadWebLink, chatWithGuides, fetchAllGuides, deleteGuide, fetchSystemTags } from '../api/guides.js';
 import { getCourses, deleteCourse } from '../api/courses.js';
 import { fswAlert, fswConfirm } from '../utils/dialog';
+import { initDocumentThumbnails } from '../guideDocumentThumbnails.js';
 
 export const renderGuides = (user, stats) => {
     let statsHtml = '';
@@ -265,9 +266,13 @@ export const initGuidesEvents = async (user) => {
     const sendChatBtn = document.getElementById('send-chat-btn')
     const chatHistory = document.getElementById('chat-history')
     const guidesList = document.getElementById('guides-list')
+    let cleanupDocumentThumbnails = () => {}
 
     // Fetch and display guides
     const loadGuides = async () => {
+        cleanupDocumentThumbnails()
+        cleanupDocumentThumbnails = () => {}
+
         try {
             const guides = await fetchAllGuides()
             const linksList = document.getElementById('links-list')
@@ -279,8 +284,21 @@ export const initGuidesEvents = async (user) => {
                 guidesList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">No documents available yet.</div>`
             } else {
                 guidesList.innerHTML = pdfs.map(g => `
-                    <div class="guide-card clickable-doc-card card-hover" data-url="${g.file_url || ''}" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;">
-                       <div>
+                    <div class="guide-card clickable-doc-card card-hover" data-url="${g.file_url || ''}" role="button" tabindex="0" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; display: flex; align-items: flex-start; justify-content: space-between; cursor: pointer;">
+                       <div class="guide-document-thumbnail" data-pdf-thumbnail-url="${g.file_url || ''}" aria-hidden="true">
+                            <canvas class="guide-document-thumbnail-canvas"></canvas>
+                            <div class="guide-document-thumbnail-placeholder">
+                                <svg width="54" height="62" viewBox="0 0 54 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 1H34L53 20V55C53 58.3137 50.3137 61 47 61H9C5.68629 61 3 58.3137 3 55V7C3 3.68629 5.68629 1 9 1Z" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+                                    <path d="M34 1V15C34 17.7614 36.2386 20 39 20H53" fill="#E2E8F0"/>
+                                    <path d="M34 1V15C34 17.7614 36.2386 20 39 20H53" stroke="#CBD5E1" stroke-width="2"/>
+                                    <rect x="11" y="31" width="34" height="16" rx="4" fill="#DC2626"/>
+                                    <text x="28" y="42.5" fill="white" font-size="9" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">PDF</text>
+                                </svg>
+                            </div>
+                            <span class="guide-document-thumbnail-badge">PDF</span>
+                       </div>
+                       <div class="guide-document-card-details">
                             <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem; color: white;">${g.title}</h4>
                             <div style="font-size: 0.75rem; color: var(--text-muted);">Added ${new Date(g.created_at).toLocaleDateString()}</div>
                             ${g.tags && g.tags.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -292,6 +310,8 @@ export const initGuidesEvents = async (user) => {
                        </div>
                     </div>
                 `).join('')
+
+                cleanupDocumentThumbnails = initDocumentThumbnails(guidesList);
             }
 
             if (!links || links.length === 0) {
@@ -321,6 +341,11 @@ export const initGuidesEvents = async (user) => {
                         document.getElementById('pdf-iframe').src = url;
                         document.getElementById('pdf-modal').style.display = 'flex';
                     }
+                });
+                card.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    e.currentTarget.click();
                 });
             });
 
