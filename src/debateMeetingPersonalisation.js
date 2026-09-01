@@ -56,15 +56,17 @@ function setCameraFallback(state, text = 'Camera off') {
     state.video.style.display = 'none';
     state.fallback.style.display = 'flex';
     const textNode = state.fallback.querySelector('span:last-child');
-    if (textNode) textNode.textContent = text;
+    if (textNode && textNode.textContent !== text) textNode.textContent = text;
 }
 
 function updateVideoControl(state) {
     if (!state.videoToggle) return;
     const spans = state.videoToggle.querySelectorAll('span');
     const label = spans[1];
-    if (label) label.textContent = state.stream ? 'Stop Video' : 'Start Video';
-    if (spans[0]) spans[0].textContent = state.stream ? '📹' : '📷';
+    const nextLabel = state.stream ? 'Stop Video' : 'Start Video';
+    const nextIcon = state.stream ? '📹' : '📷';
+    if (label && label.textContent !== nextLabel) label.textContent = nextLabel;
+    if (spans[0] && spans[0].textContent !== nextIcon) spans[0].textContent = nextIcon;
 }
 
 async function startCamera(state) {
@@ -106,20 +108,30 @@ function stopCamera(state, fallbackText = 'Camera off') {
     updateVideoControl(state);
 }
 
+function updateAuthor(author, displayName) {
+    if (!(author instanceof HTMLElement)) return;
+    const name = author.querySelector('span:last-child');
+    const badge = author.querySelector('.meeting-modern-message-avatar');
+    const initial = displayName.slice(0, 1).toUpperCase();
+
+    if (name && name.textContent !== displayName) name.textContent = displayName;
+    if (badge && badge.textContent !== initial) badge.textContent = initial;
+}
+
+function updateAuthors(root, displayName) {
+    if (!(root instanceof HTMLElement)) return;
+    if (root.matches('.meeting-modern-message-author')) updateAuthor(root, displayName);
+    root.querySelectorAll('.meeting-modern-message-author').forEach((author) => updateAuthor(author, displayName));
+}
+
 function applyPersonaVisuals(debate, persona) {
     const displayName = persona?.name || 'Josh';
     const personName = debate.querySelector('.meeting-modern-person-name');
     const avatar = debate.querySelector('[id^="ai-avatar-ring-"]');
+    const chatLog = debate.querySelector('.meeting-modern-chat-log');
 
-    if (personName) personName.textContent = displayName;
-
-    debate.querySelectorAll('.meeting-modern-message-author').forEach((author) => {
-        const name = author.querySelector('span:last-child');
-        const badge = author.querySelector('.meeting-modern-message-avatar');
-        if (name) name.textContent = displayName;
-        if (badge) badge.textContent = displayName.slice(0, 1).toUpperCase();
-    });
-
+    if (personName && personName.textContent !== displayName) personName.textContent = displayName;
+    if (chatLog) updateAuthors(chatLog, displayName);
     if (!avatar) return;
 
     avatar.style.backgroundImage = 'none';
@@ -163,15 +175,23 @@ function enhanceDebate(debate) {
     const state = {
         ...preview,
         videoToggle,
-        stream: null
+        stream: null,
+        personaName: FALLBACK_PERSONA.name
     };
 
     applyPersonaVisuals(debate, FALLBACK_PERSONA);
-    loadPersona().then((persona) => applyPersonaVisuals(debate, persona));
+    loadPersona().then((persona) => {
+        state.personaName = persona.name || FALLBACK_PERSONA.name;
+        applyPersonaVisuals(debate, persona);
+    });
 
     const chatLog = debate.querySelector('.meeting-modern-chat-log');
-    const chatObserver = chatLog ? new MutationObserver(() => {
-        loadPersona().then((persona) => applyPersonaVisuals(debate, persona));
+    const chatObserver = chatLog ? new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node instanceof HTMLElement) updateAuthors(node, state.personaName);
+            }
+        }
     }) : null;
     chatObserver?.observe(chatLog, { childList: true, subtree: true });
 
