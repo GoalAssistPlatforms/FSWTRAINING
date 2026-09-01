@@ -146,7 +146,7 @@ const ensureStyles = () => {
       font-size: 0.7rem;
     }
 
-    .guides-chat-history-actions {
+    .guide-chat-history-actions {
       display: flex;
       gap: 0.2rem;
       padding-right: 0.4rem;
