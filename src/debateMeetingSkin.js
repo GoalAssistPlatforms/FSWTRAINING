@@ -6,10 +6,7 @@ const icon = (name) => {
         chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 3z"></path></svg>',
         people: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3.5 19c.5-3.5 2.4-5.3 5.5-5.3s5 1.8 5.5 5.3"></path><path d="M14 14.8c3.5-.4 5.6 1 6.5 4.2"></path></svg>',
         calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18"></path></svg>',
-        cameraOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11a2 2 0 0 1 2 2v7H5a2 2 0 0 1-2-2z"></path><path d="m16 10 5-3v9l-5-3"></path><path d="M4 4l16 16"></path></svg>',
-        mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>',
-        video: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg>',
-        leave: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14c2-2 10-2 12 0"></path><path d="M7 14 5 17M17 14l2 3"></path></svg>'
+        cameraOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11a2 2 0 0 1 2 2v7H5a2 2 0 0 1-2-2z"></path><path d="m16 10 5-3v9l-5-3"></path><path d="M4 4l16 16"></path></svg>'
     };
     return icons[name] || '';
 };
@@ -104,7 +101,6 @@ function enhanceDebate(debate) {
     const avatar = debate.querySelector('[id^="ai-avatar-ring-"]');
     const subtitle = debate.querySelector('[id^="subtitle-text-"]');
     const hint = debate.querySelector('[id^="hint-text-"]');
-    const micIcon = debate.querySelector('[id^="mic-icon-"]');
     const stance = debate.querySelector('[id^="stance-phase-"]');
     const complete = debate.querySelector('[id^="complete-"]');
 
@@ -128,8 +124,7 @@ function enhanceDebate(debate) {
         topbar.prepend(brand);
     }
     const topic = topicText.replace(/^Meeting:\s*/i, '').trim() || 'Scenario discussion';
-    const speakerLabel = micIcon?.parentElement;
-    const stakeholderName = (speakerLabel?.textContent || 'Colleague').replace('🎙️', '').trim() || 'Colleague';
+    const stakeholderName = 'Josh';
 
     workspace.classList.add('meeting-modern-workspace');
     const stage = Array.from(workspace.children).find((child) => child !== inputBar);
@@ -155,13 +150,12 @@ function enhanceDebate(debate) {
         subtitle.classList.add('meeting-modern-caption');
     }
 
-    if (speakerLabel) speakerLabel.classList.add('meeting-modern-speaker-label');
     if (oldSubtitleShell && oldSubtitleShell !== person) oldSubtitleShell.classList.add('meeting-modern-caption-shell');
     if (hint) hint.classList.add('meeting-modern-hint');
-    if (stance) stance.classList.add('meeting-modern-stance');
+    if (stance) stance.classList.add('meeting-modern-stance', 'meeting-modern-waiting-room');
     if (complete) complete.classList.add('meeting-modern-complete');
 
-    const selfTile = Array.from(stage.children).find((child) => child !== person && child !== speakerLabel && child !== hint && !child.contains(subtitle));
+    const selfTile = Array.from(stage.children).find((child) => child !== person && child !== hint && !child.contains(subtitle));
     if (selfTile) selfTile.classList.add('meeting-modern-self');
 
     controls.classList.add('meeting-modern-controls');
@@ -179,11 +173,9 @@ function enhanceDebate(debate) {
     subtitleObserver.observe(subtitle, { childList: true, subtree: true, characterData: true });
 
     debate.addEventListener('click', (event) => {
-        const stanceButton = event.target.closest('.stance-btn');
-        if (stanceButton) {
-            chatLog.innerHTML = '';
+        if (event.target.closest('.join-call-btn') || event.target.closest('.stance-btn')) {
+            chatLog.innerHTML = '<div class="meeting-modern-chat-empty">Connecting to the meeting...</div>';
             lastAssistantText = '';
-            createMessage(chatLog, 'user', `My position is: ${stanceButton.textContent.trim()}.`, stakeholderName);
             return;
         }
 
