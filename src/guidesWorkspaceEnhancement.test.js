@@ -68,26 +68,31 @@ describe('Guides workspace enhancement', () => {
     expect(isCourseLibraryCard(guideCard)).toBe(false);
   });
 
-  it('shows manager documents in the large icon curation grid', () => {
+  it('keeps the manager Library separate from review management', () => {
     document.body.innerHTML = `
       <div id="root">
         <div class="guides-container">
           <div id="legacy-sidebar">
             <input id="guide-search-input" />
+            <button id="upload-zone">Upload</button>
+            <button id="create-interactive-guide-btn">Guide</button>
+            <button id="add-link-btn">Link</button>
             <button id="manage-content-btn">Manage</button>
-            <div id="interactive-guides-list"></div>
-            <div id="guides-list"></div>
-            <div id="links-list"></div>
+            <div id="upload-progress"></div>
+            <div id="interactive-guides-list"><div class="guide-card">Guide</div></div>
+            <div id="guides-list"><div class="guide-card"><div class="guide-document-thumbnail">Document</div></div></div>
+            <div id="links-list"><div class="guide-card">Link</div></div>
           </div>
           <div id="main-panel">
-            <div id="guides-chat-view"></div>
+            <div id="guides-chat-view" style="display:flex"></div>
             <div id="guides-manager-view" style="display:none">
-              <div><div><h2>Manager</h2><p>Description</p></div></div>
+              <div><div><h2>Curation & Review Manager</h2><p>Description</p></div><button id="close-manager-view-btn">Back</button></div>
+              <div><select id="curation-type-filter"><option value="all">All Types</option><option value="course">Courses</option><option value="document">Documents</option></select></div>
               <div id="curation-items-list">
                 <div class="curation-card" data-curation-type="document">
                   <div>
-                    <div><div>Icon</div><div>Document title</div></div>
-                    <div class="guide-document-thumbnail curation-document-thumbnail"></div>
+                    <div><div>Icon</div><div><span>PDF DOCUMENT</span>Document title</div></div>
+                    <div class="guide-document-thumbnail curation-document-thumbnail">Preview</div>
                     <div>Status</div>
                   </div>
                   <div>Review</div>
@@ -107,9 +112,22 @@ describe('Guides workspace enhancement', () => {
     const cleanup = initGuidesWorkspaceEnhancement(document.getElementById('root'));
     document.getElementById('guides-workspace-library').click();
 
+    const libraryView = document.getElementById('guides-user-library-view');
+    expect(libraryView.style.display).toBe('flex');
+    expect(managerView.style.display).toBe('none');
+    expect(libraryView.querySelector('[data-action="reviews"]')).not.toBeNull();
+    expect(getComputedStyle(document.querySelector('[data-library-type="documents"] #guides-list')).display).toBe('grid');
+    expect(getComputedStyle(document.getElementById('curation-items-list')).display).toBe('flex');
+    expect(getComputedStyle(document.querySelector('.curation-document-thumbnail')).display).toBe('none');
+
+    libraryView.querySelector('[data-action="reviews"]').click();
+    expect(libraryView.style.display).toBe('none');
     expect(managerView.style.display).toBe('flex');
-    expect(getComputedStyle(document.getElementById('curation-items-list')).display).toBe('grid');
-    expect(getComputedStyle(document.querySelector('.curation-document-thumbnail')).height).toBe('176px');
+    expect(document.getElementById('close-manager-view-btn').textContent).toContain('Back to Library');
+
+    document.getElementById('close-manager-view-btn').click();
+    expect(managerView.style.display).toBe('none');
+    expect(libraryView.style.display).toBe('flex');
 
     cleanup();
   });
