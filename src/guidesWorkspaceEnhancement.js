@@ -276,6 +276,119 @@ const ensureWorkspaceStyles = () => {
       min-height: 72px;
     }
 
+    .guides-workspace-ready #guides-manager-view #curation-items-list {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      align-content: start;
+      align-items: start;
+      gap: 1rem !important;
+      padding: 0.15rem 0.2rem 0.4rem !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view #curation-items-list > div:not(.curation-card) {
+      grid-column: 1 / -1;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] {
+      position: relative;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.7rem !important;
+      min-width: 0;
+      min-height: 0;
+      padding: 0.7rem !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+      border-radius: 12px !important;
+      background: rgba(255,255,255,0.018) !important;
+      box-shadow: none !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"]:hover {
+      border-color: rgba(255,255,255,0.16) !important;
+      background: rgba(255,255,255,0.035) !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 0.65rem !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child {
+      order: 2;
+      display: block !important;
+      min-width: 0;
+      text-align: center;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:first-child {
+      display: none !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:last-child {
+      min-width: 0;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:last-child > div:first-child {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      min-height: 2.7em;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:last-child > div:last-child {
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.25rem !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] .curation-document-thumbnail {
+      order: 1;
+      height: 176px;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:last-child {
+      order: 3;
+      align-items: center !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:nth-child(2) {
+      margin: 0 !important;
+      min-height: 0 !important;
+      padding: 0.55rem 0.1rem 0 !important;
+      border-top: 1px solid rgba(255,255,255,0.06) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      font-size: 0.72rem !important;
+      line-height: 1.4;
+      text-align: center;
+      justify-content: center !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:nth-child(3) {
+      margin: 0 !important;
+      padding: 0 !important;
+      border-top: 0 !important;
+      justify-content: space-between !important;
+      gap: 0.4rem !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:nth-child(3) > div {
+      flex-wrap: wrap;
+      gap: 0.35rem !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card:not([data-curation-type="document"]) {
+      grid-column: 1 / -1;
+    }
+
     .guides-user-library-view .guides-library-section[data-library-type="documents"] {
       padding: 0 1rem 1.2rem;
     }

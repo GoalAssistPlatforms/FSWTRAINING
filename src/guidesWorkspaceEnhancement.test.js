@@ -67,4 +67,50 @@ describe('Guides workspace enhancement', () => {
     expect(isCourseLibraryCard(courseCard)).toBe(true);
     expect(isCourseLibraryCard(guideCard)).toBe(false);
   });
+
+  it('shows manager documents in the large icon curation grid', () => {
+    document.body.innerHTML = `
+      <div id="root">
+        <div class="guides-container">
+          <div id="legacy-sidebar">
+            <input id="guide-search-input" />
+            <button id="manage-content-btn">Manage</button>
+            <div id="interactive-guides-list"></div>
+            <div id="guides-list"></div>
+            <div id="links-list"></div>
+          </div>
+          <div id="main-panel">
+            <div id="guides-chat-view"></div>
+            <div id="guides-manager-view" style="display:none">
+              <div><div><h2>Manager</h2><p>Description</p></div></div>
+              <div id="curation-items-list">
+                <div class="curation-card" data-curation-type="document">
+                  <div>
+                    <div><div>Icon</div><div>Document title</div></div>
+                    <div class="guide-document-thumbnail curation-document-thumbnail"></div>
+                    <div>Status</div>
+                  </div>
+                  <div>Review</div>
+                  <div>Actions</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    const managerView = document.getElementById('guides-manager-view');
+    document.getElementById('manage-content-btn').addEventListener('click', () => {
+      managerView.style.display = 'flex';
+    });
+
+    const cleanup = initGuidesWorkspaceEnhancement(document.getElementById('root'));
+    document.getElementById('guides-workspace-library').click();
+
+    expect(managerView.style.display).toBe('flex');
+    expect(getComputedStyle(document.getElementById('curation-items-list')).display).toBe('grid');
+    expect(getComputedStyle(document.querySelector('.curation-document-thumbnail')).height).toBe('176px');
+
+    cleanup();
+  });
 });

@@ -844,6 +844,7 @@ export const initGuidesEvents = async (user) => {
 
         let allCurationItems = [];
         let currentlyEditingItem = null;
+        let cleanupCurationDocumentThumbnails = () => {};
 
         // Toggle Curation View
         const showCurationView = async () => {
@@ -995,6 +996,9 @@ export const initGuidesEvents = async (user) => {
         curationStatusFilter.addEventListener('change', applyCurationFilters);
 
         const renderCurationGrid = (items) => {
+            cleanupCurationDocumentThumbnails();
+            cleanupCurationDocumentThumbnails = () => {};
+
             if (items.length === 0) {
                 curationItemsList.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-muted); background: rgba(255,255,255,0.01); border-radius: var(--radius-lg); border: 1px dashed var(--glass-border);">No matching training materials found.</div>';
                 return;
@@ -1051,7 +1055,7 @@ export const initGuidesEvents = async (user) => {
                 const reviewDateText = item.next_review_date ? new Date(item.next_review_date).toLocaleDateString() : 'Never';
 
                 return `
-                <div class="glass curation-card" style="padding: 1.2rem; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 1rem; box-sizing: border-box; background: rgba(0,0,0,0.15);">
+                <div class="glass curation-card" data-curation-type="${item.type}" style="padding: 1.2rem; border-radius: var(--radius-lg); border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 1rem; box-sizing: border-box; background: rgba(0,0,0,0.15);">
                     <!-- Top Row: Icon, Title, Type, Status Badge -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                         <div style="display: flex; gap: 0.8rem; align-items: center;">
@@ -1067,6 +1071,21 @@ export const initGuidesEvents = async (user) => {
                                 </div>
                             </div>
                         </div>
+                        ${item.type === 'document' && item.file_url ? `
+                        <div class="guide-document-thumbnail curation-document-thumbnail" data-pdf-thumbnail-url="${item.file_url}" aria-hidden="true">
+                            <canvas class="guide-document-thumbnail-canvas"></canvas>
+                            <div class="guide-document-thumbnail-placeholder">
+                                <svg width="54" height="62" viewBox="0 0 54 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 1H34L53 20V55C53 58.3137 50.3137 61 47 61H9C5.68629 61 3 58.3137 3 55V7C3 3.68629 5.68629 1 9 1Z" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+                                    <path d="M34 1V15C34 17.7614 36.2386 20 39 20H53" fill="#E2E8F0"/>
+                                    <path d="M34 1V15C34 17.7614 36.2386 20 39 20H53" stroke="#CBD5E1" stroke-width="2"/>
+                                    <rect x="11" y="31" width="34" height="16" rx="4" fill="#DC2626"/>
+                                    <text x="28" y="42.5" fill="white" font-size="9" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">PDF</text>
+                                </svg>
+                            </div>
+                            <span class="guide-document-thumbnail-badge">PDF</span>
+                        </div>
+                        ` : ''}
                         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;">
                             ${statusBadge}
                         </div>
@@ -1100,6 +1119,8 @@ export const initGuidesEvents = async (user) => {
                 </div>
                 `;
             }).join('');
+
+            cleanupCurationDocumentThumbnails = initDocumentThumbnails(curationItemsList);
 
             // Attach listeners to snooze, edit, delete
             curationItemsList.querySelectorAll('.snooze-curation-btn').forEach(btn => {
