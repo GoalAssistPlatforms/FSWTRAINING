@@ -9,7 +9,7 @@ export class TranscriptionService {
     this.client = supabaseClient;
   }
   isAutomaticTranscriptionWorkerAvailable(): boolean {
-    return false;
+    return import.meta.env.VITE_TRANSCRIPTION_WORKER_ENABLED === "true";
   }
 
   async getCurrentTranscriptRevision(guideId: string, sourceAssetId: string): Promise<number | null> {

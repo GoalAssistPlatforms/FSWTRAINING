@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:transcription-worker": "vite build --config vite.transcription-worker.config.js",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "worker:transcription": "node dist-transcription-worker/worker.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

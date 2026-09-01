@@ -28,7 +28,7 @@ export interface WorkerRepository {
 }
 
 export interface SourceAssetLoader {
-  downloadAsset(assetId: string, abortSignal: AbortSignal): Promise<{ localPath: string }>;
+  downloadAsset(assetId: string, abortSignal: AbortSignal): Promise<{ localPath: string; duration?: number }>;
   dispose(localPath: string): Promise<void>;
 }
 
@@ -42,7 +42,7 @@ export interface TranscriptionProvider {
 }
 
 export interface TranscriptNormaliser {
-  normalise(providerResult: any, sourceAssetId: string, authDuration: number): Promise<any>;
+  normalise(providerResult: any, sourceAssetId: string, authDuration: number, jobId: string): Promise<any>;
 }
 
 export interface WorkerClock {
