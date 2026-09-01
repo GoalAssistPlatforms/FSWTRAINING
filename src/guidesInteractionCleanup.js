@@ -29,6 +29,25 @@ const ensureStyles = () => {
       .guides-container.guides-workspace-ready[style*="display: none"] {
         display: none !important;
       }
+
+      .guides-library-manager-actions .guides-library-action {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.4rem !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 0 0.85rem !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        line-height: 1 !important;
+        vertical-align: middle !important;
+      }
+
+      .guides-library-manager-actions #create-interactive-guide-btn {
+        height: 44px !important;
+        min-height: 44px !important;
+      }
     }
   `;
   document.head.appendChild(style);
