@@ -77,6 +77,28 @@ export const initGuidesLibraryNavigationFix = root => {
   let destroyed = false;
   let queued = false;
 
+  const syncBuildGuideControl = () => {
+    const visibleBuildGuide = root?.querySelector?.('.guides-library-action[data-action="guide"]');
+    const originalBuildGuide = root?.querySelector?.('[data-legacy-guides-sidebar="true"] #create-interactive-guide-btn');
+
+    if (!visibleBuildGuide || !originalBuildGuide || visibleBuildGuide === originalBuildGuide) return;
+
+    originalBuildGuide.className = 'guides-library-action';
+    originalBuildGuide.dataset.action = 'guide';
+    originalBuildGuide.removeAttribute('style');
+    originalBuildGuide.setAttribute('role', 'button');
+    originalBuildGuide.setAttribute('tabindex', '0');
+    originalBuildGuide.innerHTML = '▣ Build Guide';
+
+    originalBuildGuide.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      originalBuildGuide.click();
+    });
+
+    visibleBuildGuide.replaceWith(originalBuildGuide);
+  };
+
   const sync = () => {
     if (destroyed) return;
 
@@ -90,6 +112,8 @@ export const initGuidesLibraryNavigationFix = root => {
 
     const footer = sidebar.querySelector('.guides-workspace-sidebar-footer');
     if (footer && footer.children.length === 0) footer.remove();
+
+    syncBuildGuideControl();
   };
 
   const scheduleSync = () => {
