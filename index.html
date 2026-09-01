@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/debateMeeting.css" />
   <title>FSW Training</title>
 </head>
 
@@ -17,6 +18,7 @@
   <script type="module">
     import { initMobileExperienceEnhancement } from '/src/mobileExperienceEnhancement.js';
     import { initGuidesInteractionCleanup } from '/src/guidesInteractionCleanup.js';
+    import '/src/debateMeetingSkin.js';
 
     window.__fswMobileExperienceCleanup?.();
     window.__fswMobileExperienceCleanup = initMobileExperienceEnhancement(document.body);
