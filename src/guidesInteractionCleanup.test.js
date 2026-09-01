@@ -37,6 +37,28 @@ describe('Guides interaction cleanup', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps Build Guide the same size as the other Library actions', () => {
+    document.body.innerHTML = `
+      <div id="create-interactive-guide-btn">Build Guide</div>
+      <div class="guides-library-manager-actions">
+        <button type="button" data-action="guide">Build Guide</button>
+      </div>
+    `;
+
+    syncGuidesInteractionCleanup(document);
+
+    const styles = document.getElementById('guides-interaction-cleanup-styles')?.textContent || '';
+    expect(styles).not.toContain('.guides-native-build-guide-action {\n      flex: 0 0 auto;\n      min-height: 40px;');
+  });
+
+  it('allows the mobile builder to replace the Library when the Guides container is hidden', () => {
+    syncGuidesInteractionCleanup(document);
+
+    const styles = document.getElementById('guides-interaction-cleanup-styles')?.textContent || '';
+    expect(styles).toContain('.guides-container.guides-workspace-ready[style*="display: none"]');
+    expect(styles).toContain('display: none !important;');
+  });
+
   it('removes canned chat question prompts', () => {
     document.body.innerHTML = `
       <div id="guides-chat-view">
