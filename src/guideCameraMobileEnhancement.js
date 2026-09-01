@@ -29,53 +29,90 @@ const ensureStyles = () => {
     }
 
     .guide-camera-orientation-card {
-      width: min(360px, 100%);
+      width: min(480px, 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.85rem;
+      gap: 1.15rem;
+      padding: 2rem 1.5rem;
+      box-sizing: border-box;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      background: rgba(255,255,255,0.045);
+      box-shadow: 0 20px 55px rgba(0,0,0,0.35);
     }
 
     .guide-camera-orientation-icon {
-      font-size: 3.4rem;
+      font-size: 5.5rem;
       line-height: 1;
       transform: rotate(90deg);
+      margin-bottom: 0.15rem;
     }
 
     .guide-camera-orientation-card h2 {
       margin: 0;
-      font-size: 1.35rem;
+      font-size: clamp(1.8rem, 7vw, 2.35rem);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
     }
 
     .guide-camera-orientation-card p {
+      max-width: 360px;
       margin: 0;
-      color: #9ca3af;
-      font-size: 0.92rem;
-      line-height: 1.45;
+      color: #b3bbc7;
+      font-size: 1.08rem;
+      line-height: 1.5;
     }
 
     .guide-camera-orientation-actions {
       width: 100%;
       display: flex;
       justify-content: center;
-      gap: 0.65rem;
-      margin-top: 0.35rem;
+      gap: 0.8rem;
+      margin-top: 0.5rem;
     }
 
     .guide-camera-orientation-actions button {
-      min-height: 44px;
-      padding: 0.65rem 1rem;
-      border-radius: 9px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
+      min-width: 120px;
+      min-height: 54px;
+      padding: 0.85rem 1.25rem;
+      border-radius: 11px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.075);
       color: white;
       font: inherit;
-      font-weight: 600;
+      font-size: 1rem;
+      font-weight: 700;
       cursor: pointer;
     }
 
     .guide-camera-orientation-actions .guide-camera-cancel {
-      color: #aab2bf;
+      color: #b3bbc7;
+    }
+
+    @media (max-width: 480px) {
+      .guide-camera-orientation-prompt {
+        padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+      }
+
+      .guide-camera-orientation-card {
+        width: 100%;
+        padding: 2rem 1.25rem;
+        gap: 1rem;
+      }
+
+      .guide-camera-orientation-icon {
+        font-size: 5rem;
+      }
+
+      .guide-camera-orientation-actions {
+        flex-direction: column;
+      }
+
+      .guide-camera-orientation-actions button {
+        width: 100%;
+        min-height: 56px;
+      }
     }
 
     @media (max-width: 900px) {
