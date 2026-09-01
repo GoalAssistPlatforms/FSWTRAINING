@@ -4,6 +4,10 @@ const FALLBACK_PERSONA = { name: 'Josh', avatarUrl: null };
 
 let personaPromise = null;
 
+const cameraIcon = (off = false) => off
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11a2 2 0 0 1 2 2v7H5a2 2 0 0 1-2-2z"></path><path d="m16 10 5-3v9l-5-3"></path><path d="M4 4l16 16"></path></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg>';
+
 function loadPersona() {
     if (!personaPromise) {
         personaPromise = fetch(PERSONA_ENDPOINT, {
@@ -30,8 +34,10 @@ function prepareSelfTile(selfTile) {
     video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none;z-index:1;background:#07090c;';
 
     const fallback = document.createElement('div');
-    fallback.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#8e949f;font-size:11px;z-index:1;background:#07090c;';
-    fallback.innerHTML = '<span style="font-size:18px;line-height:1">📷</span><span>Camera off</span>';
+    fallback.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;color:#8e949f;font-size:11px;z-index:1;background:#07090c;';
+    fallback.innerHTML = `<span style="display:grid;place-items:center;width:22px;height:22px">${cameraIcon(true)}</span><span>Camera off</span>`;
+    const fallbackSvg = fallback.querySelector('svg');
+    if (fallbackSvg) fallbackSvg.style.cssText = 'width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;';
 
     const existingLabel = selfTile.firstElementChild;
     if (existingLabel) {
@@ -43,7 +49,9 @@ function prepareSelfTile(selfTile) {
         existingLabel.style.padding = '2px 6px';
         existingLabel.style.borderRadius = '5px';
         existingLabel.style.fontSize = '10px';
-        existingLabel.innerHTML = '<span aria-hidden="true">📷</span> You';
+        existingLabel.innerHTML = `<span style="display:inline-flex;width:12px;height:12px;margin-right:4px;vertical-align:-2px">${cameraIcon(false)}</span>You`;
+        const labelSvg = existingLabel.querySelector('svg');
+        if (labelSvg) labelSvg.style.cssText = 'width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;';
     }
 
     selfTile.prepend(fallback);
@@ -64,9 +72,7 @@ function updateVideoControl(state) {
     const spans = state.videoToggle.querySelectorAll('span');
     const label = spans[1];
     const nextLabel = state.stream ? 'Stop Video' : 'Start Video';
-    const nextIcon = state.stream ? '📹' : '📷';
     if (label && label.textContent !== nextLabel) label.textContent = nextLabel;
-    if (spans[0] && spans[0].textContent !== nextIcon) spans[0].textContent = nextIcon;
 }
 
 async function startCamera(state) {
@@ -196,7 +202,7 @@ function enhanceDebate(debate) {
     chatObserver?.observe(chatLog, { childList: true, subtree: true });
 
     debate.addEventListener('click', (event) => {
-        if (event.target.closest('.stance-btn')) {
+        if (event.target.closest('.join-call-btn') || event.target.closest('.stance-btn')) {
             void startCamera(state);
             return;
         }
