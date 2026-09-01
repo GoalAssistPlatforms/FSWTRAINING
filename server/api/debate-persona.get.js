@@ -15,7 +15,7 @@ export default defineEventHandler(async () => {
         const service = getServiceSupabase();
         const { data: profile, error: profileError } = await service
             .from('profiles')
-            .select('id, avatar_url')
+            .select('*')
             .eq('email', PERSONA_EMAIL)
             .maybeSingle();
 
@@ -23,9 +23,9 @@ export default defineEventHandler(async () => {
 
         let avatarUrl = profile?.avatar_url || null;
 
-        if (!avatarUrl && profile?.id) {
+        if (profile?.id) {
             const { data: authData, error: authError } = await service.auth.admin.getUserById(profile.id);
-            if (!authError) avatarUrl = avatarFromUser(authData?.user);
+            if (!authError) avatarUrl = avatarUrl || avatarFromUser(authData?.user);
         }
 
         if (!avatarUrl) {
