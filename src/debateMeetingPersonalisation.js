@@ -1,27 +1,9 @@
 const ENHANCED_ATTR = 'data-meeting-personalised';
-const PERSONA_ENDPOINT = '/api/debate-persona';
-const FALLBACK_PERSONA = { name: 'Josh', avatarUrl: null };
-
-let personaPromise = null;
+const STATIC_PERSONA = { name: 'Josh', avatarUrl: '/assets/joshAvatar.png' };
 
 const cameraIcon = (off = false) => off
     ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11a2 2 0 0 1 2 2v7H5a2 2 0 0 1-2-2z"></path><path d="m16 10 5-3v9l-5-3"></path><path d="M4 4l16 16"></path></svg>'
     : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg>';
-
-function loadPersona() {
-    if (!personaPromise) {
-        personaPromise = fetch(PERSONA_ENDPOINT, {
-            headers: { Accept: 'application/json' }
-        })
-            .then((response) => response.ok ? response.json() : FALLBACK_PERSONA)
-            .then((persona) => ({
-                name: persona?.name || FALLBACK_PERSONA.name,
-                avatarUrl: persona?.avatarUrl || null
-            }))
-            .catch(() => FALLBACK_PERSONA);
-    }
-    return personaPromise;
-}
 
 function prepareSelfTile(selfTile) {
     selfTile.style.overflow = 'hidden';
@@ -187,14 +169,10 @@ function enhanceDebate(debate) {
         ...preview,
         videoToggle,
         stream: null,
-        personaName: FALLBACK_PERSONA.name
+        personaName: STATIC_PERSONA.name
     };
 
-    applyPersonaVisuals(debate, FALLBACK_PERSONA);
-    loadPersona().then((persona) => {
-        state.personaName = persona.name || FALLBACK_PERSONA.name;
-        applyPersonaVisuals(debate, persona);
-    });
+    applyPersonaVisuals(debate, STATIC_PERSONA);
 
     const chatLog = debate.querySelector('.meeting-modern-chat-log');
     const chatObserver = chatLog ? new MutationObserver((mutations) => {
