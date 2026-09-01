@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { enhanceGuideCaptureOptions } from './guideCaptureOptionsEnhancement.js';
+import {
+  chooseSupportedRecorderMimeType,
+  enhanceGuideCaptureOptions,
+  extensionForRecorderMimeType,
+  installCameraRecorderFormatCompatibility
+} from './guideCaptureOptionsEnhancement.js';
 
 afterEach(() => {
   document.body.innerHTML = '';
   document.head.querySelector('#guide-capture-options-enhancement-styles')?.remove();
   try { delete navigator.mediaDevices; } catch (error) {}
+  try { delete window.MediaRecorder; } catch (error) {}
   vi.restoreAllMocks();
 });
 
@@ -99,5 +105,54 @@ describe('guide capture options enhancement', () => {
     });
     expect(originalDisplayMedia).not.toHaveBeenCalled();
     expect(navigator.mediaDevices.getDisplayMedia).toBe(originalDisplayMedia);
+  });
+
+  it('keeps a supported WebM recorder format when the browser provides it', () => {
+    class WebMRecorder {
+      static isTypeSupported(type) {
+        return type === 'video/webm;codecs=vp8,opus';
+      }
+    }
+
+    expect(
+      chooseSupportedRecorderMimeType(WebMRecorder, 'video/webm;codecs=vp8,opus')
+    ).toBe('video/webm;codecs=vp8,opus');
+    expect(extensionForRecorderMimeType('video/webm;codecs=vp8,opus')).toBe('webm');
+  });
+
+  it('falls back to MP4 and preserves the real MP4 file type when WebM is unavailable', () => {
+    class Mp4OnlyRecorder {
+      static isTypeSupported(type) {
+        return type === 'video/mp4';
+      }
+
+      constructor(stream, options = {}) {
+        this.stream = stream;
+        this.mimeType = options.mimeType || 'video/mp4';
+      }
+    }
+
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      writable: true,
+      value: Mp4OnlyRecorder
+    });
+
+    expect(chooseSupportedRecorderMimeType(Mp4OnlyRecorder, 'video/webm')).toBe('video/mp4');
+    expect(extensionForRecorderMimeType('video/mp4')).toBe('mp4');
+
+    const restore = installCameraRecorderFormatCompatibility();
+    const recorder = new window.MediaRecorder({}, { mimeType: 'video/webm' });
+    expect(recorder.mimeType).toBe('video/mp4');
+
+    const nativeVideoChunk = new window.Blob(['camera bytes'], { type: 'video/mp4' });
+    const assembledRecording = new window.Blob([nativeVideoChunk], { type: 'video/webm' });
+
+    expect(assembledRecording).toBeInstanceOf(File);
+    expect(assembledRecording.type).toBe('video/mp4');
+    expect(assembledRecording.name.endsWith('.mp4')).toBe(true);
+    expect(window.MediaRecorder).toBe(Mp4OnlyRecorder);
+
+    restore();
   });
 });
