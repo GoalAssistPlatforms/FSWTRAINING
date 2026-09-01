@@ -1,5 +1,4 @@
 import { initGuideChatHistory } from './guideChatHistory.js';
-import { initPhoneCallVoiceEnhancement } from './phoneCallVoiceEnhancement.js';
 import { initGuidesWorkspaceEnhancement } from './guidesWorkspaceEnhancement.js';
 import { initGuidesLibraryPolish } from './guidesLibraryPolish.js';
 import { initGuidesChatOrganisation } from './guidesChatOrganisation.js';
@@ -201,7 +200,6 @@ export const initUiEnhancements = root => {
   let activeLibraryNavigationCleanup = null;
   let destroyed = false;
 
-  const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
   const cleanupGuidesLibraryPolish = initGuidesLibraryPolish(root);
   const cleanupGuideCaptureOptions = initGuideCaptureOptionsEnhancement(root);
   const cleanupGuideCameraMobile = initGuideCameraMobileEnhancement(root);
@@ -273,7 +271,6 @@ export const initUiEnhancements = root => {
   return () => {
     destroyed = true;
     observer.disconnect();
-    cleanupPhoneCallVoice();
     cleanupGuidesLibraryPolish();
     cleanupGuideCaptureOptions();
     cleanupGuideCameraMobile();
