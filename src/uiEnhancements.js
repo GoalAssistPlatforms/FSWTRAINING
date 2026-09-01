@@ -6,6 +6,8 @@ import { initGuidesChatOrganisation } from './guidesChatOrganisation.js';
 import { initGuidesChatMenus } from './guidesChatMenus.js';
 import { initGuidesLibraryNavigationFix } from './guidesLibraryNavigationFix.js';
 import { initGuideCaptureOptionsEnhancement } from './guideCaptureOptionsEnhancement.js';
+import { initGuideCameraMobileEnhancement } from './guideCameraMobileEnhancement.js';
+import { initGuideChatVideoRecovery } from './guideChatVideoRecovery.js';
 import { initGuidesLibraryItemMenus } from './guidesLibraryItemMenus.js';
 
 const LEARNING_PACK_GREEN = '#10b981';
@@ -144,7 +146,7 @@ const ensureStyles = () => {
       font-size: 0.7rem;
     }
 
-    .guide-chat-history-actions {
+    .guides-chat-history-actions {
       display: flex;
       gap: 0.2rem;
       padding-right: 0.4rem;
@@ -202,6 +204,8 @@ export const initUiEnhancements = root => {
   const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
   const cleanupGuidesLibraryPolish = initGuidesLibraryPolish(root);
   const cleanupGuideCaptureOptions = initGuideCaptureOptionsEnhancement(root);
+  const cleanupGuideCameraMobile = initGuideCameraMobileEnhancement(root);
+  const cleanupGuideChatVideoRecovery = initGuideChatVideoRecovery(root);
   const cleanupGuidesLibraryItemMenus = initGuidesLibraryItemMenus(root);
 
   const cleanupActiveWorkspace = () => {
@@ -272,6 +276,8 @@ export const initUiEnhancements = root => {
     cleanupPhoneCallVoice();
     cleanupGuidesLibraryPolish();
     cleanupGuideCaptureOptions();
+    cleanupGuideCameraMobile();
+    cleanupGuideChatVideoRecovery();
     cleanupGuidesLibraryItemMenus();
     cleanupActiveChat();
   };
