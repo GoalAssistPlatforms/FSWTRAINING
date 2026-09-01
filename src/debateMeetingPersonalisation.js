@@ -1,9 +1,27 @@
 const ENHANCED_ATTR = 'data-meeting-personalised';
-const STATIC_PERSONA = { name: 'Josh', avatarUrl: '/assets/joshAvatar.png' };
+const STATIC_PERSONA = { name: 'Josh', avatarDataUrl: '/assets/joshAvatar96.b64' };
+
+let avatarPromise = null;
 
 const cameraIcon = (off = false) => off
     ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11a2 2 0 0 1 2 2v7H5a2 2 0 0 1-2-2z"></path><path d="m16 10 5-3v9l-5-3"></path><path d="M4 4l16 16"></path></svg>'
     : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3z"></path></svg>';
+
+function loadAvatarData() {
+    if (!avatarPromise) {
+        avatarPromise = fetch(STATIC_PERSONA.avatarDataUrl, { cache: 'no-store' })
+            .then((response) => {
+                if (!response.ok) throw new Error(`Josh avatar asset failed with ${response.status}`);
+                return response.text();
+            })
+            .then((encoded) => `data:image/png;base64,${encoded.trim()}`)
+            .catch((error) => {
+                console.warn('Josh meeting avatar could not be loaded.', error);
+                return null;
+            });
+    }
+    return avatarPromise;
+}
 
 function prepareSelfTile(selfTile) {
     selfTile.style.overflow = 'hidden';
@@ -129,26 +147,31 @@ function applyPersonaVisuals(debate, persona) {
 
     avatar.style.backgroundImage = 'none';
     avatar.style.backgroundColor = '#252a35';
-    avatar.style.backgroundPosition = 'center';
-    avatar.style.backgroundSize = 'cover';
     avatar.style.display = 'grid';
     avatar.style.placeItems = 'center';
     avatar.style.color = '#eef1f5';
     avatar.style.fontSize = '2rem';
     avatar.style.fontWeight = '700';
+    avatar.style.position = 'relative';
+    avatar.style.overflow = 'hidden';
     avatar.textContent = displayName.slice(0, 1).toUpperCase();
 
-    if (!persona?.avatarUrl) return;
+    loadAvatarData().then((src) => {
+        if (!src || !avatar.isConnected) return;
 
-    const image = new Image();
-    image.onload = () => {
-        avatar.textContent = '';
-        avatar.style.backgroundImage = `url("${persona.avatarUrl}")`;
-    };
-    image.onerror = () => {
-        avatar.textContent = displayName.slice(0, 1).toUpperCase();
-    };
-    image.src = persona.avatarUrl;
+        const image = document.createElement('img');
+        image.alt = `${displayName} profile picture`;
+        image.src = src;
+        image.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;';
+        image.onload = () => {
+            if (!avatar.isConnected) return;
+            avatar.textContent = '';
+            avatar.appendChild(image);
+        };
+        image.onerror = () => {
+            avatar.textContent = displayName.slice(0, 1).toUpperCase();
+        };
+    });
 }
 
 function enhanceDebate(debate) {
