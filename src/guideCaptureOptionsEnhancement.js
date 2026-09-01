@@ -6,24 +6,6 @@ const ensureStyles = () => {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-    .guide-capture-intro {
-      margin-bottom: 1rem;
-      text-align: left;
-    }
-
-    .guide-capture-intro h3 {
-      margin: 0 0 0.35rem;
-      color: var(--text-main);
-      font-size: 1.05rem;
-    }
-
-    .guide-capture-intro p {
-      margin: 0;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      line-height: 1.45;
-    }
-
     .guide-capture-choice-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -33,85 +15,97 @@ const ensureStyles = () => {
 
     .guide-capture-choice {
       min-width: 0;
-      display: flex;
+      min-height: 124px;
+      display: flex !important;
       flex-direction: column;
-      align-items: flex-start;
-      gap: 0.65rem;
-      padding: 1rem;
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-md);
-      background: rgba(255,255,255,0.025);
-      text-align: left;
+      align-items: flex-start !important;
+      justify-content: center !important;
+      gap: 0.35rem !important;
+      padding: 1rem !important;
+      border: 1px solid var(--glass-border) !important;
+      border-radius: var(--radius-md) !important;
+      background: rgba(255,255,255,0.025) !important;
+      color: white !important;
+      text-align: left !important;
       box-sizing: border-box;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
     }
 
     .guide-capture-choice:hover {
-      border-color: rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.045);
+      border-color: rgba(255,255,255,0.22) !important;
+      background: rgba(255,255,255,0.055) !important;
+      transform: translateY(-1px);
+    }
+
+    .guide-capture-choice:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
     }
 
     .guide-capture-choice-icon {
-      width: 38px;
-      height: 38px;
+      width: 34px;
+      height: 34px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 10px;
+      border-radius: 9px;
       background: rgba(var(--primary-rgb), 0.14);
-      font-size: 1.25rem;
+      font-size: 1.1rem;
+      margin-bottom: 0.2rem;
     }
 
-    .guide-capture-choice h4 {
-      margin: 0;
-      color: white;
-      font-size: 0.9rem;
+    .guide-capture-choice-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.25;
     }
 
-    .guide-capture-choice p {
-      flex: 1;
-      margin: 0;
+    .guide-capture-choice-copy {
       color: var(--text-muted);
-      font-size: 0.75rem;
-      line-height: 1.45;
+      font-size: 0.73rem;
+      line-height: 1.35;
     }
 
-    .guide-capture-choice-action {
-      width: 100%;
-      margin-top: auto;
-      justify-content: center;
-      box-sizing: border-box;
+    #sys-start-rec-btn.guide-capture-choice {
+      background: rgba(239, 68, 68, 0.06) !important;
+      border-color: rgba(239, 68, 68, 0.22) !important;
     }
 
-    .guide-capture-choice #sys-start-rec-btn,
-    .guide-capture-choice label[for="sys-upload-video-input"],
-    .guide-capture-choice #sys-start-camera-btn {
-      width: 100%;
-      min-height: 42px;
-      justify-content: center;
-      box-sizing: border-box;
+    #sys-start-rec-btn.guide-capture-choice:hover {
+      background: rgba(239, 68, 68, 0.1) !important;
+      border-color: rgba(239, 68, 68, 0.4) !important;
     }
 
-    .guide-capture-choice #sys-start-rec-btn {
-      background: rgba(239, 68, 68, 0.92) !important;
-      border-color: rgba(239, 68, 68, 0.92) !important;
+    #sys-start-camera-btn.guide-capture-choice {
+      background: rgba(16, 185, 129, 0.05) !important;
+      border-color: rgba(16, 185, 129, 0.2) !important;
     }
 
-    .guide-capture-choice #sys-start-camera-btn {
-      border: 1px solid rgba(16,185,129,0.45);
-      background: rgba(16,185,129,0.12);
-      color: white;
+    #sys-start-camera-btn.guide-capture-choice:hover {
+      background: rgba(16, 185, 129, 0.1) !important;
+      border-color: rgba(16, 185, 129, 0.38) !important;
     }
 
-    .guide-capture-choice-note {
-      width: 100%;
-      color: var(--text-muted);
-      font-size: 0.68rem;
-      text-align: center;
+    #sys-camera-preview {
+      width: min(420px, 100%);
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+      background: #05070b;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      transform: scaleX(-1);
     }
 
     @media (max-width: 900px) {
       .guide-capture-choice-grid {
         grid-template-columns: 1fr;
+      }
+
+      .guide-capture-choice {
+        min-height: 92px;
       }
     }
   `;
@@ -119,23 +113,98 @@ const ensureStyles = () => {
   document.head.appendChild(style);
 };
 
-const buildChoice = ({ icon, title, description }) => {
-  const card = document.createElement('div');
-  card.className = 'guide-capture-choice';
+const setChoiceContent = (control, icon, title, copy) => {
+  control.classList.add('guide-capture-choice');
+  control.innerHTML = `
+    <span class="guide-capture-choice-icon" aria-hidden="true">${icon}</span>
+    <span class="guide-capture-choice-title">${title}</span>
+    <span class="guide-capture-choice-copy">${copy}</span>
+  `;
+};
 
-  const iconEl = document.createElement('div');
-  iconEl.className = 'guide-capture-choice-icon';
-  iconEl.setAttribute('aria-hidden', 'true');
-  iconEl.textContent = icon;
+const createCameraPreview = (builder, stream) => {
+  const liveUi = builder.querySelector('#rec-live-ui');
+  if (!liveUi) return () => {};
 
-  const titleEl = document.createElement('h4');
-  titleEl.textContent = title;
+  liveUi.querySelector('#sys-camera-preview')?.remove();
+  const preview = document.createElement('video');
+  preview.id = 'sys-camera-preview';
+  preview.autoplay = true;
+  preview.muted = true;
+  preview.playsInline = true;
+  preview.srcObject = stream;
+  liveUi.prepend(preview);
+  preview.play().catch(() => {});
 
-  const descriptionEl = document.createElement('p');
-  descriptionEl.textContent = description;
+  const cleanup = () => {
+    preview.srcObject = null;
+    preview.remove();
+  };
 
-  card.append(iconEl, titleEl, descriptionEl);
-  return card;
+  stream.getVideoTracks().forEach(track => {
+    track.addEventListener('ended', cleanup, { once: true });
+  });
+
+  const stopButton = builder.querySelector('#sys-stop-rec-btn');
+  stopButton?.addEventListener('click', cleanup, { once: true });
+  return cleanup;
+};
+
+const installOneShotCameraDisplay = (builder) => {
+  const mediaDevices = navigator.mediaDevices;
+  if (!mediaDevices?.getUserMedia) {
+    throw new Error('Camera access is not available in this browser.');
+  }
+
+  const hadOwnDisplayMethod = Object.prototype.hasOwnProperty.call(mediaDevices, 'getDisplayMedia');
+  const originalDescriptor = hadOwnDisplayMethod
+    ? Object.getOwnPropertyDescriptor(mediaDevices, 'getDisplayMedia')
+    : null;
+  let restored = false;
+
+  const restore = () => {
+    if (restored) return;
+    restored = true;
+    try {
+      if (hadOwnDisplayMethod && originalDescriptor) {
+        Object.defineProperty(mediaDevices, 'getDisplayMedia', originalDescriptor);
+      } else {
+        delete mediaDevices.getDisplayMedia;
+      }
+    } catch (error) {
+      console.warn('Could not restore screen capture method:', error);
+    }
+  };
+
+  const cameraDisplayMethod = async () => {
+    restore();
+    const stream = await mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+    createCameraPreview(builder, stream);
+    return stream;
+  };
+
+  try {
+    Object.defineProperty(mediaDevices, 'getDisplayMedia', {
+      configurable: true,
+      writable: true,
+      value: cameraDisplayMethod
+    });
+  } catch (error) {
+    throw new Error('This browser would not allow the camera recorder to start.');
+  }
+
+  const timeout = window.setTimeout(restore, 60000);
+  return () => {
+    window.clearTimeout(timeout);
+    restore();
+  };
 };
 
 export const enhanceGuideCaptureOptions = root => {
@@ -153,83 +222,71 @@ export const enhanceGuideCaptureOptions = root => {
   ensureStyles();
 
   const subtitle = builder.querySelector('#sys-builder-subtitle');
-  if (subtitle) {
-    subtitle.textContent = 'Create a step by step guide from a screen recording, camera recording or existing video.';
-  }
+  if (subtitle) subtitle.textContent = 'Create a guide from a recording or video.';
 
   const setupWrapper = builder.querySelector('#sys-walkthrough-setup-wrapper');
   const setupLabel = setupWrapper?.querySelector(':scope > label');
-  if (setupLabel) setupLabel.textContent = 'Choose how to create your guide';
+  if (setupLabel) setupLabel.textContent = 'Choose a source';
 
   startRecordingButton.remove();
+  uploadLabel.remove();
+  uploadInput.remove();
   uploadWrapper.remove();
   setup.replaceChildren();
 
-  const intro = document.createElement('div');
-  intro.className = 'guide-capture-intro';
-  intro.innerHTML = `
-    <h3>Choose a recording method</h3>
-    <p>All three routes use the same guide generator and transcript editor after the video is captured.</p>
-  `;
+  startRecordingButton.removeAttribute('style');
+  setChoiceContent(startRecordingButton, '🖥️', 'Screen Recording', 'Record your screen');
 
-  const grid = document.createElement('div');
-  grid.className = 'guide-capture-choice-grid';
-
-  const screenCard = buildChoice({
-    icon: '🖥️',
-    title: 'Screen Recording',
-    description: 'Record your screen and voice while demonstrating a software process.'
-  });
-  startRecordingButton.classList.add('guide-capture-choice-action');
-  startRecordingButton.innerHTML = `
-    <span style="display:inline-block;width:10px;height:10px;background:white;border-radius:50%;animation:pulse-dot 1.5s infinite;"></span>
-    Start Screen Recording
-  `;
-  screenCard.appendChild(startRecordingButton);
-
-  const cameraCard = buildChoice({
-    icon: '📷',
-    title: 'Camera Recording',
-    description: 'Use your phone or tablet camera to record a real world task as it is performed.'
-  });
   const cameraButton = document.createElement('button');
   cameraButton.type = 'button';
   cameraButton.id = 'sys-start-camera-btn';
-  cameraButton.className = 'btn-ghost guide-capture-choice-action';
-  cameraButton.textContent = 'Open Camera';
-  const cameraNote = document.createElement('div');
-  cameraNote.className = 'guide-capture-choice-note';
-  cameraNote.textContent = 'Best used on a phone or tablet';
-  cameraCard.append(cameraButton, cameraNote);
+  setChoiceContent(cameraButton, '📷', 'Camera Recording', 'Record a real world task');
 
-  const uploadCard = buildChoice({
-    icon: '⬆️',
-    title: 'Upload Existing Video',
-    description: 'Use an MP4 video that has already been recorded and turn it into an editable guide.'
-  });
-  uploadLabel.classList.add('guide-capture-choice-action');
-  uploadLabel.innerHTML = `
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    Choose Existing Video
-  `;
-  uploadCard.appendChild(uploadWrapper);
+  uploadLabel.removeAttribute('style');
+  uploadLabel.removeAttribute('onmouseover');
+  uploadLabel.removeAttribute('onmouseout');
+  setChoiceContent(uploadLabel, '⬆️', 'Upload Existing Video', 'Use a video you already have');
 
-  const prepareExistingVideoPicker = () => {
+  uploadInput.removeAttribute('capture');
+  uploadInput.setAttribute('accept', 'video/mp4');
+  uploadInput.style.display = 'none';
+
+  const grid = document.createElement('div');
+  grid.className = 'guide-capture-choice-grid';
+  grid.append(startRecordingButton, cameraButton, uploadLabel);
+  setup.append(grid, uploadInput);
+
+  uploadLabel.addEventListener('click', () => {
     uploadInput.removeAttribute('capture');
     uploadInput.setAttribute('accept', 'video/mp4');
     uploadInput.value = '';
-  };
-
-  uploadLabel.addEventListener('click', prepareExistingVideoPicker);
-  cameraButton.addEventListener('click', () => {
-    uploadInput.setAttribute('accept', 'video/mp4');
-    uploadInput.setAttribute('capture', 'environment');
-    uploadInput.value = '';
-    uploadInput.click();
   });
 
-  grid.append(screenCard, cameraCard, uploadCard);
-  setup.append(intro, grid);
+  let restorePendingCameraDisplay = null;
+  let launchingCamera = false;
+
+  startRecordingButton.addEventListener('click', () => {
+    if (!launchingCamera && restorePendingCameraDisplay) {
+      restorePendingCameraDisplay();
+      restorePendingCameraDisplay = null;
+    }
+  }, true);
+
+  cameraButton.addEventListener('click', () => {
+    restorePendingCameraDisplay?.();
+    restorePendingCameraDisplay = null;
+
+    try {
+      restorePendingCameraDisplay = installOneShotCameraDisplay(builder);
+      launchingCamera = true;
+      startRecordingButton.click();
+    } catch (error) {
+      window.alert(error.message || 'Camera recording could not be started.');
+    } finally {
+      launchingCamera = false;
+    }
+  });
+
   return true;
 };
 
