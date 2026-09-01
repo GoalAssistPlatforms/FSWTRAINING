@@ -6,6 +6,7 @@ import { initGuidesChatOrganisation } from './guidesChatOrganisation.js';
 import { initGuidesChatMenus } from './guidesChatMenus.js';
 import { initGuidesLibraryNavigationFix } from './guidesLibraryNavigationFix.js';
 import { initGuideCaptureOptionsEnhancement } from './guideCaptureOptionsEnhancement.js';
+import { initGuidesLibraryItemMenus } from './guidesLibraryItemMenus.js';
 
 const LEARNING_PACK_GREEN = '#10b981';
 const STYLE_ID = 'fsw-ui-enhancement-styles';
@@ -201,6 +202,7 @@ export const initUiEnhancements = root => {
   const cleanupPhoneCallVoice = initPhoneCallVoiceEnhancement(root);
   const cleanupGuidesLibraryPolish = initGuidesLibraryPolish(root);
   const cleanupGuideCaptureOptions = initGuideCaptureOptionsEnhancement(root);
+  const cleanupGuidesLibraryItemMenus = initGuidesLibraryItemMenus(root);
 
   const cleanupActiveWorkspace = () => {
     activeLibraryNavigationCleanup?.();
@@ -270,6 +272,7 @@ export const initUiEnhancements = root => {
     cleanupPhoneCallVoice();
     cleanupGuidesLibraryPolish();
     cleanupGuideCaptureOptions();
+    cleanupGuidesLibraryItemMenus();
     cleanupActiveChat();
   };
 };
