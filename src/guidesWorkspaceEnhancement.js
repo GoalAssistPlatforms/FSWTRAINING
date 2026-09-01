@@ -276,119 +276,6 @@ const ensureWorkspaceStyles = () => {
       min-height: 72px;
     }
 
-    .guides-workspace-ready #guides-manager-view #curation-items-list {
-      display: grid !important;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-      align-content: start;
-      align-items: start;
-      gap: 1rem !important;
-      padding: 0.15rem 0.2rem 0.4rem !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view #curation-items-list > div:not(.curation-card) {
-      grid-column: 1 / -1;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] {
-      position: relative;
-      display: flex !important;
-      flex-direction: column !important;
-      gap: 0.7rem !important;
-      min-width: 0;
-      min-height: 0;
-      padding: 0.7rem !important;
-      border: 1px solid rgba(255,255,255,0.08) !important;
-      border-radius: 12px !important;
-      background: rgba(255,255,255,0.018) !important;
-      box-shadow: none !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"]:hover {
-      border-color: rgba(255,255,255,0.16) !important;
-      background: rgba(255,255,255,0.035) !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: stretch !important;
-      gap: 0.65rem !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child {
-      order: 2;
-      display: block !important;
-      min-width: 0;
-      text-align: center;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:first-child {
-      display: none !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:last-child {
-      min-width: 0;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:last-child > div:first-child {
-      display: -webkit-box;
-      overflow: hidden;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      min-height: 2.7em;
-      line-height: 1.35;
-      overflow-wrap: anywhere;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:first-child > div:last-child > div:last-child {
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.25rem !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] .curation-document-thumbnail {
-      order: 1;
-      height: 176px;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:first-child > div:last-child {
-      order: 3;
-      align-items: center !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:nth-child(2) {
-      margin: 0 !important;
-      min-height: 0 !important;
-      padding: 0.55rem 0.1rem 0 !important;
-      border-top: 1px solid rgba(255,255,255,0.06) !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      font-size: 0.72rem !important;
-      line-height: 1.4;
-      text-align: center;
-      justify-content: center !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:nth-child(3) {
-      margin: 0 !important;
-      padding: 0 !important;
-      border-top: 0 !important;
-      justify-content: space-between !important;
-      gap: 0.4rem !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card[data-curation-type="document"] > div:nth-child(3) > div {
-      flex-wrap: wrap;
-      gap: 0.35rem !important;
-    }
-
-    .guides-workspace-ready #guides-manager-view .curation-card:not([data-curation-type="document"]) {
-      grid-column: 1 / -1;
-    }
-
     .guides-user-library-view .guides-library-section[data-library-type="documents"] {
       padding: 0 1rem 1.2rem;
     }
@@ -526,7 +413,9 @@ const ensureWorkspaceStyles = () => {
 
     .guides-library-manager-actions {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
+      justify-content: flex-end;
       gap: 0.5rem;
       margin-left: auto;
     }
@@ -544,14 +433,40 @@ const ensureWorkspaceStyles = () => {
       font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .guides-library-action:hover {
       background: rgba(255,255,255,0.085);
     }
 
+    .guides-library-action[data-action="reviews"] {
+      border-color: rgba(18, 142, 205, 0.38);
+      background: rgba(18, 142, 205, 0.1);
+    }
+
     .guides-workspace-ready #guides-manager-view {
       max-width: 960px !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view #curation-items-list {
+      display: flex !important;
+      flex-direction: column !important;
+      align-content: initial !important;
+      align-items: stretch !important;
+      gap: 0.8rem !important;
+      padding: 0.1rem 0.2rem 1rem !important;
+      background: transparent !important;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-card {
+      flex: 0 0 auto;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .guides-workspace-ready #guides-manager-view .curation-document-thumbnail {
+      display: none !important;
     }
 
     @media (max-width: 800px) {
@@ -562,6 +477,16 @@ const ensureWorkspaceStyles = () => {
       .guides-workspace-sidebar {
         padding-left: 0.55rem;
         padding-right: 0.55rem;
+      }
+
+      .guides-library-header {
+        flex-direction: column;
+      }
+
+      .guides-library-manager-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
       }
 
       .guides-user-library-view .guides-library-section[data-library-type="documents"] #guides-list {
@@ -642,7 +567,7 @@ const renderSidebarHistory = (list, historyPanel) => {
   }).join('');
 };
 
-const buildUserLibrary = (mainPanel, legacySidebar) => {
+const buildLibrary = (mainPanel, legacySidebar, { isManager = false, onManageReviews = null } = {}) => {
   let view = mainPanel.querySelector('#guides-user-library-view');
   if (view) return view;
 
@@ -653,13 +578,22 @@ const buildUserLibrary = (mainPanel, legacySidebar) => {
     <div class="guides-library-header">
       <div>
         <h2>Library</h2>
-        <p>Browse the official guides, documents and web resources available to you.</p>
+        <p>${isManager
+          ? 'Browse, add and maintain the official guides, documents and web resources available across FSW.'
+          : 'Browse the official guides, documents and web resources available to you.'}</p>
       </div>
+      ${isManager ? `
+      <div class="guides-library-manager-actions" id="guides-library-manager-actions">
+        <button type="button" class="guides-library-action" data-action="upload">📄 Upload PDF</button>
+        <button type="button" class="guides-library-action" data-action="guide">🖱️ Build Guide</button>
+        <button type="button" class="guides-library-action" data-action="link">🔗 Add Link</button>
+        <button type="button" class="guides-library-action" data-action="reviews">☑ Manage Reviews</button>
+      </div>` : ''}
     </div>
     <div class="guides-library-toolbar">
       <div class="guides-library-search-wrap" id="guides-library-search-wrap"></div>
       <select id="guides-library-type-filter" class="guides-library-type-filter" aria-label="Filter library by type">
-        <option value="all">All</option>
+        <option value="all">All Library Items</option>
         <option value="guides">Guides</option>
         <option value="documents">Documents</option>
         <option value="links">Links</option>
@@ -709,53 +643,48 @@ const buildUserLibrary = (mainPanel, legacySidebar) => {
     });
   });
 
+  if (isManager) {
+    view.querySelector('[data-action="upload"]')?.addEventListener('click', () => proxyClick('#upload-zone'));
+    view.querySelector('[data-action="guide"]')?.addEventListener('click', () => proxyClick('#create-interactive-guide-btn'));
+    view.querySelector('[data-action="link"]')?.addEventListener('click', () => proxyClick('#add-link-btn'));
+    view.querySelector('[data-action="reviews"]')?.addEventListener('click', () => onManageReviews?.());
+
+    const progress = legacySidebar.querySelector('#upload-progress');
+    const toolbar = view.querySelector('.guides-library-toolbar');
+    if (progress && toolbar?.parentElement && !view.contains(progress)) {
+      progress.style.width = '100%';
+      progress.style.margin = '0';
+      toolbar.insertAdjacentElement('afterend', progress);
+    }
+  }
+
   return view;
 };
 
-const prepareManagerLibrary = (root, managerView, legacySidebar) => {
-  if (!managerView || managerView.dataset.libraryPrepared === 'true') return;
-  managerView.dataset.libraryPrepared = 'true';
+const prepareReviewManager = managerView => {
+  if (!managerView) return;
+
+  managerView.querySelector('#guides-library-manager-actions')?.remove();
 
   const heading = managerView.querySelector('h2');
   if (heading) {
-    heading.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Library';
+    heading.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Curation & Review Manager';
   }
 
   const description = heading?.parentElement?.querySelector('p');
-  if (description) description.textContent = 'Browse, add and maintain the official guides, documents and web resources available across FSW.';
+  if (description) description.textContent = 'Audit review dates, update metadata, and remove outdated training materials.';
 
   const backButton = managerView.querySelector('#close-manager-view-btn');
-  if (backButton) backButton.style.display = 'none';
+  if (backButton) {
+    backButton.style.display = 'flex';
+    backButton.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg> Back to Library';
+  }
 
   const typeFilter = managerView.querySelector('#curation-type-filter');
   if (typeFilter) {
     typeFilter.querySelector('option[value="course"]')?.remove();
     const allOption = typeFilter.querySelector('option[value="all"]');
     if (allOption) allOption.textContent = 'All Library Items';
-  }
-
-  const header = heading?.parentElement?.parentElement;
-  if (header && !header.querySelector('#guides-library-manager-actions')) {
-    const actions = document.createElement('div');
-    actions.id = 'guides-library-manager-actions';
-    actions.className = 'guides-library-manager-actions';
-    actions.innerHTML = `
-      <button type="button" class="guides-library-action" data-action="upload">📄 Upload PDF</button>
-      <button type="button" class="guides-library-action" data-action="guide">🖱️ Build Guide</button>
-      <button type="button" class="guides-library-action" data-action="link">🔗 Add Link</button>
-    `;
-    header.appendChild(actions);
-    actions.querySelector('[data-action="upload"]')?.addEventListener('click', () => proxyClick('#upload-zone'));
-    actions.querySelector('[data-action="guide"]')?.addEventListener('click', () => proxyClick('#create-interactive-guide-btn'));
-    actions.querySelector('[data-action="link"]')?.addEventListener('click', () => proxyClick('#add-link-btn'));
-  }
-
-  const progress = legacySidebar.querySelector('#upload-progress');
-  const toolbar = managerView.querySelector('#curation-search')?.closest('.glass');
-  if (progress && toolbar?.parentElement && !managerView.contains(progress)) {
-    progress.style.width = '100%';
-    progress.style.margin = '0';
-    toolbar.insertAdjacentElement('afterend', progress);
   }
 };
 
@@ -781,6 +710,7 @@ export const initGuidesWorkspaceEnhancement = root => {
   const chatView = container.querySelector('#guides-chat-view');
   const managerView = container.querySelector('#guides-manager-view');
   const manageButton = legacySidebar.querySelector('#manage-content-btn');
+  const managerBackButton = managerView?.querySelector('#close-manager-view-btn');
   const isManager = Boolean(manageButton);
 
   legacySidebar.dataset.legacyGuidesSidebar = 'true';
@@ -792,35 +722,46 @@ export const initGuidesWorkspaceEnhancement = root => {
   const chatList = sidebar.querySelector('#guides-workspace-chat-list');
   const newChatButton = sidebar.querySelector('#guides-workspace-new-chat');
   const libraryButton = sidebar.querySelector('#guides-workspace-library');
-  let userLibraryView = null;
+  let libraryView = null;
   let destroyed = false;
 
   const showChat = () => {
     if (chatView) chatView.style.display = 'flex';
     if (managerView) managerView.style.display = 'none';
-    if (userLibraryView) userLibraryView.style.display = 'none';
+    if (libraryView) libraryView.style.display = 'none';
     libraryButton?.classList.remove('active');
+  };
+
+  const showReviewManager = () => {
+    if (!isManager || !managerView) return;
+    if (chatView) chatView.style.display = 'none';
+    if (libraryView) libraryView.style.display = 'none';
+    prepareReviewManager(managerView);
+    manageButton?.click();
+    managerView.style.display = 'flex';
+    hideCourseCards(managerView);
+    libraryButton?.classList.add('active');
   };
 
   const showLibrary = () => {
     libraryButton?.classList.add('active');
-    if (isManager) {
-      manageButton?.click();
-      prepareManagerLibrary(root, managerView, legacySidebar);
-      hideCourseCards(managerView);
-      return;
-    }
-
     if (chatView) chatView.style.display = 'none';
-    userLibraryView = buildUserLibrary(mainPanel, legacySidebar);
-    userLibraryView.style.display = 'flex';
+    if (managerView) managerView.style.display = 'none';
+    libraryView = buildLibrary(mainPanel, legacySidebar, {
+      isManager,
+      onManageReviews: showReviewManager
+    });
+    libraryView.style.display = 'flex';
   };
+
+  const handleManagerBack = () => showLibrary();
 
   newChatButton?.addEventListener('click', () => {
     showChat();
     proxyClick('#new-guides-chat-btn');
   });
   libraryButton?.addEventListener('click', showLibrary);
+  managerBackButton?.addEventListener('click', handleManagerBack);
 
   const historyPanel = root.querySelector('#guides-chat-history-panel');
   const syncHistory = () => {
@@ -852,7 +793,7 @@ export const initGuidesWorkspaceEnhancement = root => {
 
   let managerObserver = null;
   if (isManager && managerView) {
-    prepareManagerLibrary(root, managerView, legacySidebar);
+    prepareReviewManager(managerView);
     const curationList = managerView.querySelector('#curation-items-list');
     if (curationList) {
       managerObserver = new MutationObserver(() => hideCourseCards(managerView));
@@ -867,5 +808,6 @@ export const initGuidesWorkspaceEnhancement = root => {
     historyObserver?.disconnect();
     managerObserver?.disconnect();
     chatList?.removeEventListener('click', handleSidebarClick);
+    managerBackButton?.removeEventListener('click', handleManagerBack);
   };
 };
