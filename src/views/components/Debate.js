@@ -13,6 +13,7 @@ export function renderDebate(containerId, config) {
     let failedAttemptsOnCurrentPoint = 0;
     let isAudioEnabled = false;
     let currentAudio = null;
+    let activityCompletionDispatched = false;
     const TOTAL_OUTCOMES = 3;
 
     const [stanceA, stanceB] = stances && stances.length === 2 ? stances : ['Defend Policy', 'Allow Shortcut'];
@@ -105,8 +106,7 @@ export function renderDebate(containerId, config) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button id="restart-btn-${containerId}" style="background: transparent; color: #f59e0b; border: 1px solid #f59e0b; padding: 12px 32px; font-weight: 800; border-radius: 24px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-size: 0.9rem; display: none;">Rejoin Meeting</button>
-                    <button id="complete-btn-${containerId}" style="background: #f59e0b; color: black; border: none; padding: 12px 32px; font-weight: 800; border-radius: 24px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-size: 0.9rem;">Continue Course</button>
+                    <button id="restart-btn-${containerId}" style="background: transparent; color: #f59e0b; border: 1px solid #f59e0b; padding: 12px 32px; font-weight: 800; border-radius: 24px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-size: 0.9rem; display: none;">Restart Activity</button>
                 </div>
             </div>
 
@@ -135,7 +135,6 @@ export function renderDebate(containerId, config) {
     const input = inputBar.querySelector('textarea');
     const sendBtn = inputBar.querySelector('.debate-send');
     const progressEl = container.querySelector(`#debate-progress-${containerId}`);
-    const completeBtn = container.querySelector(`#complete-btn-${containerId}`);
     const restartBtn = container.querySelector(`#restart-btn-${containerId}`);
     const leaveBtn = container.querySelector(`#leave-call-${containerId}`);
     const audioToggle = container.querySelector(`#audio-toggle-${containerId}`);
@@ -227,15 +226,17 @@ export function renderDebate(containerId, config) {
             verdictIcon.textContent = '❌';
             verdictTitle.textContent = 'Meeting Ended: Challenge Failed';
             verdictTitle.style.color = '#ef4444';
-            completeBtn.style.display = 'none';
-            restartBtn.style.display = 'block';
         } else {
             verdictIcon.textContent = '✅';
             verdictTitle.textContent = 'Meeting Ended: Challenge Passed';
             verdictTitle.style.color = '#10b981';
-            completeBtn.style.display = 'block';
-            restartBtn.style.display = 'none';
+            if (!activityCompletionDispatched) {
+                activityCompletionDispatched = true;
+                container.dispatchEvent(new CustomEvent('lesson-activity-complete', { bubbles: true, composed: true }));
+            }
         }
+
+        restartBtn.style.display = 'block';
 
         if (feedback) {
             const scoreEl = container.querySelector(`#debate-score-${containerId}`);
@@ -355,14 +356,6 @@ export function renderDebate(containerId, config) {
     restartBtn.addEventListener('click', resetActivity);
     leaveBtn.addEventListener('click', () => {
         showCompletion({ score: 0, strongest_argument: 'None', weakness: 'You left the meeting before resolving the issue.' }, true);
-    });
-    completeBtn.addEventListener('click', () => {
-        container.dispatchEvent(new CustomEvent('lesson-activity-complete', { bubbles: true, composed: true }));
-        const wrapper = container.closest('.activity-wrapper.fullscreen');
-        if (wrapper) {
-            const btn = document.querySelector(`.activity-expand-btn[data-target="${wrapper.id}"]`);
-            if (btn) btn.click();
-        }
     });
     sendBtn.addEventListener('click', handleSend);
     input.addEventListener('keydown', (e) => {
