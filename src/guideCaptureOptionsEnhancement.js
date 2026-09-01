@@ -1,5 +1,29 @@
 const STYLE_ID = 'guide-capture-options-enhancement-styles';
 
+const RECORDER_MIME_CANDIDATES = [
+  'video/webm;codecs=vp9,opus',
+  'video/webm;codecs=vp8,opus',
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+  'video/mp4',
+  'video/webm'
+];
+
+export const chooseSupportedRecorderMimeType = (RecorderCtor, requestedMimeType = '') => {
+  if (!RecorderCtor || typeof RecorderCtor.isTypeSupported !== 'function') return '';
+
+  const requested = String(requestedMimeType || '').trim();
+  if (requested && RecorderCtor.isTypeSupported(requested)) return requested;
+
+  return RECORDER_MIME_CANDIDATES.find(type => RecorderCtor.isTypeSupported(type)) || '';
+};
+
+export const extensionForRecorderMimeType = mimeType => {
+  const normalised = String(mimeType || '').toLowerCase();
+  if (normalised.includes('mp4')) return 'mp4';
+  if (normalised.includes('quicktime')) return 'mov';
+  return 'webm';
+};
+
 const ensureStyles = () => {
   if (document.getElementById(STYLE_ID)) return;
 
@@ -96,7 +120,6 @@ const ensureStyles = () => {
       border: 1px solid var(--glass-border);
       background: #05070b;
       box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-      transform: scaleX(-1);
     }
 
     @media (max-width: 900px) {
@@ -150,7 +173,7 @@ const createCameraPreview = (builder, stream) => {
   return cleanup;
 };
 
-const installOneShotCameraDisplay = (builder) => {
+const installOneShotCameraDisplay = builder => {
   const mediaDevices = navigator.mediaDevices;
   if (!mediaDevices?.getUserMedia) {
     throw new Error('Camera access is not available in this browser.');
@@ -205,6 +228,111 @@ const installOneShotCameraDisplay = (builder) => {
     window.clearTimeout(timeout);
     restore();
   };
+};
+
+export const installCameraRecorderFormatCompatibility = () => {
+  const NativeMediaRecorder = window.MediaRecorder;
+  const NativeBlob = window.Blob;
+  const NativeFile = window.File;
+
+  if (!NativeMediaRecorder || !NativeBlob || !NativeFile) return () => {};
+
+  const mediaRecorderDescriptor = Object.getOwnPropertyDescriptor(window, 'MediaRecorder');
+  const blobDescriptor = Object.getOwnPropertyDescriptor(window, 'Blob');
+  let activeRecorderMimeType = '';
+  let restored = false;
+  let timeout = null;
+
+  const restore = () => {
+    if (restored) return;
+    restored = true;
+    if (timeout !== null) window.clearTimeout(timeout);
+
+    try {
+      if (mediaRecorderDescriptor) {
+        Object.defineProperty(window, 'MediaRecorder', mediaRecorderDescriptor);
+      } else {
+        window.MediaRecorder = NativeMediaRecorder;
+      }
+    } catch (error) {
+      window.MediaRecorder = NativeMediaRecorder;
+    }
+
+    try {
+      if (blobDescriptor) {
+        Object.defineProperty(window, 'Blob', blobDescriptor);
+      } else {
+        window.Blob = NativeBlob;
+      }
+    } catch (error) {
+      window.Blob = NativeBlob;
+    }
+  };
+
+  function CompatibleMediaRecorder(stream, options = {}) {
+    const requestedMimeType = options?.mimeType || '';
+    const selectedMimeType = chooseSupportedRecorderMimeType(NativeMediaRecorder, requestedMimeType);
+    const recorderOptions = selectedMimeType
+      ? { ...options, mimeType: selectedMimeType }
+      : undefined;
+    const recorder = recorderOptions
+      ? new NativeMediaRecorder(stream, recorderOptions)
+      : new NativeMediaRecorder(stream);
+
+    activeRecorderMimeType = recorder.mimeType || selectedMimeType || '';
+    return recorder;
+  }
+
+  Object.setPrototypeOf(CompatibleMediaRecorder, NativeMediaRecorder);
+  CompatibleMediaRecorder.prototype = NativeMediaRecorder.prototype;
+  CompatibleMediaRecorder.isTypeSupported = type => NativeMediaRecorder.isTypeSupported(type);
+
+  function CompatibleBlob(parts = [], options = {}) {
+    const requestedType = String(options?.type || '').toLowerCase();
+    const videoPart = Array.from(parts || []).find(part =>
+      part instanceof NativeBlob && String(part.type || '').toLowerCase().startsWith('video/')
+    );
+    const actualMimeType = activeRecorderMimeType || videoPart?.type || '';
+    const isRecordedVideoAssembly = requestedType.startsWith('video/webm') && Boolean(actualMimeType);
+
+    if (isRecordedVideoAssembly) {
+      const extension = extensionForRecorderMimeType(actualMimeType);
+      const file = new NativeFile(
+        parts,
+        `camera_recording_${Date.now()}.${extension}`,
+        {
+          type: actualMimeType,
+          lastModified: Date.now()
+        }
+      );
+      restore();
+      return file;
+    }
+
+    return new NativeBlob(parts, options);
+  }
+
+  CompatibleBlob.prototype = NativeBlob.prototype;
+  Object.setPrototypeOf(CompatibleBlob, NativeBlob);
+
+  try {
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      writable: true,
+      value: CompatibleMediaRecorder
+    });
+    Object.defineProperty(window, 'Blob', {
+      configurable: true,
+      writable: true,
+      value: CompatibleBlob
+    });
+  } catch (error) {
+    restore();
+    return () => {};
+  }
+
+  timeout = window.setTimeout(restore, 10 * 60 * 1000);
+  return restore;
 };
 
 export const enhanceGuideCaptureOptions = root => {
@@ -263,24 +391,30 @@ export const enhanceGuideCaptureOptions = root => {
   });
 
   let restorePendingCameraDisplay = null;
+  let restorePendingRecorderCompatibility = null;
   let launchingCamera = false;
 
+  const clearPendingCameraOverrides = () => {
+    restorePendingCameraDisplay?.();
+    restorePendingCameraDisplay = null;
+    restorePendingRecorderCompatibility?.();
+    restorePendingRecorderCompatibility = null;
+  };
+
   startRecordingButton.addEventListener('click', () => {
-    if (!launchingCamera && restorePendingCameraDisplay) {
-      restorePendingCameraDisplay();
-      restorePendingCameraDisplay = null;
-    }
+    if (!launchingCamera) clearPendingCameraOverrides();
   }, true);
 
   cameraButton.addEventListener('click', () => {
-    restorePendingCameraDisplay?.();
-    restorePendingCameraDisplay = null;
+    clearPendingCameraOverrides();
 
     try {
       restorePendingCameraDisplay = installOneShotCameraDisplay(builder);
+      restorePendingRecorderCompatibility = installCameraRecorderFormatCompatibility();
       launchingCamera = true;
       startRecordingButton.click();
     } catch (error) {
+      clearPendingCameraOverrides();
       window.alert(error.message || 'Camera recording could not be started.');
     } finally {
       launchingCamera = false;
