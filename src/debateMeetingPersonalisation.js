@@ -135,8 +135,13 @@ function applyPersonaVisuals(debate, persona) {
     const personName = debate.querySelector('.meeting-modern-person-name');
     const avatar = debate.querySelector('[id^="ai-avatar-ring-"]');
     const chatLog = debate.querySelector('.meeting-modern-chat-log');
+    const waitingRoom = debate.querySelector('.meeting-modern-waiting-room');
+    const waitingDescription = waitingRoom?.querySelector('p:last-of-type');
 
     if (personName && personName.textContent !== displayName) personName.textContent = displayName;
+    if (waitingDescription) {
+        waitingDescription.textContent = `You are about to join a short meeting with ${displayName}. Listen to their opening point, then respond exactly as you would in a real conversation.`;
+    }
     if (chatLog) updateAuthors(chatLog, displayName);
     if (!avatar) return;
 
