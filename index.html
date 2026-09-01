@@ -16,8 +16,13 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module">
     import { initMobileExperienceEnhancement } from '/src/mobileExperienceEnhancement.js';
+    import { initGuidesInteractionCleanup } from '/src/guidesInteractionCleanup.js';
+
     window.__fswMobileExperienceCleanup?.();
     window.__fswMobileExperienceCleanup = initMobileExperienceEnhancement(document.body);
+
+    window.__fswGuidesInteractionCleanup?.();
+    window.__fswGuidesInteractionCleanup = initGuidesInteractionCleanup(document.body);
   </script>
   <script type="module" src="/src/main.js"></script>
 </body>
