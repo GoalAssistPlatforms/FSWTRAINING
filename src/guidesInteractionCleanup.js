@@ -8,7 +8,6 @@ const ensureStyles = () => {
   style.textContent = `
     .guides-native-build-guide-action {
       flex: 0 0 auto;
-      min-height: 40px;
       touch-action: manipulation;
       user-select: none;
       -webkit-user-select: none;
@@ -24,6 +23,12 @@ const ensureStyles = () => {
       font-size: inherit;
       font-weight: inherit;
       line-height: 1;
+    }
+
+    @media (max-width: 760px) {
+      .guides-container.guides-workspace-ready[style*="display: none"] {
+        display: none !important;
+      }
     }
   `;
   document.head.appendChild(style);
