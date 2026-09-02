@@ -52,6 +52,12 @@ describe("TranscriptionService Unit Tests", () => {
     expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(false);
   });
 
+  it("1.1. enables automatic transcription only when the deployment flag is explicit", () => {
+    vi.stubEnv("VITE_TRANSCRIPTION_WORKER_ENABLED", "true");
+    expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(true);
+    vi.unstubAllEnvs();
+  });
+
   it("2. manual import remains available", async () => {
     const mockJob = { id: "job-1", status: "awaiting_approval" };
     repoInstance.createManualImportJob.mockResolvedValueOnce(mockJob);

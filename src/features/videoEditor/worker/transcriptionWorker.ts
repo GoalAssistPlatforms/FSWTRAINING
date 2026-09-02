@@ -107,7 +107,7 @@ export async function runTranscriptionWorkerTick(deps: WorkerDependencies): Prom
   try {
     // 1. Downloading Source
     await checkCancellation();
-    const { localPath } = await loader.downloadAsset(job.sourceAssetId, abortController.signal);
+    const { localPath, duration: authoritativeDuration } = await loader.downloadAsset(job.sourceAssetId, abortController.signal);
     localAssetPath = localPath;
 
     // 2. Extracting Audio
@@ -138,7 +138,12 @@ export async function runTranscriptionWorkerTick(deps: WorkerDependencies): Prom
     const stage2Ok = await repo.recordStage(job.id, workerId, job.leaseGeneration, 'normalising', 'validating');
     if (!stage2Ok) throw new WorkerError(WorkerErrorCodes.LEASE_LOST, 'Failed to record stage provider_processing -> normalising');
 
-    const transcriptJson = await normaliser.normalise(result, job.sourceAssetId, duration);
+    const transcriptJson = await normaliser.normalise(
+      result,
+      job.sourceAssetId,
+      authoritativeDuration ?? duration,
+      job.id
+    );
 
     // 5. Validating
     await checkCancellation();
