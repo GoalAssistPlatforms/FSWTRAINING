@@ -1,3 +1,5 @@
+import { normaliseNarrationAudio } from './audioProcessing.js';
+
 const OPENROUTER_IMAGE_MODELS = [
     'openai/gpt-image-2',
     'openai/gpt-image-1',
@@ -260,5 +262,12 @@ export async function generateNarrationAudio(text) {
     if (!response.ok) {
         throw new Error(`ElevenLabs request failed with status ${response.status}: ${await response.text()}`);
     }
-    return Buffer.from(await response.arrayBuffer());
+
+    const generatedAudio = Buffer.from(await response.arrayBuffer());
+    try {
+        return await normaliseNarrationAudio(generatedAudio);
+    } catch (error) {
+        console.warn('Narration loudness normalisation failed; using original ElevenLabs audio.', error);
+        return generatedAudio;
+    }
 }
