@@ -1,30 +1,26 @@
-const DEFAULT_VOICE_ID = 'i5LC8lKW1RRBmYdwr2bP';
-
 const getVoiceConfiguration = (voiceType, explicitVoiceId) => {
   const defaultApiKey = process.env.ELEVENLABS_API_KEY;
   const defaultVoiceId = process.env.ELEVENLABS_VOICE_ID;
   const fswApiKey = process.env.ELEVENLABS_API_KEY_FSW || process.env.ELVENLABS_API_KEY_FSW;
   const fswVoiceId = process.env.ELEVENLABS_VOICE_ID_FSW;
-  const joshApiKey = process.env.ELEVENLABS_API_KEY_JOSH;
-  const joshVoiceId = process.env.ELEVENLABS_VOICE_ID_JOSH;
 
   if (voiceType === 'fsw') {
     return {
-      apiKey: fswApiKey || defaultApiKey || joshApiKey,
-      voiceId: explicitVoiceId || fswVoiceId || defaultVoiceId || joshVoiceId || DEFAULT_VOICE_ID
+      apiKey: fswApiKey || defaultApiKey,
+      voiceId: explicitVoiceId || fswVoiceId || defaultVoiceId
     };
   }
 
   if (voiceType === 'josh') {
     return {
-      apiKey: joshApiKey || defaultApiKey || fswApiKey,
-      voiceId: explicitVoiceId || joshVoiceId || defaultVoiceId || fswVoiceId || DEFAULT_VOICE_ID
+      apiKey: defaultApiKey,
+      voiceId: explicitVoiceId || defaultVoiceId
     };
   }
 
   return {
-    apiKey: defaultApiKey || fswApiKey || joshApiKey,
-    voiceId: explicitVoiceId || defaultVoiceId || fswVoiceId || joshVoiceId || DEFAULT_VOICE_ID
+    apiKey: defaultApiKey,
+    voiceId: explicitVoiceId || defaultVoiceId
   };
 };
 
@@ -37,7 +33,11 @@ export default async function handler(req, res) {
   const configuration = getVoiceConfiguration(voiceType, voiceId);
 
   if (!configuration.apiKey) {
-    return res.status(500).json({ error: 'Server configuration error: Missing ElevenLabs API key' });
+    return res.status(500).json({ error: `Server configuration error: Missing ${voiceType === 'fsw' ? 'ELEVENLABS_API_KEY_FSW' : 'ELEVENLABS_API_KEY'}` });
+  }
+
+  if (!configuration.voiceId) {
+    return res.status(500).json({ error: `Server configuration error: Missing ${voiceType === 'fsw' ? 'ELEVENLABS_VOICE_ID_FSW' : 'ELEVENLABS_VOICE_ID'}` });
   }
 
   try {
@@ -60,6 +60,7 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`ElevenLabs ${voiceType || 'default'} voice request failed:`, response.status, errorText);
       return res.status(response.status).send(errorText);
     }
 
