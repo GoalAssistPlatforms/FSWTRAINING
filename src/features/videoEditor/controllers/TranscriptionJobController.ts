@@ -145,7 +145,10 @@ export class TranscriptionJobController {
 
     this.updateState({ status: "loading" });
     try {
-      const job = await this.service.createJob(this.guideId, this.sourceAssetId, requestId, "openai", {});
+      // Recorded on the job row so it reflects the provider that actually ran it.
+      const job = await this.service.createJob(this.guideId, this.sourceAssetId, requestId, "openrouter", {
+        model: "openai/whisper-1"
+      });
       this.startSubscription(job.id);
       return job;
     } catch (err: any) {

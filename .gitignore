@@ -9,6 +9,7 @@ coverage
 # Production
 build
 dist
+dist-transcription-worker
 
 # Misc
 .DS_Store
