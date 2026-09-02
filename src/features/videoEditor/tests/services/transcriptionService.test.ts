@@ -52,6 +52,36 @@ describe("TranscriptionService Unit Tests", () => {
     expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(false);
   });
 
+  it("1.1. enables background transcription only when the deployment flag is explicit", () => {
+    vi.stubEnv("VITE_BACKGROUND_TRANSCRIPTION_ENABLED", "true");
+    expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(true);
+    vi.unstubAllEnvs();
+  });
+
+  it("1.2. starts the background run with the current session token", async () => {
+    mockClient.auth = { getSession: vi.fn(async () => ({ data: { session: { access_token: "token-1" } }, error: null })) };
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ runId: "run-1", alreadyStarted: false }) }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await service.startBackgroundTranscription("job-1");
+
+    expect(result).toEqual({ runId: "run-1", alreadyStarted: false });
+    expect(fetchMock).toHaveBeenCalledWith("/api/transcription/start", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer token-1" }),
+      body: JSON.stringify({ jobId: "job-1" })
+    }));
+    vi.unstubAllGlobals();
+  });
+
+  it("1.3. surfaces the server reason when the run cannot be started", async () => {
+    mockClient.auth = { getSession: vi.fn(async () => ({ data: { session: { access_token: "token-1" } }, error: null })) };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ statusMessage: "Only queued jobs can be started" }) })));
+
+    await expect(service.startBackgroundTranscription("job-1")).rejects.toThrow("Only queued jobs can be started");
+    vi.unstubAllGlobals();
+  });
+
   it("2. manual import remains available", async () => {
     const mockJob = { id: "job-1", status: "awaiting_approval" };
     repoInstance.createManualImportJob.mockResolvedValueOnce(mockJob);

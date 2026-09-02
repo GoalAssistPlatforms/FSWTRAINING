@@ -721,6 +721,18 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
             try {
                 generateTranscriptBtn.style.display = 'none';
                 transcriptProgressMsg.style.display = 'block';
+
+                const workerAvailable = transcriptionUIController.transcriptionService
+                    ?.isAutomaticTranscriptionWorkerAvailable();
+                if (workerAvailable) {
+                    transcriptProgressMsg.innerText = 'Queuing background transcription…';
+                    await transcriptionUIController.transcriptionJobController.startTranscription(
+                        crypto.randomUUID()
+                    );
+                    transcriptProgressMsg.innerText = 'Transcription is continuing in the background';
+                    return;
+                }
+
                 transcriptProgressMsg.innerText = 'Loading the saved recording…';
 
                 if (!videoUrl) {
@@ -3771,11 +3783,46 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
 
             // 5. Store returned UUID and active source duration in transcriptionUIController, then initialize controllers
             if (transcriptionUIController) {
-                transcriptionUIController.setSourceAsset(sourceAssetId, duration);
+                await transcriptionUIController.setSourceAsset(sourceAssetId, duration);
             }
 
             // Clear recordedVideoBlob so we don't upload again in saveGuide
             recordedVideoBlob = null;
+
+            const automaticWorkerAvailable = transcriptionUIController?.transcriptionService
+                ?.isAutomaticTranscriptionWorkerAvailable();
+            if (automaticWorkerAvailable && transcriptionUIController?.transcriptionJobController) {
+                recProgressMsg.innerText = 'Queuing background transcription…';
+                recProgressBar.style.width = '75%';
+
+                await transcriptionUIController.transcriptionJobController.startTranscription(
+                    crypto.randomUUID()
+                );
+
+                if (steps.length === 0) {
+                    steps = [
+                        {
+                            id: crypto.randomUUID(),
+                            createdOrder: 0,
+                            sourceTimestamp: 0.0,
+                            instruction: 'Start Walkthrough',
+                            teachingText: 'Welcome to this interactive walkthrough guide.'
+                        }
+                    ];
+                    nextStepOrder = 1;
+                }
+
+                hasUnsavedChanges = true;
+                updateSaveStatusIndicator();
+                editorStep.style.display = 'flex';
+                setWorkspaceState('editing');
+                saveBtn.disabled = false;
+                draftBtn.disabled = false;
+                renderTimelineSteps();
+                recSetupUi.style.display = 'block';
+                recProgressUi.style.display = 'none';
+                return;
+            }
 
             const getAccessToken = async () => {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -4805,8 +4852,37 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
 
                 const approveBtn = document.getElementById('sys-transcribe-approve-btn');
                 if (approveBtn && !approveBtn.disabled) {
-                    approveBtn.onclick = () => {
-                        transcriptionUIController?.handleApprove();
+                    approveBtn.onclick = async () => {
+                        await transcriptionUIController?.handleApprove();
+
+                        // handleApprove reports failures to the user itself; only build steps from a
+                        // transcript that was actually approved.
+                        const approvalState = transcriptionUIController?.transcriptionJobController?.getState?.();
+                        if (approvalState?.status !== 'completed') return;
+
+                        const approvedTranscript = transcriptionUIController
+                            ?.transcriptViewerController
+                            ?.getState()
+                            ?.transcript;
+                        const hasOnlyStarterStep = steps.length === 1
+                            && Number(steps[0].sourceTimestamp || 0) === 0
+                            && steps[0].instruction === 'Start Walkthrough';
+
+                        if (
+                            approvedTranscript?.words?.length > 0
+                            && (steps.length === 0 || hasOnlyStarterStep)
+                        ) {
+                            const speechSegments = buildSpeechSegments({
+                                words: approvedTranscript.words.map(word => ({
+                                    word: word.text,
+                                    start: word.startSourceTime,
+                                    end: word.endSourceTime
+                                }))
+                            });
+                            if (speechSegments.length > 0) {
+                                await generateTimelineStepsFromSegments(speechSegments);
+                            }
+                        }
                     };
                 }
 

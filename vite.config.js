@@ -10,7 +10,11 @@ export default defineConfig(({ mode }) => {
         plugins: [nitro(), workflow({ runtime: 'nodejs22.x' })],
         nitro: {
             serverDir: './server',
-            traceDeps: ['undici'],
+            // ffmpeg-static resolves its binary from __dirname, which dependency tracing turns into a
+            // whole-package include, so the FFmpeg binary ships inside the server function. chmod
+            // keeps it executable after the copy.
+            traceDeps: ['undici', 'ffmpeg-static'],
+            traceOpts: { chmod: true },
             vercel: {
                 functions: {
                     maxDuration: 'max',
