@@ -168,7 +168,8 @@ describe('runTranscription with the real pipeline', () => {
         expect(ffmpeg.extractSpeechAudio).toHaveBeenCalledTimes(1);
         expect(ffmpeg.extractSpeechAudio.mock.calls[0][0]).toBe(state.asset.original_storage_path);
         expect(provider.transcribeSpeechAudio).toHaveBeenCalledTimes(2);
-        const keys = provider.transcribeSpeechAudio.mock.calls.map(call => call[3].idempotencyKey);
+        // Pieces are transcribed in parallel, so only the set of requests is deterministic.
+        const keys = provider.transcribeSpeechAudio.mock.calls.map(call => call[3].idempotencyKey).sort();
         expect(keys).toEqual([
             'transcription-job:job-1:attempt:1:chunk:0',
             'transcription-job:job-1:attempt:1:chunk:1'

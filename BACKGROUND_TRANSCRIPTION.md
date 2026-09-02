@@ -19,7 +19,12 @@ Server environment (Vercel project):
 - `OPENROUTER_API_KEY` — already required by the other AI features. The worker never calls OpenAI directly.
 - `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — already required by course generation.
 - `BACKGROUND_TRANSCRIPTION_MAX_SECONDS` (optional, default `10800`) — longest recording accepted. Audio extraction is one function invocation, so this should stay well inside the plan's function duration limit (300 s on Hobby).
-- `FFMPEG_PATH` (optional) — overrides the bundled `ffmpeg-static` binary.
+- `FFMPEG_PATH` (optional) — use a specific FFmpeg binary instead of the automatic one.
+- `FFMPEG_DOWNLOAD_BASE_URL` / `FFMPEG_DOWNLOAD_SHA256` (optional) — self-host the FFmpeg asset (same file layout as the GitHub release) and pin its checksum.
+
+## FFmpeg
+
+Locally, the `ffmpeg-static` package provides the binary. On Vercel, workflow steps run as single-file bundles without `node_modules`, so the step function fetches the pinned `ffmpeg-static` release (`b6.1.1`) for its own CPU architecture from GitHub the first time an instance needs it, verifies it against the release's published SHA-256, and keeps it in `/tmp` for the life of the instance (about 25–30 MB compressed, a few seconds once per cold instance). The version and checksums are pinned in `server/transcription/ffmpeg.js`.
 
 Build-time flag for the web app:
 
@@ -28,7 +33,7 @@ Build-time flag for the web app:
 ## Rollout
 
 1. Apply `src/migrations/20260902_video_transcription_workflow.sql` to the Supabase project (the earlier video transcription migrations through `20260720` must already be present).
-2. Deploy. FFmpeg ships inside the server function via `ffmpeg-static`; no separate service is needed.
+2. Deploy. No separate service is needed; the step function fetches FFmpeg itself (see below).
 3. Set `VITE_BACKGROUND_TRANSCRIPTION_ENABLED=true` in the Vercel project and redeploy.
 4. Record or open a guide, generate a transcript, and watch the run under Observability → Workflows in the Vercel dashboard.
 
