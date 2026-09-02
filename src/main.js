@@ -1,4 +1,5 @@
 import './styles/style.css'
+import './courseSlideNavigation.js'
 
 import { initUiEnhancements } from './uiEnhancements'
 import { getCurrentUser, signOut } from './api/auth'
