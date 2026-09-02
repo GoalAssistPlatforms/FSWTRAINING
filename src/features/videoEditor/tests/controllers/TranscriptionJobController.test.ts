@@ -58,6 +58,7 @@ describe("TranscriptionJobController State Flow", () => {
       createManualImportJob: vi.fn(async () => createMockJob("awaiting_approval")),
       cancelJob: vi.fn(async () => createMockJob("cancelled")),
       retryJob: vi.fn(async () => createMockJob("queued")),
+      startBackgroundTranscription: vi.fn(async () => ({ runId: "run-1", alreadyStarted: false })),
       approveJob: vi.fn(async () => createMockJob("completed")),
       rejectJob: vi.fn(async () => createMockJob("rejected")),
       subscribeToJob: vi.fn((id, callback) => {
@@ -152,6 +153,43 @@ describe("TranscriptionJobController State Flow", () => {
 
     await expect(controller.init()).rejects.toThrow(TranscriptionDisposedError);
     await expect(controller.startTranscription("new-req")).rejects.toThrow(TranscriptionDisposedError);
+  });
+
+  describe("Background transcription start", () => {
+    it("creates the job for OpenRouter, starts its run, then follows it", async () => {
+      const controller = new TranscriptionJobController(mockService, guideId, sourceAssetId, onStateChange);
+      await controller.init();
+
+      const job = await controller.startTranscription("req-1");
+
+      expect(mockService.createJob).toHaveBeenCalledWith(guideId, sourceAssetId, "req-1", "openrouter", { model: "openai/whisper-1" });
+      expect(mockService.startBackgroundTranscription).toHaveBeenCalledWith(job.id);
+      expect(mockService.subscribeToJob).toHaveBeenCalledWith(job.id, expect.any(Function));
+      controller.dispose();
+    });
+
+    it("reports an error and does not follow the job when the run cannot be started", async () => {
+      mockService.startBackgroundTranscription.mockRejectedValueOnce(new Error("Background transcription could not be started."));
+      const controller = new TranscriptionJobController(mockService, guideId, sourceAssetId, onStateChange);
+      await controller.init();
+
+      await expect(controller.startTranscription("req-1")).rejects.toThrow(/could not be started/);
+      expect(controller.getState().status).toBe("error");
+      expect(mockService.subscribeToJob).not.toHaveBeenCalled();
+      controller.dispose();
+    });
+
+    it("starts a new run after a manual retry", async () => {
+      mockService.listJobs.mockResolvedValueOnce([createMockJob("failed")]);
+      const controller = new TranscriptionJobController(mockService, guideId, sourceAssetId, onStateChange);
+      await controller.init();
+
+      await controller.retry();
+
+      expect(mockService.retryJob).toHaveBeenCalledWith("job-1");
+      expect(mockService.startBackgroundTranscription).toHaveBeenCalledWith("job-1");
+      controller.dispose();
+    });
   });
 
   describe("Manual Import & Approval Flow", () => {

@@ -1,6 +1,11 @@
 import { TranscriptionJob } from "../domain/transcriptionTypes";
 import { TranscriptionRepository } from "../persistence/transcriptionRepository";
 
+export interface BackgroundTranscriptionStart {
+  runId: string | null;
+  alreadyStarted: boolean;
+}
+
 export class TranscriptionService {
   private repository = new TranscriptionRepository();
   private client: any;
@@ -8,8 +13,11 @@ export class TranscriptionService {
   constructor(supabaseClient: any) {
     this.client = supabaseClient;
   }
+
+  // Background transcription runs as a Vercel Workflow. It is switched on per deployment so the
+  // in-browser path stays in use until the migration and environment are in place.
   isAutomaticTranscriptionWorkerAvailable(): boolean {
-    return false;
+    return import.meta.env.VITE_BACKGROUND_TRANSCRIPTION_ENABLED === "true";
   }
 
   async getCurrentTranscriptRevision(guideId: string, sourceAssetId: string): Promise<number | null> {
@@ -31,6 +39,31 @@ export class TranscriptionService {
       provider,
       settings
     );
+  }
+
+  // Asks the server to attach a workflow run to a queued job.
+  async startBackgroundTranscription(jobId: string): Promise<BackgroundTranscriptionStart> {
+    const { data, error } = await this.client.auth.getSession();
+    if (error) throw error;
+    const accessToken = data?.session?.access_token;
+    if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
+
+    const response = await fetch("/api/transcription/start", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ jobId })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.statusMessage || payload?.message || "Background transcription could not be started.");
+    }
+    return {
+      runId: payload?.runId ?? null,
+      alreadyStarted: Boolean(payload?.alreadyStarted)
+    };
   }
 
   async getJob(jobId: string): Promise<TranscriptionJob> {

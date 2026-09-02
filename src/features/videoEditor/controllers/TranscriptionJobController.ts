@@ -145,7 +145,11 @@ export class TranscriptionJobController {
 
     this.updateState({ status: "loading" });
     try {
-      const job = await this.service.createJob(this.guideId, this.sourceAssetId, requestId, "openai", {});
+      // Recorded on the job row so it reflects the provider that actually runs it.
+      const job = await this.service.createJob(this.guideId, this.sourceAssetId, requestId, "openrouter", {
+        model: "openai/whisper-1"
+      });
+      await this.service.startBackgroundTranscription(job.id);
       this.startSubscription(job.id);
       return job;
     } catch (err: any) {
@@ -195,6 +199,8 @@ export class TranscriptionJobController {
     if (!this.state.job) return;
     try {
       const job = await this.service.retryJob(this.state.job.id);
+      // A retried job is queued again with no run attached, so start a fresh one.
+      await this.service.startBackgroundTranscription(job.id);
       this.startSubscription(job.id);
       return job;
     } catch (err: any) {
