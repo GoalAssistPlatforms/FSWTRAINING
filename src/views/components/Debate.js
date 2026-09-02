@@ -24,7 +24,7 @@ export function renderDebate(containerId, config) {
     let messages = [];
     let outcomesMetCount = 0;
     let failedAttemptsOnCurrentPoint = 0;
-    let isAudioEnabled = false;
+    let isAudioEnabled = true;
     let currentAudio = null;
     let activityCompletionDispatched = false;
     const TOTAL_OUTCOMES = 3;
@@ -125,9 +125,9 @@ export function renderDebate(containerId, config) {
 
             <div id="control-bar-${containerId}" style="height: 60px; background: #1e1e1e; display: none; justify-content: space-between; align-items: center; padding: 0 1.5rem; border-top: 1px solid #333;">
                 <div style="display: flex; gap: 1.5rem;">
-                    <div class="zoom-btn" id="audio-toggle-${containerId}" role="button" tabindex="0">
-                        <span id="audio-icon-${containerId}">${meetingIcon('micOff')}</span>
-                        <span id="audio-label-${containerId}">Unmute Audio</span>
+                    <div class="zoom-btn" id="audio-toggle-${containerId}" role="button" tabindex="0" style="color: #fff;">
+                        <span id="audio-icon-${containerId}">${meetingIcon('mic')}</span>
+                        <span id="audio-label-${containerId}">Mute Audio</span>
                     </div>
                     <div class="zoom-btn" role="button" tabindex="0"><span>${meetingIcon('video')}</span><span>Stop Video</span></div>
                 </div>
