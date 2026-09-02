@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   FfmpegAudioExtractor,
-  OpenAIChunkedTranscriptionProvider,
+  OpenRouterChunkedTranscriptionProvider,
   SupabaseSourceAssetLoader,
   WhisperTranscriptNormaliser,
   runProcess,
@@ -162,7 +162,7 @@ describe('background transcription runtime adapters', () => {
     const create = vi.fn()
       .mockResolvedValueOnce({ _request_id: 'request-one', language: 'en', words: [{ word: 'one', start: 1, end: 2 }] })
       .mockResolvedValueOnce({ _request_id: 'request-two', language: 'en', words: [{ word: 'two', start: 1, end: 2 }] });
-    const provider = new OpenAIChunkedTranscriptionProvider({
+    const provider = new OpenRouterChunkedTranscriptionProvider({
       audio: { transcriptions: { create } }
     } as any);
 

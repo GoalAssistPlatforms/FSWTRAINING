@@ -58,6 +58,12 @@ const safeRemoveTempWorkspace = async (path: string, prefix: string) => {
 };
 
 export const runProcess: ProcessRunner = async (command, args, abortSignal) => {
+  if (abortSignal.aborted) {
+    const error = new Error('Media processing was aborted.');
+    error.name = 'AbortError';
+    throw error;
+  }
+
   return await new Promise<ProcessResult>((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -325,10 +331,10 @@ export const stitchProviderChunks = (
   };
 };
 
-export class OpenAIChunkedTranscriptionProvider implements TranscriptionProvider {
+export class OpenRouterChunkedTranscriptionProvider implements TranscriptionProvider {
   constructor(
     private readonly openai: OpenAI,
-    private readonly model = 'whisper-1',
+    private readonly model = 'openai/whisper-1',
     private readonly maximumProviderBytes = DEFAULT_MAX_PROVIDER_BYTES,
     private readonly timeoutMilliseconds = 10 * 60 * 1000
   ) {}

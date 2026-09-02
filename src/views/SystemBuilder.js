@@ -4855,6 +4855,11 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
                     approveBtn.onclick = async () => {
                         await transcriptionUIController?.handleApprove();
 
+                        // handleApprove reports failures to the user itself; only build steps from a
+                        // transcript that was actually approved.
+                        const approvalState = transcriptionUIController?.transcriptionJobController?.getState?.();
+                        if (approvalState?.status !== 'completed') return;
+
                         const approvedTranscript = transcriptionUIController
                             ?.transcriptViewerController
                             ?.getState()
