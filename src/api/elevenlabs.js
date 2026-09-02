@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js';
 
+const INTERACTIVE_VOICE_ID = 'P4wGl87YTnsZgReoqa8D';
+
 const buildSpeechPayload = (text) => ({
     text,
     model_id: 'eleven_turbo_v2_5',
@@ -10,8 +12,11 @@ const buildSpeechPayload = (text) => ({
     }
 });
 
-const requestSpeechBlob = async (text, voiceType) => {
-    const response = await fetch(`/api/elevenlabs?voiceType=${encodeURIComponent(voiceType)}`, {
+const requestSpeechBlob = async (text, voiceType, voiceId = null) => {
+    const query = new URLSearchParams({ voiceType });
+    if (voiceId) query.set('voiceId', voiceId);
+
+    const response = await fetch(`/api/elevenlabs?${query.toString()}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -76,9 +81,10 @@ export const createAudio = async (text) => {
 };
 
 /**
- * Creates temporary audio from text for fast chat playback without uploading.
- * The dedicated chat voice is preferred when configured, but the known working
- * FSW voice is used automatically if the chat voice is unavailable.
+ * Creates temporary audio from text for fast interactive playback without uploading.
+ * Activities are explicitly bound to the intended interactive voice. The FSW voice
+ * remains a final safety fallback so an activity does not become silent if the
+ * dedicated voice is temporarily unavailable.
  * @param {string} text - The text to convert to speech
  * @returns {Promise<string>} The local Object URL of the generated audio
  */
@@ -86,17 +92,18 @@ export const generateChatAudio = async (text) => {
     const cleanedText = typeof text === 'string' ? text.replace(/myhrtoolkit/gi, 'my hr tool kit').trim() : text;
     if (!cleanedText) return null;
 
-    const failures = [];
-    for (const voiceType of ['josh', 'fsw']) {
-        try {
-            const blob = await requestSpeechBlob(cleanedText, voiceType);
-            return URL.createObjectURL(blob);
-        } catch (error) {
-            failures.push(error.message);
-            console.warn(`Chat audio ${voiceType} voice unavailable, trying fallback if available:`, error);
-        }
+    try {
+        const blob = await requestSpeechBlob(cleanedText, 'josh', INTERACTIVE_VOICE_ID);
+        return URL.createObjectURL(blob);
+    } catch (error) {
+        console.error(`Interactive ElevenLabs voice ${INTERACTIVE_VOICE_ID} failed. Falling back to FSW voice:`, error);
     }
 
-    console.error('Chat Audio Generation Failed:', failures.join(' | '));
-    return null;
+    try {
+        const blob = await requestSpeechBlob(cleanedText, 'fsw');
+        return URL.createObjectURL(blob);
+    } catch (error) {
+        console.error('FSW fallback audio also failed:', error);
+        return null;
+    }
 };
