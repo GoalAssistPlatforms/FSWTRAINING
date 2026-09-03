@@ -1,3 +1,5 @@
+import { getFswPronunciationLocator } from '../voiceManagement/elevenLabs.js';
+
 const getVoiceConfiguration = (voiceType, explicitVoiceId) => {
   const defaultApiKey = process.env.ELEVENLABS_API_KEY;
   const defaultVoiceId = process.env.ELEVENLABS_VOICE_ID;
@@ -42,7 +44,26 @@ export default async function handler(req, res) {
 
   try {
     let requestBody = req.body;
-    if (requestBody && typeof requestBody.text === 'string') {
+
+    if (voiceType === 'fsw') {
+      try {
+        const locator = await getFswPronunciationLocator();
+        if (locator) {
+          requestBody = {
+            ...requestBody,
+            pronunciation_dictionary_locators: [locator]
+          };
+        }
+      } catch (error) {
+        console.warn('FSW pronunciation dictionary unavailable. Falling back to the legacy myhrtoolkit pronunciation.', error);
+        if (requestBody && typeof requestBody.text === 'string') {
+          requestBody = {
+            ...requestBody,
+            text: requestBody.text.replace(/myhrtoolkit/gi, 'my hr tool kit')
+          };
+        }
+      }
+    } else if (requestBody && typeof requestBody.text === 'string') {
       requestBody = {
         ...requestBody,
         text: requestBody.text.replace(/myhrtoolkit/gi, 'my hr tool kit')
