@@ -52,9 +52,9 @@ describe("TranscriptionService Unit Tests", () => {
     expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(false);
   });
 
-  it("1.1. enables background transcription only when the deployment flag is explicit", () => {
+  it("1.1. keeps background transcription disabled during the rollback even when the deployment flag is set", () => {
     vi.stubEnv("VITE_BACKGROUND_TRANSCRIPTION_ENABLED", "true");
-    expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(true);
+    expect(service.isAutomaticTranscriptionWorkerAvailable()).toBe(false);
     vi.unstubAllEnvs();
   });
 
