@@ -1,3 +1,4 @@
+import './activityPickerFlow.js';
 import { initGuideChatHistory } from './guideChatHistory.js';
 import { initGuidesWorkspaceEnhancement } from './guidesWorkspaceEnhancement.js';
 import { initGuidesLibraryPolish } from './guidesLibraryPolish.js';
