@@ -65,12 +65,12 @@ function generatedToneActivity(context) {
     };
 }
 
-function managerCourse() {
+function managerCourse({ allowPretest = false } = {}) {
     const activity = generatedToneActivity('Original activity');
     return {
         id: 'course-1',
         title: 'Managing Concerns',
-        allow_pretest: false,
+        allow_pretest: allowPretest,
         content_json: [{
             title: 'Fair Decisions',
             lessons: [{
@@ -78,7 +78,12 @@ function managerCourse() {
                 concept: 'Listen, establish the facts, and explain the appropriate next step.',
                 content: setLessonActivityMarkdown('## Responding Fairly\n\nListen before deciding.', activity),
                 ai_component: activity,
-                quiz: []
+                quiz: allowPretest ? [{
+                    question: 'What should you do first?',
+                    options: ['Listen and establish the facts', 'Make an immediate decision'],
+                    correct_index: 0,
+                    explanation: 'Establish the facts before deciding.'
+                }] : []
             }]
         }]
     };
@@ -109,22 +114,30 @@ describe('course player manager activity menu', () => {
         document.head.querySelectorAll('#easymde-script, #easymde-css, #easymde-dark-fix').forEach(element => element.remove());
     });
 
-    it('regenerates when the manager selects the current menu option again', async () => {
+    it('regenerates with optional manager context when the current activity is selected again', async () => {
         renderCoursePlayer(managerCourse(), { id: 'manager-1', role: 'manager' });
 
         const toggle = document.getElementById('activity-type-toggle');
         const menu = document.getElementById('activity-type-menu');
-        expect(toggle.textContent).toContain('Activity: Tone Analyser');
+        expect(toggle.textContent).toContain('Activity: Chat Message');
         expect(menu.hidden).toBe(true);
 
         toggle.click();
         expect(menu.hidden).toBe(false);
+
+        await vi.waitFor(() => expect(menu.querySelector('.activity-generation-context-input')).not.toBeNull());
+        menu.querySelector('.activity-generation-context-input').value = 'Focus on repeated short term absence';
         menu.querySelector('[data-activity-type="ai-tone"]').click();
 
         await vi.waitFor(() => expect(updateCourse).toHaveBeenCalledTimes(1));
         const savedModules = updateCourse.mock.calls[0][1].content_json;
         expect(savedModules[0].lessons[0].content).toContain('Replacement activity');
-        expect(document.getElementById('activity-type-toggle').textContent).toContain('Activity: Tone Analyser');
+        expect(document.getElementById('activity-type-toggle').textContent).toContain('Activity: Chat Message');
+
+        const requestPayload = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+        const userMessage = requestPayload.messages.find(message => message.role === 'user').content;
+        expect(userMessage).toContain('Manager requested focus:');
+        expect(userMessage).toContain('Focus on repeated short term absence');
     });
 
     it('places the activity menu beside the interactive activity heading', () => {
@@ -169,5 +182,33 @@ Updated manager text.
         expect(savedLesson.content).toContain('```ai-tone');
         expect(savedLesson.content).not.toContain('```ai-debate');
         expect(savedLesson.ai_component.config.context).toBe('Original activity');
+    });
+
+    it('shows the same activity control on the Diagnostic Pre Test capstone', async () => {
+        const course = managerCourse({ allowPretest: true });
+        renderCoursePlayer(course, { id: 'manager-1', role: 'manager' });
+
+        document.getElementById('start-pretest-btn').click();
+        await vi.waitFor(() => expect(document.getElementById('inline-edit-pretest-q-btn')).not.toBeNull());
+
+        document.getElementById('pretest-next-btn').click();
+        await vi.waitFor(() => expect(document.getElementById('pretest-capstone-activity-picker')).not.toBeNull());
+
+        const toggle = document.getElementById('pretest-capstone-activity-toggle');
+        const menu = document.getElementById('pretest-capstone-activity-menu');
+        expect(toggle.textContent).toContain('Activity: Chat Message');
+        expect(menu.querySelector('[data-activity-type="none"]')).toBeNull();
+
+        toggle.click();
+        const contextInput = menu.querySelector('.activity-generation-context-input');
+        contextInput.value = 'Focus on absence review conversations';
+        menu.querySelector('[data-activity-type="ai-tone"]').click();
+
+        await vi.waitFor(() => expect(updateCourse).toHaveBeenCalledTimes(1));
+        const requestPayload = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+        const userMessage = requestPayload.messages.find(message => message.role === 'user').content;
+        expect(userMessage).toContain('Focus on absence review conversations');
+        expect(document.getElementById('pretest-capstone-activity-label').textContent)
+            .toContain('Activity: Chat Message');
     });
 });
