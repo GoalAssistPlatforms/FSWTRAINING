@@ -18,6 +18,7 @@
   <script type="module">
     import { initMobileExperienceEnhancement } from '/src/mobileExperienceEnhancement.js';
     import { initGuidesInteractionCleanup } from '/src/guidesInteractionCleanup.js';
+    import { initManagerVoiceBootstrap } from '/src/managerVoiceBootstrap.js';
     import '/src/debateMeetingSkin.js';
     import '/src/debateMeetingPersonalisation.js';
 
@@ -26,6 +27,9 @@
 
     window.__fswGuidesInteractionCleanup?.();
     window.__fswGuidesInteractionCleanup = initGuidesInteractionCleanup(document.body);
+
+    window.__fswManagerVoiceCleanup?.();
+    window.__fswManagerVoiceCleanup = initManagerVoiceBootstrap(document.body);
   </script>
   <script type="module" src="/src/main.js"></script>
 </body>
