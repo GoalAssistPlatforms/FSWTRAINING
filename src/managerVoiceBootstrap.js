@@ -1,4 +1,5 @@
 import { initManagerVoiceWorkspace } from './managerVoiceWorkspace.js';
+import { initManagerVoiceCopyCleanup } from './managerVoiceCopyCleanup.js';
 
 export function initManagerVoiceBootstrap(root = document.body) {
   if (!root || typeof MutationObserver === 'undefined') return () => {};
@@ -7,6 +8,7 @@ export function initManagerVoiceBootstrap(root = document.body) {
   let cleanupWorkspace = null;
   let queued = false;
   let destroyed = false;
+  const cleanupCopy = initManagerVoiceCopyCleanup(root);
 
   const sync = () => {
     if (destroyed) return;
@@ -39,6 +41,7 @@ export function initManagerVoiceBootstrap(root = document.body) {
   return () => {
     destroyed = true;
     observer.disconnect();
+    cleanupCopy?.();
     cleanupWorkspace?.();
     cleanupWorkspace = null;
     activeCoursesTab = null;
