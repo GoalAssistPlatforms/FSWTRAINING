@@ -17,6 +17,9 @@ const SUPPORTED_ACTIVITY_TYPES = new Set(COURSE_ACTIVITY_TYPES);
 const ACTIVITY_FENCE_PATTERN = /```(ai-(?:tone|dojo|redline|debate|swipe))\s*\n?([\s\S]*?)```/gi;
 const ACTIVITY_HEADING_PATTERN = /(^|\n)#{3}\s+Interactive Activity\s*(?=\n|$)/gi;
 
+let pendingManagerContext = '';
+let diagnosticManagerCourseId = null;
+
 const CONFIGURATION_INSTRUCTIONS = Object.freeze({
     'ai-tone': `Return config with:
 {
@@ -94,6 +97,254 @@ function freshScenarioId(originalId) {
         || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     return `${base}-${uniquePart}`;
 }
+
+function readPickerManagerContext(picker) {
+    return optionalString(picker?.querySelector?.('.activity-generation-context-input')?.value).slice(0, 1200);
+}
+
+function addManagerContextField(picker) {
+    const menu = picker?.querySelector?.('.activity-type-menu');
+    if (!menu || menu.querySelector('.activity-generation-context-field')) return;
+
+    const field = document.createElement('div');
+    field.className = 'activity-generation-context-field';
+    field.style.cssText = 'padding:0.65rem 0.7rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:0.25rem;';
+    field.innerHTML = `
+        <label style="display:block;color:rgba(255,255,255,0.88);font-size:0.72rem;font-weight:700;margin-bottom:0.4rem;">Optional topic or context</label>
+        <textarea class="activity-generation-context-input" rows="3" maxlength="1200" placeholder="e.g. Focus this activity on handling repeated short term absence" style="width:100%;box-sizing:border-box;resize:vertical;min-height:68px;padding:0.55rem 0.6rem;border-radius:6px;border:1px solid rgba(255,255,255,0.16);background:rgba(0,0,0,0.35);color:white;font:inherit;font-size:0.75rem;line-height:1.35;outline:none;"></textarea>
+        <div style="margin-top:0.35rem;color:var(--text-muted);font-size:0.65rem;line-height:1.3;">Leave blank to generate from the lesson as normal.</div>
+    `;
+    menu.insertBefore(field, menu.firstChild);
+}
+
+function getCourseModules(course) {
+    if (!course) return null;
+    if (Array.isArray(course.content_json)) return course.content_json;
+    if (typeof course.content_json === 'string') {
+        try {
+            const parsed = JSON.parse(course.content_json);
+            return Array.isArray(parsed) ? parsed : null;
+        } catch (_) {
+            return null;
+        }
+    }
+    return null;
+}
+
+function findLastActivityLesson(modules) {
+    if (!Array.isArray(modules)) return null;
+    for (let moduleIndex = modules.length - 1; moduleIndex >= 0; moduleIndex -= 1) {
+        const lessons = modules[moduleIndex]?.lessons;
+        if (!Array.isArray(lessons)) continue;
+        for (let lessonIndex = lessons.length - 1; lessonIndex >= 0; lessonIndex -= 1) {
+            const lesson = lessons[lessonIndex];
+            if (lesson?.ai_component?.type && SUPPORTED_ACTIVITY_TYPES.has(lesson.ai_component.type)) {
+                return { moduleIndex, lessonIndex, lesson };
+            }
+        }
+    }
+    return null;
+}
+
+async function renderPretestCapstoneActivity(wrapper, activity) {
+    const container = wrapper?.querySelector?.('#pretest-capstone-container');
+    if (!container || !activity?.type || !activity?.config) return;
+
+    container.innerHTML = '';
+    container.dataset.type = activity.type;
+    const configScript = wrapper.querySelector('#config-pretest-capstone-container');
+    if (configScript) configScript.textContent = JSON.stringify(activity.config);
+
+    if (activity.type === 'ai-tone') {
+        const { renderToneAnalyser } = await import('../views/components/ToneAnalyser.js');
+        renderToneAnalyser(container.id, activity.config);
+    } else if (activity.type === 'ai-dojo') {
+        const { renderDojoChat } = await import('../views/components/DojoChat.js');
+        renderDojoChat(container.id, activity.config);
+    } else if (activity.type === 'ai-redline') {
+        const { renderRedline } = await import('../views/components/Redline.js');
+        renderRedline(container.id, activity.config);
+    } else if (activity.type === 'ai-debate') {
+        const { renderDebate } = await import('../views/components/Debate.js');
+        renderDebate(container.id, activity.config);
+    } else if (activity.type === 'ai-swipe') {
+        const { renderDecisionSwipe } = await import('../views/components/DecisionSwipe.js');
+        renderDecisionSwipe(container.id, activity.config);
+    }
+}
+
+function mountPretestCapstonePicker(wrapper) {
+    if (!wrapper || document.getElementById('pretest-capstone-activity-picker')) return;
+
+    const course = globalThis.window?.currentCourseData;
+    if (!course?.id || diagnosticManagerCourseId !== course.id) return;
+
+    const modules = getCourseModules(course);
+    const capstone = findLastActivityLesson(modules);
+    if (!capstone) return;
+
+    const currentType = capstone.lesson.ai_component.type;
+    const controls = document.createElement('div');
+    controls.id = 'pretest-capstone-activity-controls';
+    controls.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:0 0 1rem;padding:0 0 1rem;border-bottom:1px solid rgba(255,255,255,0.1);';
+    controls.innerHTML = `
+        <div style="color:var(--primary);font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Interactive Activity</div>
+        <div id="pretest-capstone-activity-picker" class="activity-type-picker">
+            <button id="pretest-capstone-activity-toggle" class="hover-glow activity-type-toggle" type="button" aria-haspopup="menu" aria-expanded="false">
+                <span id="pretest-capstone-activity-label">Activity: ${getActivityLabel(currentType)}</span><span aria-hidden="true">⌄</span>
+            </button>
+            <div id="pretest-capstone-activity-menu" class="activity-type-menu" role="menu" hidden>
+                ${LESSON_ACTIVITY_OPTIONS.filter(option => option.type !== 'none').map(option => `
+                    <button type="button" role="menuitem" class="activity-type-option ${option.type === currentType ? 'current' : ''}" data-activity-type="${option.type}">
+                        <span>${option.label}</span>
+                        ${option.type === currentType ? '<small>Current · select again to regenerate</small>' : ''}
+                    </button>
+                `).join('')}
+            </div>
+            <div id="pretest-capstone-activity-status" class="activity-generation-status" role="status" aria-live="polite" hidden></div>
+        </div>
+    `;
+
+    wrapper.parentNode?.insertBefore(controls, wrapper);
+    const picker = controls.querySelector('#pretest-capstone-activity-picker');
+    addManagerContextField(picker);
+
+    const toggle = controls.querySelector('#pretest-capstone-activity-toggle');
+    const menu = controls.querySelector('#pretest-capstone-activity-menu');
+    const label = controls.querySelector('#pretest-capstone-activity-label');
+    const status = controls.querySelector('#pretest-capstone-activity-status');
+
+    const setOpen = isOpen => {
+        menu.hidden = !isOpen;
+        toggle.setAttribute('aria-expanded', String(isOpen));
+    };
+
+    toggle.addEventListener('click', () => {
+        if (toggle.disabled) return;
+        setOpen(menu.hidden);
+    });
+
+    picker.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+
+    menu.addEventListener('click', async event => {
+        const option = event.target.closest('[data-activity-type]');
+        if (!option) return;
+
+        const selectedType = option.dataset.activityType;
+        const managerContext = readPickerManagerContext(picker);
+        setOpen(false);
+        toggle.disabled = true;
+        menu.querySelectorAll('button').forEach(button => button.disabled = true);
+        const selectedLabel = getActivityLabel(selectedType);
+        label.textContent = `Generating ${selectedLabel}…`;
+        status.hidden = false;
+        status.classList.remove('error');
+        status.textContent = selectedType === currentType
+            ? `Creating a new ${selectedLabel} for the Diagnostic Pre Test…`
+            : `Creating ${selectedLabel} for the Diagnostic Pre Test…`;
+
+        try {
+            const activeModules = getCourseModules(course);
+            const activeCapstone = findLastActivityLesson(activeModules);
+            if (!activeCapstone) throw new Error('The Diagnostic Pre Test activity could not be found.');
+
+            const nextModules = await applyLessonActivitySelection({
+                modules: activeModules,
+                moduleIndex: activeCapstone.moduleIndex,
+                lessonIndex: activeCapstone.lessonIndex,
+                selectedType,
+                generationContext: {
+                    courseTitle: course.title,
+                    moduleTitle: activeModules[activeCapstone.moduleIndex]?.title,
+                    managerContext
+                },
+                persist: async nextContent => {
+                    const { updateCourse } = await import('../api/courses.js');
+                    await updateCourse(course.id, {
+                        content_json: nextContent,
+                        updated_at: new Date().toISOString()
+                    });
+                }
+            });
+
+            if (Array.isArray(activeModules)) {
+                activeModules.splice(0, activeModules.length, ...nextModules);
+                course.content_json = activeModules;
+            } else {
+                course.content_json = nextModules;
+            }
+
+            const updatedCapstone = findLastActivityLesson(getCourseModules(course));
+            if (!updatedCapstone) throw new Error('The updated Diagnostic Pre Test activity could not be found.');
+            await renderPretestCapstoneActivity(wrapper, updatedCapstone.lesson.ai_component);
+
+            label.textContent = `Activity: ${getActivityLabel(selectedType)}`;
+            status.textContent = managerContext
+                ? `Activity updated using your requested focus: ${managerContext}`
+                : 'Activity updated.';
+            menu.querySelectorAll('.activity-type-option').forEach(button => {
+                const isCurrent = button.dataset.activityType === selectedType;
+                button.classList.toggle('current', isCurrent);
+                const small = button.querySelector('small');
+                if (small) small.remove();
+                if (isCurrent) {
+                    const currentNote = document.createElement('small');
+                    currentNote.textContent = 'Current · select again to regenerate';
+                    button.appendChild(currentNote);
+                }
+            });
+        } catch (error) {
+            console.error('Failed to update Diagnostic Pre Test activity:', error);
+            label.textContent = `Activity: ${getActivityLabel(currentType)}`;
+            status.classList.add('error');
+            status.textContent = error?.message || 'The activity could not be generated. Select it again to retry.';
+        } finally {
+            toggle.disabled = false;
+            menu.querySelectorAll('button').forEach(button => button.disabled = false);
+        }
+    });
+}
+
+function enhanceManagerActivityControls() {
+    if (typeof document === 'undefined') return;
+
+    if (document.getElementById('start-pretest-btn')) {
+        diagnosticManagerCourseId = null;
+    }
+
+    if (document.getElementById('inline-edit-pretest-q-btn')) {
+        diagnosticManagerCourseId = globalThis.window?.currentCourseData?.id || diagnosticManagerCourseId;
+    }
+
+    document.querySelectorAll('.activity-type-picker').forEach(addManagerContextField);
+
+    const capstoneWrapper = document.getElementById('pretest-capstone-wrapper');
+    if (capstoneWrapper) mountPretestCapstonePicker(capstoneWrapper);
+}
+
+function installManagerActivityEnhancements() {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+    if (globalThis.window?.__fswActivityManagerEnhancementsInstalled) return;
+    if (globalThis.window) globalThis.window.__fswActivityManagerEnhancementsInstalled = true;
+
+    document.addEventListener('click', event => {
+        const option = event.target.closest?.('.activity-type-option');
+        if (!option) return;
+        pendingManagerContext = readPickerManagerContext(option.closest('.activity-type-picker'));
+    }, true);
+
+    const run = () => enhanceManagerActivityControls();
+    run();
+    const observer = new MutationObserver(run);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+installManagerActivityEnhancements();
 
 export function getActivityLabel(type) {
     return ACTIVITY_LABELS[type] || 'Activity';
@@ -261,11 +512,14 @@ export function buildActivityGenerationPayload({
     moduleTitle,
     lessonTitle,
     lessonConcept,
-    lessonContent
+    lessonContent,
+    managerContext
 }) {
     if (!SUPPORTED_ACTIVITY_TYPES.has(type)) {
         throw new Error('The selected activity type is not supported.');
     }
+
+    const requestedFocus = optionalString(managerContext).slice(0, 1200);
 
     return {
         model: 'openai/gpt-4o',
@@ -282,6 +536,7 @@ Return only a JSON object with this exact top level structure:
 }
 
 The activity must practise the lesson objective, remain factually aligned with the lesson, use UK English, and feel realistic for an FSW employee. Do not invent policies, procedures, deadlines, thresholds, or systems. Do not reveal the correct answer in the introduction or scenario.
+If the manager supplies an optional topic or context, centre the scenario and examples on that requested focus where the lesson supports it. Treat the requested focus as direction for scenario choice, not permission to invent facts that are absent from the lesson.
 
 ${CONFIGURATION_INSTRUCTIONS[type]}`
             },
@@ -291,7 +546,7 @@ ${CONFIGURATION_INSTRUCTIONS[type]}`
 Module: ${String(moduleTitle || '').slice(0, 200)}
 Lesson: ${String(lessonTitle || '').slice(0, 200)}
 Concept: ${String(lessonConcept || '').slice(0, 2000)}
-
+${requestedFocus ? `\nManager requested focus:\n${requestedFocus}\n` : ''}
 Lesson content:
 ${stripLessonActivityMarkdown(lessonContent).slice(0, 14000)}`
             }
@@ -301,7 +556,11 @@ ${stripLessonActivityMarkdown(lessonContent).slice(0, 14000)}`
 }
 
 export async function generateLessonActivity(context, fetchImpl = globalThis.fetch) {
-    const payload = buildActivityGenerationPayload(context);
+    const payload = buildActivityGenerationPayload({
+        ...context,
+        managerContext: context?.managerContext ?? pendingManagerContext
+    });
+    pendingManagerContext = '';
     let lastError = null;
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
