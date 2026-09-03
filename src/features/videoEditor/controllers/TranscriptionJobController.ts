@@ -99,6 +99,27 @@ export class TranscriptionJobController {
       );
       const reviewJob = jobs.find(j => j.status === "awaiting_approval");
 
+      // During the workflow rollback, release any background OpenRouter job that was left active.
+      // Active jobs block the browser transcription path at the database level, so cancelling the
+      // stale background job is required before the proven browser path can create its transcript.
+      if (
+        processingJob &&
+        processingJob.provider === "openrouter" &&
+        this.service.isAutomaticTranscriptionWorkerAvailable?.() === false
+      ) {
+        try {
+          const cancelledJob = await this.service.cancelJob(processingJob.id);
+          this.updateState({
+            status: "ready",
+            job: cancelledJob,
+            resultTranscript: null
+          });
+          return;
+        } catch (error) {
+          console.warn("Unable to release the background transcription job during rollback.", error);
+        }
+      }
+
       if (processingJob) {
         this.startSubscription(processingJob.id);
       } else if (reviewJob) {
