@@ -14,10 +14,10 @@ export class TranscriptionService {
     this.client = supabaseClient;
   }
 
-  // Background transcription runs as a Vercel Workflow. It is switched on per deployment so the
-  // in-browser path stays in use until the migration and environment are in place.
+  // Emergency rollback: keep the new Vercel Workflow path disabled until it has been proven in
+  // production. The existing browser transcription path remains the reliable default for guides.
   isAutomaticTranscriptionWorkerAvailable(): boolean {
-    return import.meta.env.VITE_BACKGROUND_TRANSCRIPTION_ENABLED === "true";
+    return false;
   }
 
   async getCurrentTranscriptRevision(guideId: string, sourceAssetId: string): Promise<number | null> {
