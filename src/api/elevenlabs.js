@@ -2,14 +2,18 @@ import { supabase } from './supabase.js';
 
 const INTERACTIVE_VOICE_ID = 'P4wGl87YTnsZgReoqa8D';
 
-const buildSpeechPayload = (text) => ({
+const buildSpeechPayload = (text, voiceType) => ({
     text,
     model_id: 'eleven_turbo_v2_5',
-    voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        use_speaker_boost: true
-    }
+    ...(voiceType === 'fsw'
+        ? {}
+        : {
+            voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+                use_speaker_boost: true
+            }
+        })
 });
 
 const requestSpeechBlob = async (text, voiceType, voiceId = null) => {
@@ -21,7 +25,7 @@ const requestSpeechBlob = async (text, voiceType, voiceId = null) => {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(buildSpeechPayload(text))
+        body: JSON.stringify(buildSpeechPayload(text, voiceType))
     });
 
     if (!response.ok) {
@@ -51,8 +55,7 @@ const requestSpeechBlob = async (text, voiceType, voiceId = null) => {
 export const createAudio = async (text) => {
     try {
         console.log('Generating audio for text length:', text ? text.length : 0);
-        const cleanedText = typeof text === 'string' ? text.replace(/myhrtoolkit/gi, 'my hr tool kit') : text;
-        const blob = await requestSpeechBlob(cleanedText, 'fsw');
+        const blob = await requestSpeechBlob(text, 'fsw');
 
         const filename = `audio/lesson_${Date.now()}_${Math.random().toString(36).substring(7)}.mp3`;
 
