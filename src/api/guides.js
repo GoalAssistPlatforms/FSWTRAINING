@@ -1,9 +1,14 @@
 import { supabase } from './supabase.js';
 import { getPlatformSettings } from './admin.js';
+import { NO_ANSWER_TAG, isUnansweredReply, stripNoAnswerTag } from '../guideAnswerDetection.js';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+// Guide documents written from a manager's answer to a forwarded chat question. They are
+// tagged so they can be told apart from uploaded policies and left out of the guide quota.
+export const ANSWERED_QUESTION_TAG = 'answered-question';
 const openai = {
     embeddings: {
         create: async (payload) => {
@@ -226,6 +231,16 @@ export const getGuideUsageStats = async () => {
         
     if (docsError) throw docsError;
 
+    // Answers a manager saved from the chat are not guides the team authored, so they do
+    // not count against the guide allowance.
+    const { count: answeredQuestionCount, error: answeredError } = await supabase
+        .from('guide_documents')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', dates.periodStart.toISOString())
+        .contains('tags', [ANSWERED_QUESTION_TAG]);
+
+    if (answeredError) throw answeredError;
+
     // 2. Count Software Guides (timeline walkthroughs and simulations)
     const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
@@ -248,7 +263,7 @@ export const getGuideUsageStats = async () => {
     }
     
     return {
-        used: (docsCount || 0) + coursesCount,
+        used: Math.max(0, (docsCount || 0) - (answeredQuestionCount || 0)) + coursesCount,
         total: settings.max_guides_per_period,
         renewalDate: dates.nextRenewal
     };
@@ -455,7 +470,7 @@ ${contextStr}
 
 INSTRUCTIONS:
 1. Answer the user's question politely and concisely based *only* on the provided context.
-2. Do not use outside knowledge. If the answer is not in the context, say so gracefully. 
+2. Do not use outside knowledge. If the answer is not in the context, say so gracefully and end your reply with ${NO_ANSWER_TAG} on its own line so the app can offer to pass the question to a manager. 
 3. Cite your sources by naming the document (e.g. "According to the [Document Name]...").
 4. Keep a friendly, helpful, professional tone. Formatted in clear Markdown.`;
 
@@ -473,7 +488,11 @@ INSTRUCTIONS:
         temperature: 0.2
     });
 
-    const answerText = completion.choices[0].message.content;
+    const rawAnswer = completion.choices[0].message.content;
+    // The assistant tags replies it could not answer from the knowledge base; the chat then
+    // offers to send the question on to a manager.
+    const unanswered = isUnansweredReply(rawAnswer);
+    const answerText = stripNoAnswerTag(rawAnswer);
 
     // Only return interactive guides as sources if they are actually mentioned/cited in the AI's generated response.
     const finalSources = [...matchedChunks];
@@ -490,7 +509,10 @@ INSTRUCTIONS:
 
     return {
         answer: answerText,
-        sources: finalSources
+        // A reply that could not answer from the knowledge base cited nothing, so showing the
+        // nearest documents would read as citations it never made.
+        sources: unanswered ? [] : finalSources,
+        unanswered
     };
 }
 
