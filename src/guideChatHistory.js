@@ -10,6 +10,11 @@ import {
   renameChatConversation
 } from './api/chatHistory.js';
 import { fswAlert, fswConfirm } from './utils/dialog';
+import {
+  createEscalationPanel,
+  createManagerReplyWatcher,
+  formatManagerReply
+} from './guideChatEscalation.js';
 
 const ACTIVE_CHAT_KEY = 'fsw_active_guide_chat_id';
 const CONTEXT_MESSAGE_LIMIT = 10;
@@ -273,6 +278,36 @@ export const initGuideChatHistory = async chatView => {
   let persistenceAvailable = true;
   let destroyed = false;
 
+  const replyWatcher = createManagerReplyWatcher({
+    onReply: async record => {
+      const content = formatManagerReply(record.manager_name, record.answer);
+      if (messages.some(message => message.content === content)) return;
+
+      const greeting = chatHistory.querySelector('#chat-greeting');
+      if (greeting) greeting.style.display = 'none';
+      if (suggestions) suggestions.style.display = 'none';
+
+      messages.push({
+        role: 'assistant',
+        content,
+        sources: [],
+        created_at: record.answered_at || new Date().toISOString()
+      });
+      await appendMessage(chatHistory, user, content, false, []);
+    }
+  });
+
+  // The knowledge base had no answer, so offer to pass the question to a manager.
+  const offerManagerEscalation = question => {
+    const panel = createEscalationPanel({
+      question,
+      conversationId: activeConversationId,
+      onEscalated: record => replyWatcher.track(record?.id)
+    });
+    chatHistory.appendChild(panel);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+  };
+
   const markPersistenceUnavailable = error => {
     if (!isMissingSchemaError(error)) return false;
     persistenceAvailable = false;
@@ -319,6 +354,7 @@ export const initGuideChatHistory = async chatView => {
     historyPanel.hidden = true;
     historyButton.setAttribute('aria-expanded', 'false');
     setEmptyState(chatHistory, suggestions, input);
+    replyWatcher.setConversation(null);
     refreshConversations();
   };
 
@@ -336,6 +372,7 @@ export const initGuideChatHistory = async chatView => {
       historyPanel.hidden = true;
       historyButton.setAttribute('aria-expanded', 'false');
       await renderMessages();
+      await replyWatcher.setConversation(conversationId);
       await refreshConversations();
     } catch (error) {
       if (!markPersistenceUnavailable(error)) {
@@ -367,6 +404,7 @@ export const initGuideChatHistory = async chatView => {
       activeConversationId = conversation.id;
       sessionStorage.setItem(ACTIVE_CHAT_KEY, conversation.id);
       conversations = [conversation, ...conversations.filter(item => item.id !== conversation.id)];
+      await replyWatcher.setConversation(activeConversationId);
       return activeConversationId;
     } catch (error) {
       if (!markPersistenceUnavailable(error)) console.error('Unable to create chat conversation:', error);
@@ -418,6 +456,7 @@ export const initGuideChatHistory = async chatView => {
       messages.push(assistantMessage);
       await appendMessage(chatHistory, user, result.answer, false, result.sources);
       await persistMessage('assistant', result.answer, result.sources);
+      if (result.unanswered) offerManagerEscalation(question);
       await refreshConversations();
     } catch (error) {
       console.error(error);
@@ -502,8 +541,12 @@ export const initGuideChatHistory = async chatView => {
   if (activeConversationId && persistenceAvailable) {
     try {
       messages = await listChatMessages(activeConversationId);
-      if (messages.length > 0) await renderMessages();
-      else startNewChat();
+      if (messages.length > 0) {
+        await renderMessages();
+        await replyWatcher.setConversation(activeConversationId);
+      } else {
+        startNewChat();
+      }
     } catch (error) {
       if (!markPersistenceUnavailable(error)) console.warn('Previous chat could not be restored:', error);
       startNewChat();
@@ -514,6 +557,7 @@ export const initGuideChatHistory = async chatView => {
 
   return () => {
     destroyed = true;
+    replyWatcher.stop();
     sendButton.removeEventListener('click', onSend);
     input.removeEventListener('keydown', onKeyDown);
     newChatButton.removeEventListener('click', onNewChat);
