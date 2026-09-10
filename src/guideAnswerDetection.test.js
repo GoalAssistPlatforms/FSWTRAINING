@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hasNoAnswerTag,
   isUnansweredReply,
+  readsAsAnswered,
   readsAsUnanswered,
   stripNoAnswerTag
 } from './guideAnswerDetection.js';
@@ -23,12 +24,22 @@ describe('guideAnswerDetection', () => {
     expect(readsAsUnanswered('That is not covered in the documents I have access to.')).toBe(true);
   });
 
+  it('recognises clear document retrieval answers', () => {
+    expect(readsAsAnswered('Yes, there is a flexible working outcome letter template available.')).toBe(true);
+    expect(readsAsAnswered('You can find this in the document titled "6. 2026 Flexible Working Appeal Outcome Letter".')).toBe(true);
+  });
+
   it('leaves genuine answers alone', () => {
     expect(isUnansweredReply('According to the [Fire Safety Policy], the assembly point is the north car park.')).toBe(false);
     expect(isUnansweredReply('')).toBe(false);
   });
 
-  it('treats a tagged reply as unanswered even when the wording sounds confident', () => {
+  it('does not escalate when the model wrongly tags a useful document answer', () => {
+    const reply = 'Yes, there is a flexible working outcome letter template available. You can find this in the document titled "6. 2026 Flexible Working Appeal Outcome Letter". [[NO_ANSWER]]';
+    expect(isUnansweredReply(reply)).toBe(false);
+  });
+
+  it('keeps a genuinely unanswered tagged reply as unanswered', () => {
     expect(isUnansweredReply('Ask your line manager about this one. [[NO_ANSWER]]')).toBe(true);
   });
 });
