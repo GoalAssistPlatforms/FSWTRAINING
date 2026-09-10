@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import { processAndUploadGuide, processAndUploadWebLink, chatWithGuides, fetchAllGuides, deleteGuide, fetchSystemTags } from '../api/guides.js';
+import { libraryQueryTerms, matchesLibraryQuery } from '../guidesLibrarySearch.js';
 import { getCourses, deleteCourse } from '../api/courses.js';
 import { fswAlert, fswConfirm } from '../utils/dialog';
 import { initDocumentThumbnails } from '../guideDocumentThumbnails.js';
@@ -257,6 +258,8 @@ export const renderGuides = (user, stats) => {
         .suggestion-chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 6px 12px; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .suggestion-chip:hover { background: rgba(255,255,255,0.1); color: white; border-color: var(--primary); }
         #guide-search-input:focus { width: 180px; border-color: var(--primary); }
+        .guides-search-hidden { display: none !important; }
+        #guides-library-no-results { padding: 1.5rem 1rem; color: var(--text-muted); font-size: 0.85rem; text-align: center; }
     </style>
     `
 }
@@ -267,6 +270,72 @@ export const initGuidesEvents = async (user) => {
     const chatHistory = document.getElementById('chat-history')
     const guidesList = document.getElementById('guides-list')
     let cleanupDocumentThumbnails = () => {}
+
+    const LIBRARY_LISTS = ['#interactive-guides-list', '#guides-list', '#links-list']
+
+    // The library grid styles document cards with `display: flex !important`, which beats
+    // both a plain inline style and a class rule, so hiding a card silently did nothing
+    // there. An inline declaration marked important is the one thing that always wins, and
+    // the card's original inline display is put back when the filter clears.
+    const setCardHidden = (card, hidden) => {
+        if (hidden) {
+            if (card.dataset.searchDisplay === undefined) card.dataset.searchDisplay = card.style.display || ''
+            card.style.setProperty('display', 'none', 'important')
+            return
+        }
+
+        if (card.dataset.searchDisplay === undefined) return
+        const original = card.dataset.searchDisplay
+        card.style.removeProperty('display')
+        if (original) card.style.display = original
+        delete card.dataset.searchDisplay
+    }
+
+    // Filters the library against what is typed in the search box.
+    const applyLibraryFilter = () => {
+        const input = document.getElementById('guide-search-input')
+        const query = (input?.value || '').trim()
+        const terms = libraryQueryTerms(query)
+        let visibleCount = 0
+
+        LIBRARY_LISTS.forEach(selector => {
+            const list = document.querySelector(selector)
+            if (!list) return
+
+            Array.from(list.children).forEach(child => {
+                if (!child.classList.contains('guide-card')) {
+                    // Placeholders such as "No documents available yet." only make sense
+                    // when nothing is being searched for.
+                    child.classList.toggle('guides-search-hidden', terms.length > 0)
+                    return
+                }
+
+                const matches = matchesLibraryQuery(child.innerText || child.textContent, terms)
+                setCardHidden(child, !matches)
+                if (matches) visibleCount++
+            })
+
+            // Collapse a heading once its list has nothing left to show.
+            const section = list.closest('.guides-library-section')
+            if (section) {
+                const hasMatch = Array.from(list.querySelectorAll('.guide-card'))
+                    .some(card => card.dataset.searchDisplay === undefined)
+                section.classList.toggle('guides-search-hidden', terms.length > 0 && !hasMatch)
+            }
+        })
+
+        const sections = document.querySelector('.guides-library-sections')
+        if (sections) {
+            let empty = sections.querySelector('#guides-library-no-results')
+            if (!empty) {
+                empty = document.createElement('div')
+                empty.id = 'guides-library-no-results'
+                sections.appendChild(empty)
+            }
+            empty.innerText = `Nothing in the library matches "${query}".`
+            empty.classList.toggle('guides-search-hidden', !(terms.length > 0 && visibleCount === 0))
+        }
+    }
 
     // Fetch and display guides
     const loadGuides = async () => {
@@ -476,6 +545,9 @@ export const initGuidesEvents = async (user) => {
                     });
                 }
             }
+
+            // A rebuilt list starts unfiltered, so re-apply whatever is in the search box.
+            applyLibraryFilter()
 
             // Bind tag clicks to search
             document.querySelectorAll('.guide-tag').forEach(tag => {
@@ -792,17 +864,8 @@ export const initGuidesEvents = async (user) => {
 
     const searchInput = document.getElementById('guide-search-input');
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const val = e.target.value.toLowerCase();
-            const docs = document.querySelectorAll('#guides-list .guide-card');
-            const interactives = document.querySelectorAll('#interactive-guides-list .guide-card');
-            const links = document.querySelectorAll('#links-list .guide-card');
-
-            [...docs, ...interactives, ...links].forEach(card => {
-                const text = card.innerText.toLowerCase();
-                card.style.display = text.includes(val) ? 'flex' : 'none';
-            });
-        });
+        searchInput.addEventListener('input', applyLibraryFilter);
+        searchInput.addEventListener('search', applyLibraryFilter);
     }
 
     // Modal close logic

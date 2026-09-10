@@ -2,6 +2,7 @@ import { createCourse, updateCourse } from '../api/courses.js';
 import { fetchSystemTags } from '../api/guides.js';
 import { supabase } from '../api/supabase.js';
 import { fswAlert, fswConfirm } from '../utils/dialog';
+import { MIC_ADVICE, createMicActivityMonitor, describeMicTrackProblem, micAdviceText } from '../recordingMicMonitor.js';
 import {
     getVisibleSegments,
     getVisibleDuration,
@@ -113,6 +114,12 @@ export const renderSystemBuilder = () => {
                               <div style="width: 100px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; border: 1px solid var(--glass-border);">
                                   <div id="rec-volume-bar" style="height: 100%; width: 0%; background: #10b981; border-radius: 4px; transition: width 0.08s ease;"></div>
                               </div>
+                          </div>
+
+                          <div id="rec-mic-warning" role="alert" style="display: none; max-width: 340px; text-align: left; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.45); border-radius: 8px; padding: 0.7rem 0.85rem; color: #fca5a5; font-size: 0.78rem; line-height: 1.45;">
+                              <strong style="display: block; color: #fecaca; margin-bottom: 0.3rem;">⚠️ We cannot hear your microphone</strong>
+                              <span id="rec-mic-warning-reason">Nothing is coming through, and the guide is built from what you say out loud.</span>
+                              <ul style="margin: 0.45rem 0 0 0; padding-left: 1.1rem;">${MIC_ADVICE.map(advice => `<li>${advice}</li>`).join('')}</ul>
                           </div>
 
                           <button id="sys-stop-rec-btn" class="btn-ghost" style="border: 1px solid #ef4444; color: #ef4444; padding: 0.5rem 1.5rem; font-weight: 600; cursor: pointer; border-radius: 4px;">
@@ -3247,6 +3254,19 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
     let recordingTimerInterval = null;
     let recordingSeconds = 0;
     let audioContextInstance = null;
+    let micMonitor = null;
+
+    // Shows or hides the "we cannot hear your microphone" panel in the live recording UI.
+    const updateMicWarning = (status) => {
+        const panel = document.getElementById('rec-mic-warning');
+        if (!panel) return;
+        panel.style.display = status === 'silent' ? 'block' : 'none';
+        const reason = document.getElementById('rec-mic-warning-reason');
+        if (reason) {
+            reason.innerText = micMonitor?.trackFault
+                || 'Nothing is coming through, and the guide is built from what you say out loud.';
+        }
+    };
 
     if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', () => {
@@ -3310,6 +3330,18 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
             } catch (err) {
                 console.error("Microphone access denied:", err);
                 await fswAlert("Microphone access is required so the AI can transcribe your voice walkthrough. Please allow microphone permissions and try again.");
+                return;
+            }
+
+            // Checked before the screen picker so nobody chooses a window only to be turned away.
+            const micTrack = micStream?.getAudioTracks?.()[0] || null;
+            const micProblem = describeMicTrackProblem(micTrack);
+            if (micProblem) {
+                micStream?.getTracks().forEach(t => t.stop());
+                await fswAlert(
+                    `${micProblem}\n\nA walkthrough is built from your narration, so the recording needs working audio.\n\n${micAdviceText()}`,
+                    'Microphone not ready'
+                );
                 return;
             }
 
@@ -3382,6 +3414,27 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
 
             mediaRecorder.onstop = async () => {
                 recordedVideoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+
+                // A recording with no narration cannot become a guide: the transcript comes back
+                // empty and there is nothing to build timeline steps from. Better to say so now
+                // than after several minutes of processing.
+                if (micMonitor && !micMonitor.heardAudio) {
+                    const recordAgain = await fswConfirm(
+                        `No sound was picked up from your microphone while you were recording.\n\nThe AI builds the guide from your narration, so it cannot create steps or a transcript from this recording.\n\n${micAdviceText()}\n\nPress OK to discard it and record again, or Cancel to keep it without narration.`,
+                        'No narration recorded'
+                    );
+
+                    if (recordAgain) {
+                        recordedChunks = [];
+                        recordedVideoBlob = null;
+                        micMonitor = null;
+                        updateMicWarning('listening');
+                        recLiveUi.style.display = 'none';
+                        recSetupUi.style.display = 'block';
+                        return;
+                    }
+                }
+
                 const localUrl = URL.createObjectURL(recordedVideoBlob);
                 editorVideo.src = localUrl;
                 await processRecordedWalkthrough(recordedVideoBlob);
@@ -3396,6 +3449,18 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             const volumeBar = document.getElementById('rec-volume-bar');
+
+            micMonitor = createMicActivityMonitor();
+            updateMicWarning('listening');
+            micTrack.addEventListener('mute', () => {
+                updateMicWarning(micMonitor.reportTrackFault('Your microphone has been muted.'));
+            });
+            micTrack.addEventListener('unmute', () => {
+                updateMicWarning(micMonitor.clearTrackFault());
+            });
+            micTrack.addEventListener('ended', () => {
+                updateMicWarning(micMonitor.reportTrackFault('Your microphone was disconnected.'));
+            });
 
             let tick = 0;
             recordingTimerInterval = setInterval(() => {
@@ -3418,6 +3483,7 @@ export const initSystemBuilder = (onClose, existingGuide = null) => {
                     const average = sum / bufferLength;
                     const pct = Math.min(100, Math.round((average / 80) * 100));
                     volumeBar.style.width = `${pct}%`;
+                    if (micMonitor) updateMicWarning(micMonitor.sample(average, 100));
                 }
             }, 100);
 
