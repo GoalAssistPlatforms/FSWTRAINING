@@ -24,6 +24,11 @@ const ensureStyles = () => {
       box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
     }
 
+    #create-course-card > p:first-of-type,
+    #create-pack-card > p {
+      display: none !important;
+    }
+
     #guides-chat-controls {
       width: 100%;
       max-width: 800px;
