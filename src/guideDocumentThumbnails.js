@@ -1,3 +1,5 @@
+import { initGuidesLibrarySearchFix } from './guidesLibrarySearchFix.js';
+
 const DEFAULT_THUMBNAIL_WIDTH = 320;
 
 let pdfRendererPromise;
@@ -87,3 +89,8 @@ export const initDocumentThumbnails = (root, options = {}) => {
   thumbnails.forEach(thumbnail => observer.observe(thumbnail));
   return () => observer.disconnect();
 };
+
+if (typeof document !== 'undefined') {
+  window.__guidesLibrarySearchFixCleanup?.();
+  window.__guidesLibrarySearchFixCleanup = initGuidesLibrarySearchFix(document);
+}
