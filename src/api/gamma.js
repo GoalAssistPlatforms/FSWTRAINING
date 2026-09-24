@@ -171,37 +171,50 @@ export const exportAndUploadPdf = async (gammaId) => {
         const pdfDownloadUrl = await exportToPdf(gammaId);
         if (!pdfDownloadUrl) throw new Error("No PDF URL returned from exportToPdf");
 
-        // Use the local/production proxied route to prevent CORS errors in browser fetch
-        const proxiedUrl = pdfDownloadUrl.replace('https://assets.api.gamma.app', '/api/gamma-assets');
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         const accessToken = sessionData?.session?.access_token;
         if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
-        const pdfResponse = await fetch(proxiedUrl, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (!pdfResponse.ok) {
-            throw new Error(`Gamma PDF download failed with status ${pdfResponse.status}`);
-        }
-        const pdfBlob = await pdfResponse.blob();
-        
-        const filePath = `slides/${gammaId}.pdf`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('course_assets')
-            .upload(filePath, pdfBlob, {
-                contentType: 'application/pdf',
-                upsert: true
-            });
 
-        if (uploadError) {
-            throw new Error(`Failed to upload PDF to Supabase: ${uploadError.message}`);
+        // Store the exported PDF server-side. Managers are authenticated here, while the
+        // server uses the existing service-role client for the actual Storage upsert.
+        // This avoids browser-side Storage RLS failures when refreshing an existing deck.
+        const uploadResponse = await fetch('/api/course-assets/upload-pdf', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                gammaId,
+                pdfDownloadUrl
+            })
+        });
+
+        const uploadText = await uploadResponse.text();
+        let uploadPayload = {};
+        if (uploadText) {
+            try {
+                uploadPayload = JSON.parse(uploadText);
+            } catch {
+                uploadPayload = {};
+            }
         }
-        
-        const { data: publicUrlData } = supabase.storage
-            .from('course_assets')
-            .getPublicUrl(filePath);
-            
-        return publicUrlData.publicUrl;
+
+        if (!uploadResponse.ok) {
+            const detail = uploadPayload.statusMessage
+                || uploadPayload.message
+                || uploadPayload.error
+                || uploadText
+                || `HTTP ${uploadResponse.status}`;
+            throw new Error(`Failed to store PDF: ${detail}`);
+        }
+
+        if (!uploadPayload.publicUrl) {
+            throw new Error('Failed to store PDF: no public URL was returned');
+        }
+
+        return uploadPayload.publicUrl;
     } catch (err) {
         console.error("exportAndUploadPdf Failed:", err);
         throw err;
