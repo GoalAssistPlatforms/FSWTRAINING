@@ -299,9 +299,9 @@ export const generateCourseContent = async (topic, sourceGenerationJobId = null,
                                 
                                 AI Component Configs (Use these PRECISE TITLES):
                                 - ai-tone: { "context": "A 1-2 sentence background highlighting a specific issue the sender is facing (e.g., 'A technician is struggling to configure a new VRF system').", "incoming_email": "A realistic, 2-3 paragraph email written in the FIRST PERSON from the sender clearly outlining their problem.", "initialText": "" } (Title: "Communication Lab")
-                                  * CRITICAL for ai-tone: The incoming email MUST present a specific problem or issue. The objective is for the USER to draft a reply that effectively resolves the issue, providing clear instructions on what the sender needs to do.
+                                  * CRITICAL for ai-tone: The incoming email MUST present one specific problem or issue. The learner should be able to pass with a concise, sensible reply that gives the core safe action or answer. Do not make success depend on multiple hidden requirements, perfect wording, or optional details.
                                 - ai-dojo: { "scenarioId": "generated_id", "intro": "A 1-sentence UI stage-setter (e.g., 'You are receiving a call from a site manager experiencing a problem').", "role": "The distinct personality, job title, and CURRENT MOOD of the caller (e.g., 'Frustrated Project Manager facing a system leak').", "objective": "The specific issue the USER must successfully troubleshoot or resolve (e.g., 'Identify that the flare nut is loose and advise them to tighten it.').", "skills": ["Troubleshooting", "Customer Service"], "initialText": "MUST be written in the FIRST PERSON as a realistic, conversational opening where you state your problem. NEVER break character. Start the conversation right away." } (Title: "Live Scenario Simulation")
-                                  * CRITICAL for ai-dojo: The scenario MUST revolve around the caller experiencing a problem or issue directly related to the core lesson concept. The user must resolve this issue through the conversation.
+                                  * CRITICAL for ai-dojo: The scenario MUST revolve around one clear caller problem directly related to the core lesson concept. Define one observable core outcome. The learner should normally be able to resolve it in one or two substantive responses; do not bundle multiple mandatory steps into the objective.
                                 - ai-redline: { "title": "A realistic internal document title (e.g., 'Q3 Safety Protocol Memo')", "intro": "Formal document header/introduction.", "outro": "Official sign-off or footer.", "items": [{ "content": "A specific, realistic paragraph or clause in the document.", "isRisk": true, "feedback": "Detailed explanation of why this clause is risky or safe, referencing FSW best practices." }] } (Title: "Risk & Compliance Audit")
                                   * CRITICAL for ai-redline:
                                   * Generate exactly 5-7 items.
@@ -311,7 +311,7 @@ export const generateCourseContent = async (topic, sourceGenerationJobId = null,
                                   * NEVER use a neutral event, background fact, vague observation, or fragment as an item. If nothing is wrong with an item, make it explicitly correct and compliant.
                                   * ALWAYS provide educational 'feedback' for SAFE items. The feedback must explain the concrete feature that makes the item safe or risky using only the lesson or supplied source material.
                                 - ai-debate: { "topic": "A controversial operational shortcut or policy bypass proposed by a colleague (e.g., 'Can we skip the system diagnostic this one time to save an hour?').", "persona": "A rushed, contrarian, or budget-conscious stakeholder pushing for the shortcut.", "stakeholderName": "A realistic name (e.g., Dave, Sarah)", "stances": ["Defend the Policy", "Allow the Shortcut"] } (Title: "Policy Pushback")
-                                  * CRITICAL for ai-debate: The scenario MUST involve a stakeholder pushing back against FSW best practices. The user must defend the correct, safe, or compliant procedure and be capable of explaining why it matters.
+                                  * CRITICAL for ai-debate: The scenario MUST involve a stakeholder pushing back against FSW best practices. Keep the pass condition simple: the learner should reject the shortcut and give one sensible reason or safer alternative. Do not require multiple arguments or an extended debate.
                                 - ai-swipe: { "title": "The Corkboard", "cards": [{ "text": "A brief, actionable statement (Max 150 characters, e.g., 'A technician completes the required safety checks before starting work.').", "isCorrect": true, "feedback": "Why the statement is correct or incorrect." }], "labels": { "left": "Bin It", "right": "Approved" } } (Title: "The Corkboard")
                                   * CRITICAL for ai-swipe:
                                   * Generate exactly 10-12 cards.
@@ -488,15 +488,17 @@ export const chatWithDojo = async (messages, scenario) => {
                 CRITICAL RULES:
                 1. You are strictly the character defined in ROLE. You genuinely need the learner's help.
                 2. You are not an assistant, mentor, examiner, or coach. Never reveal that you are evaluating the learner.
-                3. Never give away the solution. Answer questions naturally but do not volunteer the answer.
-                4. Do not agree simply because the learner sounds confident, polite, or proposes an action. Judge whether the specific objective has actually been resolved.
-                5. If the learner's first substantive response appears to solve the problem, do not immediately finish. Ask exactly one relevant follow-up question that tests an important detail, consequence, or next step from the stated objective.
-                6. Once that relevant follow-up has been answered adequately and the objective is genuinely resolved, conclude naturally and append [SUCCESS]. There is no arbitrary minimum or maximum number of turns.
-                7. If the learner is partly right, stay in character and ask a useful question that exposes what still needs resolving rather than simply agreeing.
+                3. Never give away the solution before the learner has had a fair chance to respond.
+                4. Judge practical intent and outcome, not exact wording. Accept reasonable paraphrases, concise answers, informal phrasing, and likely speech-to-text errors when the meaning is clear.
+                5. Do not require perfect grammar, specialist terminology, exhaustive detail, or every possible step. Minor omissions must not block success when the learner has given a safe and workable answer to the core problem.
+                6. A strong first substantive response may pass immediately. Ask at most one short follow-up only when a material safety, accuracy, or action point is genuinely unclear.
+                7. If the learner is partly right, stay in character and give one useful prompt that helps them finish the core objective without turning the conversation into an oral exam.
+                8. Once the core objective is materially resolved, conclude naturally and append [SUCCESS]. Do not prolong the scenario to test additional nice-to-have details.
 
                 COMPLETION LOGIC:
-                - Append [SUCCESS] only when the conversation demonstrates that the learner has actually resolved the stated objective and, where the solution appeared in their first response, has also answered the required follow-up challenge.
-                - Append [FAILED] only when the learner explicitly gives up, gives dangerously incorrect advice after a reasonable opportunity to correct it, or clearly abandons the objective.
+                - Append [SUCCESS] when the learner has given a safe, plausible response that materially resolves the stated objective or clearly tells the caller what practical action to take next.
+                - Prefer success over another challenge when the remaining gap is only wording, polish, a minor detail, or an optional best-practice point.
+                - Append [FAILED] only when the learner explicitly gives up, clearly abandons the objective, or persists with dangerously incorrect advice after a reasonable opportunity to correct it.
                 - Never award success because of generic closing language such as thanks, great, book, schedule, survey, sorted, or sounds good.
                 - If you append [SUCCESS] or [FAILED], do not ask another question.
                 `
@@ -537,18 +539,18 @@ export const chatWithDebater = async (messages, topic, persona, pointNumber = 0,
         PREVIOUS UI PROGRESS COUNT: ${pointNumber}
         RECENT UNSUCCESSFUL ATTEMPTS: ${failedAttempts}
 
-        The learner passes by demonstrating three concrete outcomes across the conversation:
-        1. CORRECT_POSITION: They hold the correct safe, fair, compliant, or otherwise lesson-aligned position rather than caving to the shortcut.
-        2. SOUND_REASONING: They explain a relevant reason, consequence, principle, or practical rationale supported by the topic and conversation.
-        3. HANDLED_PUSHBACK: After you have challenged their reasoning with a relevant follow-up objection, they respond to that objection adequately without abandoning the correct position.
+        The learner passes by showing the correct practical intent in a natural conversation:
+        1. CORRECT_POSITION: They reject the unsafe, unfair, noncompliant, or otherwise lesson-inappropriate shortcut and support the lesson-aligned approach.
+        2. SOUND_REASONING: They give at least one sensible reason, consequence, principle, or practical rationale. A brief reason is enough.
+        3. HANDLED_PUSHBACK: They resist the stakeholder's pressure without abandoning the correct position. The stakeholder's opening proposal already counts as pushback, so this outcome can be met in the learner's first response.
 
         IMPORTANT CONVERSATION BEHAVIOUR:
         1. Evaluate the whole conversation, not merely the latest sentence.
-        2. Do not agree immediately when the learner gives a good first answer. If they have the correct position and sound reasoning but have not yet handled a genuine follow-up challenge, reply with one realistic objection or pressure point and keep the meeting going.
-        3. Once all three outcomes are genuinely met, concede naturally and complete the scenario. Do not manufacture extra turns.
-        4. A weak answer does not automatically advance progress. Give a concise in-character challenge and an optional coaching hint.
-        5. Never auto-advance because the learner has failed several times. Progress only when an outcome is actually demonstrated.
-        6. Set failed_state to true only if the learner clearly caves to the unsafe or noncompliant shortcut, explicitly gives up, or abandons the meeting after a reasonable opportunity to recover.
+        2. Judge meaning rather than exact wording. Accept reasonable paraphrases, concise responses, informal language, and likely speech-to-text errors where the learner's intent is clear.
+        3. Do not require a second turn if the learner's first substantive response already rejects the shortcut and gives a reasonable lesson-aligned reason or safer alternative.
+        4. Once the learner has clearly held the correct position and explained why, concede naturally and complete the scenario. Do not manufacture extra objections or test optional details.
+        5. If the answer is partly right or ambiguous, give one concise in-character challenge and an optional coaching hint so the learner can recover.
+        6. Set failed_state to true only if the learner clearly endorses the unsafe or noncompliant shortcut, explicitly gives up, or abandons the meeting after a reasonable opportunity to recover.
         7. Keep reply under 60 words and stay in character.
 
         Return strict JSON:
@@ -574,9 +576,9 @@ export const chatWithDebater = async (messages, topic, persona, pointNumber = 0,
           "strongest_argument": "What the learner did particularly well",
           "weakness": "One concise improvement point, or 'No material weakness identified.'"
         }
-        A passing score is 75 to 100.
+        A passing score is 60 to 100. A concise but clearly correct response should normally score at least 60.
 
-        When failed_state is true, final_feedback MUST contain a score below 75 and explain what the learner abandoned or got wrong.
+        When failed_state is true, final_feedback MUST contain a score below 60 and explain what the learner abandoned or got wrong.
         Never populate final_feedback merely because a turn count has been reached.
     `;
 
@@ -619,8 +621,11 @@ export const analyzeTone = async (userText, context, incomingEmail) => {
 
                 SCORING RULES:
                 - score MUST equal problem_resolution + professionalism + tone_and_clarity.
-                - 75 is the pass mark. Do not apply a hidden higher bar.
-                - If problem_resolution is below 35, cap the overall score at 74 even if the writing style is excellent.
+                - 60 is the pass mark. Do not apply a hidden higher bar.
+                - A concise response can pass. Do not require greetings, sign-offs, perfect grammar, specialist terminology, or every possible supporting detail.
+                - Accept reasonable paraphrases and likely speech-to-text or typing errors when the intended meaning is clear.
+                - If the learner gives a safe, useful action or explanation that substantially addresses the sender's core problem, reward that heavily even when the response could still be polished.
+                - If problem_resolution is below 25, cap the overall score at 59 because the core problem has not yet been addressed enough to pass.
                 - If the reply invents a policy, deadline, procedure, threshold, contact, attachment, or requirement not present in the supplied material, treat that as a problem-resolution weakness. Do not reward invented detail.
                 - Do not criticise the learner for omitting a fact or procedure that is not present in the supplied context or incoming email.
                 - Feedback must be grounded only in the supplied material and the learner's wording.
@@ -646,7 +651,7 @@ export const analyzeTone = async (userText, context, incomingEmail) => {
     const professionalism = Math.max(0, Math.min(25, Number(result.professionalism) || 0));
     const toneAndClarity = Math.max(0, Math.min(25, Number(result.tone_and_clarity) || 0));
     let score = problemResolution + professionalism + toneAndClarity;
-    if (problemResolution < 35) score = Math.min(score, 74);
+    if (problemResolution < 25) score = Math.min(score, 59);
 
     return {
         ...result,

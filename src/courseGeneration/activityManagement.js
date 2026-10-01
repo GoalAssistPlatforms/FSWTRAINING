@@ -27,7 +27,7 @@ const CONFIGURATION_INSTRUCTIONS = Object.freeze({
   "incoming_email": "A realistic email that presents the problem without giving away the answer",
   "initialText": ""
 }
-The email must contain a specific problem the learner can genuinely resolve using the lesson content. Do not require facts, procedures or policies that are absent from the lesson.`,
+The email must contain one specific problem the learner can genuinely resolve using the lesson content. Design it so a concise, sensible reply that gives the core safe action or answer is enough to pass. Do not create multiple hidden requirements or require facts, procedures or policies that are absent from the lesson.`,
     'ai-dojo': `Return config with:
 {
   "scenarioId": "A unique identifier for this scenario",
@@ -37,7 +37,7 @@ The email must contain a specific problem the learner can genuinely resolve usin
   "skills": ["Two or more relevant skills"],
   "initialText": "A realistic first person opening line from the caller"
 }
-The objective must describe one concrete problem that can be demonstrated as resolved. Avoid vague objectives such as communicate effectively or handle the situation well.`,
+The objective must describe one concrete problem with one observable core outcome. The learner should normally be able to resolve it in one or two substantive responses. Do not bundle several mandatory steps into the objective. Avoid vague objectives such as communicate effectively or handle the situation well.`,
     'ai-redline': `Return config with:
 {
   "title": "A realistic internal document title",
@@ -56,7 +56,7 @@ Each item must make sense on its own and be clearly judgeable as safe or correct
   "stakeholderName": "A realistic first name",
   "stances": ["Follow the correct approach", "Allow the proposed shortcut"]
 }
-The stakeholder must push for an unsafe, unfair, or noncompliant shortcut which the learner can challenge using the lesson. The correct stance must be defensible with a concrete reason from the lesson so the learner can explain why it matters and respond to one relevant pushback.`,
+The stakeholder must push for an unsafe, unfair, or noncompliant shortcut which the learner can challenge using the lesson. Keep the pass condition simple: the learner should be able to reject the shortcut and give one sensible lesson-aligned reason or safer alternative. Do not require multiple arguments or a long exchange.`,
     'ai-swipe': `Return config with:
 {
   "title": "A concise activity title",

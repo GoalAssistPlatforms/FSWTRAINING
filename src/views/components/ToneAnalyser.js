@@ -160,8 +160,8 @@ export function renderToneAnalyser(containerId, config = {}) {
         scoreDisplay.textContent = score;
 
         let color = '#ef4444';
-        if (score >= 80) color = '#10b981';
-        else if (score >= 60) color = '#f59e0b';
+        if (score >= 60) color = '#10b981';
+        else if (score >= 45) color = '#f59e0b';
 
         scoreCircle.style.stroke = color;
         feedbackBox.style.borderLeftColor = color;
@@ -191,9 +191,9 @@ export function renderToneAnalyser(containerId, config = {}) {
                     <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid #10b981; border-radius: 50%; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
                         <span style="font-size: 3rem;">🎉</span>
                     </div>
-                    <h2 style="color: white; margin-bottom: 1rem; font-size: 2rem;">Excellent Work!</h2>
+                    <h2 style="color: white; margin-bottom: 1rem; font-size: 2rem;">Response Accepted!</h2>
                     <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 500px; margin-bottom: 2rem; line-height: 1.6;">
-                        You've demonstrated a professional command of the situation with a score of <strong style="color: #10b981;">${currentScore}</strong>.
+                        You've demonstrated the core communication outcome with a score of <strong style="color: #10b981;">${currentScore}</strong>.
                     </p>
                     <div style="padding: 1rem 2rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 2rem;">
                         "<em>${escapeHtml(result.feedback || 'Strong response.')}</em>"
@@ -208,8 +208,8 @@ export function renderToneAnalyser(containerId, config = {}) {
 
     const performAnalysis = async () => {
         const text = textarea.value.trim();
-        if (!text || text.length < 10) {
-            feedbackContent.textContent = 'Please write a bit more before sending.';
+        if (!text || text.length < 5) {
+            feedbackContent.textContent = 'Please add a little more before sending.';
             return;
         }
 
@@ -229,10 +229,10 @@ export function renderToneAnalyser(containerId, config = {}) {
             currentScore = result.score;
             updateScoreRing(currentScore);
 
-            feedbackTitle.style.color = currentScore >= 80 ? '#10b981' : (currentScore >= 60 ? '#f59e0b' : '#ef4444');
-            const icon = currentScore >= 80 ? '✅ ' : (currentScore >= 60 ? '⚠️ ' : '🛑 ');
+            feedbackTitle.style.color = currentScore >= 60 ? '#10b981' : (currentScore >= 45 ? '#f59e0b' : '#ef4444');
+            const icon = currentScore >= 60 ? '✅ ' : (currentScore >= 45 ? '⚠️ ' : '🛑 ');
 
-            if (currentScore >= 75) {
+            if (currentScore >= 60) {
                 feedbackTitle.textContent = 'Coach Feedback';
                 feedbackContent.textContent = icon + result.feedback;
                 showSuccess(result);
