@@ -189,7 +189,7 @@ export async function generateFswPreview(text) {
 
   const payload = {
     text: String(text || '').trim().slice(0, 2000),
-    model_id: 'eleven_turbo_v2_5'
+    model_id: 'eleven_v4'
   };
   if (locator) payload.pronunciation_dictionary_locators = [locator];
 

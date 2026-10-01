@@ -4,14 +4,13 @@ const INTERACTIVE_VOICE_ID = 'P4wGl87YTnsZgReoqa8D';
 
 const buildSpeechPayload = (text, voiceType) => ({
     text,
-    model_id: 'eleven_turbo_v2_5',
+    model_id: 'eleven_v4',
     ...(voiceType === 'fsw'
         ? {}
         : {
             voice_settings: {
                 stability: 0.5,
-                similarity_boost: 0.75,
-                use_speaker_boost: true
+                similarity_boost: 0.75
             }
         })
 });

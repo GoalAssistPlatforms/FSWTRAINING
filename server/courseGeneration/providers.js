@@ -249,11 +249,10 @@ export async function generateNarrationAudio(text) {
         },
         body: JSON.stringify({
             text: cleanedText,
-            model_id: 'eleven_turbo_v2_5',
+            model_id: 'eleven_v4',
             voice_settings: {
                 stability: 0.5,
-                similarity_boost: 0.75,
-                use_speaker_boost: true
+                similarity_boost: 0.75
             }
         }),
         signal: AbortSignal.timeout(180000)

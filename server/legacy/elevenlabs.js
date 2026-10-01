@@ -43,7 +43,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    let requestBody = req.body;
+    let requestBody = {
+      ...(req.body || {}),
+      model_id: 'eleven_v4'
+    };
 
     if (voiceType === 'fsw') {
       try {
