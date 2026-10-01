@@ -14,12 +14,22 @@ export async function renderNotificationBell() {
             } else if (n.type === 'system_alert') {
                 iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
                 iconColor = "#3b82f6"; // Blue
+            } else if (n.type === 'guide_question') {
+                iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>`;
+                iconColor = "#8b5cf6"; // Purple
+            } else if (n.type === 'question_answered') {
+                iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`;
+                iconColor = "#10b981"; // Green
             } else {
                 iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`;
                 iconColor = "#10b981"; // Green
             }
 
-            const title = n.type === 'nudge' ? 'Manager Nudge' : n.type === 'system_alert' ? 'System Alert' : 'Message';
+            const title = n.type === 'nudge' ? 'Manager Nudge'
+                : n.type === 'system_alert' ? 'System Alert'
+                : n.type === 'guide_question' ? 'Question for you'
+                : n.type === 'question_answered' ? 'Answer from your manager'
+                : 'Message';
             
             // Format date compactly
             const dateObj = new Date(n.created_at);
@@ -29,6 +39,8 @@ export async function renderNotificationBell() {
             return `
                 <div class="notification-item unread clickable-notif" 
                      data-id="${n.id}"
+                     data-type="${n.type}"
+                     data-question="${n.related_question_id || ''}"
                      data-title="${encodeURIComponent(title)}"
                      data-message="${encodeURIComponent(n.message)}"
                      data-date="${encodeURIComponent(dateStr)}"
@@ -119,7 +131,10 @@ export function initNotificationEvents() {
                     </div>
                     <div id="modal-notif-message" style="color: rgba(255,255,255,0.85); font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; margin-bottom: 1rem;"></div>
                     <div id="modal-notif-course" style="color: #3b82f6; font-size: 0.85rem; font-weight: 500; display: none; align-items: center; gap: 6px; background: rgba(59, 130, 246, 0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.2);"></div>
-                    <button id="mark-read-modal-btn" class="btn-primary" style="width: 100%; margin-top: 1.5rem;">Dismiss Notification</button>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
+                        <button id="answer-question-modal-btn" class="btn-primary" style="display: none; width: 100%; background: #8b5cf6; border-color: #8b5cf6;">Answer this question</button>
+                        <button id="mark-read-modal-btn" class="btn-primary" style="width: 100%;">Dismiss Notification</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -198,6 +213,27 @@ export function initNotificationEvents() {
                         courseEl.style.display = 'flex';
                     } else {
                         courseEl.style.display = 'none';
+                    }
+
+                    // Managers can answer a forwarded question without leaving the bell.
+                    const answerBtn = document.getElementById('answer-question-modal-btn');
+                    const questionId = clickableNotif.getAttribute('data-question');
+                    if (answerBtn) {
+                        const isQuestion = clickableNotif.getAttribute('data-type') === 'guide_question' && questionId;
+                        answerBtn.style.display = isQuestion ? 'block' : 'none';
+                        answerBtn.onclick = !isQuestion ? null : async () => {
+                            const { openManagerQuestionModal } = await import('./ManagerQuestionModal.js');
+                            const result = await openManagerQuestionModal(questionId);
+                            if (!result) return;
+
+                            modal.style.display = 'none';
+                            try {
+                                await markNotificationAsRead(clickableNotif.getAttribute('data-id'));
+                            } catch (e) {
+                                console.error('error marking read', e);
+                            }
+                            window.dispatchEvent(new CustomEvent('fsw-reload-notifications'));
+                        };
                     }
 
                     const dismissBtn = document.getElementById('mark-read-modal-btn');

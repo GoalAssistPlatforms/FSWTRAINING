@@ -8,6 +8,7 @@ import { renderCoursePlayer } from './CoursePlayer'
 import { getCurrentUser } from '../api/auth'
 import { downloadCertificate } from '../utils/certificateGenerator'
 import { fetchPendingExtensions, resolveExtension, sendNudge } from '../api/notifications'
+import { fetchPendingQuestions } from '../api/questions.js'
 import { fswAlert, fswConfirm, fswPrompt } from '../utils/dialog'
 import { getPacks, getPack, createPack, updatePack, deletePack, assignPack, bulkAssignPack, revokePackAssignment, getPackCompletionStats, getPackAssignments } from '../api/packs'
 import { fetchAllGuides } from '../api/guides.js'
@@ -628,6 +629,14 @@ export const initManagerEvents = async (effectiveUser) => {
       const approveBtn = e.target.closest('.approve-ext-btn');
       const denyBtn = e.target.closest('.deny-ext-btn');
       const auditContentBtn = e.target.closest('#inbox-audit-content-btn');
+      const answerQuestionBtn = e.target.closest('.answer-question-btn');
+
+      if (answerQuestionBtn) {
+          const { openManagerQuestionModal } = await import('./components/ManagerQuestionModal.js');
+          const result = await openManagerQuestionModal(answerQuestionBtn.dataset.id);
+          if (result) loadTeamStats();
+          return;
+      }
 
       if (auditContentBtn) {
           const tabGuidesBtn = document.getElementById('tab-guides');
@@ -886,14 +895,20 @@ export const initManagerEvents = async (effectiveUser) => {
     try {
       const { getTotalActiveUsersCount } = await import('../api/manager.js')
       // Use the analytics API to get the high-level rolled up stats AND the granular ones
-      const [rates, pendingExtensions, platformSettings, totalActive, packAssignments, guides, courses] = await Promise.all([
+      const [rates, pendingExtensions, platformSettings, totalActive, packAssignments, guides, courses, pendingQuestions] = await Promise.all([
          getTeamCompletionRates(),
          fetchPendingExtensions(),
          getPlatformSettings(),
          getTotalActiveUsersCount(),
          getPackAssignments(),
          fetchAllGuides(),
-         getCourses('manager')
+         getCourses('manager'),
+         // Questions forwarded from the guides chat. Optional so an environment without the
+         // escalation tables still loads the rest of the dashboard.
+         fetchPendingQuestions().catch(err => {
+           console.warn('Unable to load forwarded questions:', err)
+           return []
+         })
       ]);
       
       currentPackAssignments = packAssignments || [];
@@ -940,8 +955,9 @@ export const initManagerEvents = async (effectiveUser) => {
 
           const hasExtensions = pendingExtensions && pendingExtensions.length > 0;
           const hasOverdueContent = overdueCount > 0;
+          const hasQuestions = pendingQuestions && pendingQuestions.length > 0;
 
-          if (hasExtensions || hasOverdueContent) {
+          if (hasExtensions || hasOverdueContent || hasQuestions) {
               inboxCont.style.display = 'block';
               
               let html = '';
@@ -973,6 +989,22 @@ export const initManagerEvents = async (effectiveUser) => {
                               <button class="btn-primary approve-ext-btn" data-id="${ext.id}" data-date="${ext.requested_date}" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Approve</button>
                               <button class="btn-ghost deny-ext-btn" data-id="${ext.id}" style="padding: 0.4rem 1rem; font-size: 0.8rem; color: #ef4444;">Deny</button>
                           </div>
+                      </div>
+                  `).join('');
+              }
+
+              if (hasQuestions) {
+                  html += pendingQuestions.map(q => `
+                      <div class="glass" style="padding: 1rem; border-radius: var(--radius-md); border-left: 4px solid #8b5cf6; display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.5rem; box-sizing: border-box;">
+                          <div style="min-width: 0;">
+                              <div style="font-weight: bold; display: flex; align-items: center; gap: 0.4rem; color: #c4b5fd;">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>
+                                  ${escapeHTML(q.asker_name || 'A team member')} asked a question
+                              </div>
+                              <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.3rem 0 0.5rem;">The assistant could not answer it from the knowledge base &middot; ${new Date(q.created_at).toLocaleDateString()}</div>
+                              <div style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; font-size: 0.9rem; font-style: italic;">"${escapeHTML(q.question)}"</div>
+                          </div>
+                          <button class="btn-primary answer-question-btn" data-id="${q.id}" style="padding: 0.4rem 1rem; font-size: 0.8rem; background: #8b5cf6; border-color: #8b5cf6; flex-shrink: 0;">Answer</button>
                       </div>
                   `).join('');
               }
